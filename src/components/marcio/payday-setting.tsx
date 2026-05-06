@@ -1,20 +1,28 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Loader2, Check, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
 import { Card } from "@/components/ui/card.tsx";
-import { setPaydayDayAction } from "@/app/[locale]/settings/actions.ts";
+import { trpc } from "@/lib/trpc/client.ts";
 
 export function PaydaySetting({ initialDay }: { initialDay: number }) {
   const t = useTranslations("Settings");
   const [day, setDay] = useState(String(initialDay));
-  const [pending, startTransition] = useTransition();
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const utils = trpc.useUtils();
+  const setPayday = trpc.settings.setPaydayDay.useMutation({
+    onSuccess: () => {
+      setSavedAt(Date.now());
+      utils.settings.get.invalidate();
+      utils.today.get.invalidate();
+    },
+    onError: (err) => setError(err.message),
+  });
 
   const dirty = Number.parseInt(day, 10) !== initialDay;
 
@@ -26,14 +34,7 @@ export function PaydaySetting({ initialDay }: { initialDay: number }) {
       setError(t("paydayInvalid"));
       return;
     }
-    startTransition(async () => {
-      const r = await setPaydayDayAction(n);
-      if (r.ok) {
-        setSavedAt(Date.now());
-      } else {
-        setError(r.error);
-      }
-    });
+    setPayday.mutate({ day: n });
   }
 
   return (
@@ -61,8 +62,12 @@ export function PaydaySetting({ initialDay }: { initialDay: number }) {
             className="num mt-1"
           />
         </div>
-        <Button type="submit" disabled={pending || !dirty} size="default">
-          {pending ? (
+        <Button
+          type="submit"
+          disabled={setPayday.isPending || !dirty}
+          size="default"
+        >
+          {setPayday.isPending ? (
             <Loader2 className="size-4 animate-spin" />
           ) : savedAt && !dirty ? (
             <Check className="size-4" />

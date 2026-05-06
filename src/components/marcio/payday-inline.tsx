@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Loader2, Check } from "lucide-react";
 import { Input } from "@/components/ui/input.tsx";
-import { setPaydayDayAction } from "@/app/[locale]/settings/actions.ts";
+import { trpc } from "@/lib/trpc/client.ts";
 
 /**
  * Compact inline payday control for the Settings index. Saves on blur or
@@ -13,8 +13,28 @@ import { setPaydayDayAction } from "@/app/[locale]/settings/actions.ts";
 export function PaydayInline({ initialDay }: { initialDay: number }) {
   const t = useTranslations("Settings.inline");
   const [day, setDay] = useState(String(initialDay));
-  const [pending, startTransition] = useTransition();
   const [status, setStatus] = useState<"idle" | "saved" | "error">("idle");
+  const utils = trpc.useUtils();
+  const setPayday = trpc.settings.setPaydayDay.useMutation({
+    onSuccess: async () => {
+      setStatus("saved");
+      // Days-until-payday + month anchors live downstream of paydayDay,
+      // so refresh the screens that derive from it.
+      await Promise.all([
+        utils.settings.get.invalidate(),
+        utils.today.get.invalidate(),
+        utils.month.get.invalidate(),
+        utils.activity.get.invalidate(),
+        utils.insights.get.invalidate(),
+        utils.buckets.get.invalidate(),
+        utils.tikkie.get.invalidate(),
+      ]);
+    },
+    onError: () => {
+      setStatus("error");
+      setDay(String(initialDay));
+    },
+  });
 
   function commit() {
     const n = Number.parseInt(day, 10);
@@ -24,11 +44,7 @@ export function PaydayInline({ initialDay }: { initialDay: number }) {
       return;
     }
     if (n === initialDay) return;
-    startTransition(async () => {
-      const r = await setPaydayDayAction(n);
-      setStatus(r.ok ? "saved" : "error");
-      if (!r.ok) setDay(String(initialDay));
-    });
+    setPayday.mutate({ day: n });
   }
 
   return (
@@ -40,7 +56,7 @@ export function PaydayInline({ initialDay }: { initialDay: number }) {
         </p>
       </div>
       <div className="flex items-center gap-2">
-        {pending ? (
+        {setPayday.isPending ? (
           <Loader2 className="size-3.5 animate-spin text-muted-foreground" />
         ) : status === "saved" ? (
           <Check className="size-3.5 text-primary" />

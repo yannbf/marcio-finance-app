@@ -196,16 +196,3 @@ function defaultNicknameFor(owner: "joint" | "camila" | "yann"): string {
   return "Camila personal";
 }
 
-export async function setPaydayDayAction(
-  day: number,
-): Promise<{ ok: true } | { ok: false; error: string }> {
-  const me = await getCurrentUser();
-  if (!me) return { ok: false, error: "Not signed in." };
-  try {
-    await updatePaydayDay(day);
-    revalidatePath("/", "layout");
-    return { ok: true };
-  } catch (err) {
-    return { ok: false, error: (err as Error).message };
-  }
-}
