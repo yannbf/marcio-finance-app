@@ -40,15 +40,11 @@ first-paint window.
 activity, today, insights, buckets, tikkie, transactions. Each is just
 the same skeleton blocks already inside the screen, lifted out.
 
-### 4. Persist TanStack Query cache to sessionStorage
+### 4. Persist TanStack Query cache to sessionStorage ✅
 
-**Why:** Right now hard-refreshing a tab re-fetches everything. The data
-doesn't change between session-load and session-load, so we can warm the
-cache from sessionStorage and avoid the round trip.
-
-**How:** `@tanstack/query-async-storage-persister` + `PersistQueryClientProvider`.
-Persist `today`, `month`, `inbox.list` for ~5 min — long enough to feel
-"already loaded" when the user comes back to the tab.
+Done — `PersistQueryClientProvider` + `createSyncStoragePersister` in
+`src/lib/trpc/provider.tsx`. 30-min `maxAge`; only successful queries
+persist (no half-loaded states).
 
 ---
 
@@ -63,16 +59,14 @@ be wrong. The user has to know to look at the `match_rule` table.
 **Build:** a `Settings → Rules` page that lists every learned rule with
 its hit count + a delete button. Cheap query, high impact.
 
-### 6. Multiple budget months
+### 6. Multiple budget months ✅
 
-**Why:** `month` table supports it but the UI assumes "current
-payday-month". You can't drill into "what did April look like?" without
-a SQL client.
-
-**Build:** add a month-picker chip to `/month`, `/activity`, `/insights`.
-Default to current month; arrow keys / chip carousel to walk back. The
-tRPC routers already accept the anchor implicitly via "current month";
-add an optional `anchor: { year, month }` input to each.
+Done — `MonthScopeBar` (← month →) on `/`, `/month`, `/activity`,
+`/insights`, `/transactions`, `/buckets`, `/tikkie`. URL state lives in
+`?anchor=YYYY-MM&scope=joint|yann|camila`. All routers accept an
+optional `anchor` and `scope`; the existing helpers
+(`getMonthlyAggregates`, `getUpcomingCharges`, `getSectionsForToday`)
+gained an `anchor` argument.
 
 ### 7. Sheet sync as a cron job
 
@@ -84,28 +78,19 @@ cron + a small bearer-secured route.
 - `src/app/api/cron/import-sheet/route.ts`: check `Authorization: Bearer ${CRON_SECRET}`, call `readGoogleSheet()` + `upsertParsedMonth()`, return counts.
 - Vercel env var `CRON_SECRET`.
 
-### 8. Match-rule confidence learning
+### 8. Match-rule confidence learning ✅
 
-**Why:** When the user reassigns a transaction that an auto-rule matched,
-that rule was wrong for that case. Right now the rule's confidence
-doesn't change. Over time this fills the Inbox with the same wrong
-matches.
+Done — `lib/matching/rule-confidence.ts` runs a Bayesian-ish update on
+each `inbox.assign` / `assignMany`. The matching engine drops learned
+rules with `confidence < 0.4` from the candidate pool. New columns on
+`match_rule`: `confirmed_hits`, `overridden_hits`, `last_used_at`.
 
-**Build:** every `inbox.assign` mutation that *replaces* an existing
-auto-match should decrement the rule's confidence; every "remember
-rule" assign that confirms a previously-suggested match should bump it.
-Decay below `0.5` → drop the rule.
+### 9. Counterparty fingerprinting ✅
 
-### 9. Counterparty fingerprinting
-
-**Why:** ING transactions look like `"AH AMSTERDAM NLD"`, `"AH UTRECHT NLD"`,
-`"AH ROTTERDAM NLD"`. The current `escapeForRulePattern` strips trailing
-digits but not city tails. Each city becomes its own rule.
-
-**Build:** improve normalization in `src/app/[locale]/inbox/actions.ts`'s
-old `escapeForRulePattern` (now in `src/server/routers/inbox.ts`) to
-strip Dutch city names from a known list, plus `\sNLD\s*$`, plus
-terminal IDs (`Term: BS\d+`).
+Done — `lib/matching/fingerprint.ts` strips Dutch city tails ("AMSTERDAM
+NLD", etc.), terminal IDs ("Term: BS123", "Pas 003"), and trailing
+digit runs. "AH AMSTERDAM NLD" / "AH ROTTERDAM NLD" / "AH UTRECHT NLD"
+all collapse to one rule with pattern `ah`.
 
 ### 10. Currency support
 
@@ -197,34 +182,26 @@ cross-fade.
 **Build:** `view-transition-name: page-content` on `<main>`, plus a CSS
 opt-in. Chrome + Safari 18 support; Firefox graceful degrades.
 
-### 19. Settings page polish
+### 19. Settings page polish ✅
 
-**Why:** Settings is the only page still server-rendered and its theme +
-language toggles already write to localStorage / cookies. The payday-day
-inline editor still uses a full server action — should move to a
-`trpc.settings.setPaydayDay` mutation for consistency + optimistic
-update.
+Done — `PaydayInline` and `PaydaySetting` both call
+`trpc.settings.setPaydayDay`. On success they invalidate
+`settings.get`, `today.get`, `month.get`, `activity.get`, etc. so
+days-until-payday and the month anchor everywhere update without a
+revalidatePath.
 
-**Build:** convert `PaydayInline` to call `trpc.settings.setPaydayDay`
-with `onMutate` patching `settings.get` and `today.get` (which renders
-the days-until-payday).
+### 20. Bottom-sheet pickers feel smoother ✅
 
-### 20. Bottom-sheet pickers feel smoother
+Done — `BudgetItemPicker` now renders as a `<Sheet side="bottom">`
+with the iOS-style drag-handle, swipe-to-dismiss, body-scroll lock,
+and bigger touch targets. Triggers from Inbox, Activity, Transactions,
+and the bulk-assign bar.
 
-**Why:** The hierarchical popover for assigning a transaction is
-useful but cramped. On a small phone the section list barely fits.
+### 21. iOS install prompt ✅
 
-**Build:** swap the popover for a true bottom-sheet (`<Sheet side="bottom">`,
-the same component used elsewhere). Sections list as a horizontal
-scrollable chip row at the top, items list below.
-
-### 21. iOS install prompt
-
-**Why:** Manifest is in place but Safari doesn't auto-prompt.
-
-**Build:** detect Safari iOS + standalone mode; if the user is on the
-sign-in or today page and not in standalone, show a one-time
-"Add to Home Screen" hint.
+Done — `IosInstallHint` toast on iOS Safari (not in standalone mode)
+points the user at Share → Add to Home Screen. Self-dismissing,
+remembers via localStorage.
 
 ---
 

@@ -15,11 +15,13 @@ the deferred-work backlog, then this file for orientation.
 
 ## TL;DR for the next session
 
-- Stack: **Next.js 16.2 (App Router), Tailwind v4, base-ui via shadcn, Drizzle, Postgres (Neon), Better Auth, next-intl 4 (pt-BR default + en), Motion 12**.
-- Two users only (Yann + Camila), declared by allow-list. Closed registration.
-- Months are **payday-anchored** (default day 25). Don't think calendar months — think `paydayMonthFor(date, paydayDay)` everywhere.
-- **Scope** is `joint | yann | camila`. Privacy guards on every server boundary: a personal item / account / savings is only visible to its owner; joint is visible to both.
-- Matching engine: hand-tuned **seed rules** in `src/lib/matching/seed-rules.ts` + learned rules in `match_rule` table. Confidence-ranked, savings-account refs win first.
+- Stack: **Next.js 16.2 (App Router), Tailwind v4, base-ui via shadcn, Drizzle, Postgres (Neon), Better Auth + Google OAuth, next-intl 4 (pt-BR default + en), Motion 12, tRPC 11 + TanStack Query 5**.
+- Two users only (Yann + Camila), declared by allow-list (Better Auth `databaseHooks.user.create.before`).
+- Months are **payday-anchored** (default day 25). Don't think calendar months — think `paydayMonthFor(date, paydayDay)` and `paydayMonthForAnchor(year, month, paydayDay)` everywhere.
+- **Scope** is `joint | yann | camila`. Privacy guards on every server boundary: a personal item / account / savings is only visible to its owner; joint is visible to both. The `scope` URL param + `MonthScopeBar` lets the user filter to Joint or Me on every page that supports it.
+- **Inner pages are client-rendered** from a tRPC API at `/api/rpc/*` cached by TanStack Query (with sessionStorage persistence). The page boundary is a thin server component that resolves the locale + the default month anchor and mounts a `<…Screen>` client component. The screen reads URL state (`?anchor=YYYY-MM&scope=…`) and calls `trpc.<router>.<proc>.useQuery({ anchor, scope })`. Sign-in and the import flow stay server-rendered.
+- Matching engine: hand-tuned **seed rules** in `src/lib/matching/seed-rules.ts` + learned rules in `match_rule` table. Confidence is updated by a Bayesian-ish formula (`lib/matching/rule-confidence.ts`); rules below 0.4 are dropped from the candidate pool. Counterparty fingerprints are normalized via `lib/matching/fingerprint.ts` (city tails, terminal IDs, trailing digits stripped) before learning.
+- **Postgres regex gotcha**: `~*` runs POSIX regex, which treats JS-style `\b` as backspace and `\s` as the literal "s". Hardcoded patterns that get shipped to SQL live as separate constants (e.g. `TIKKIE_PG_PATTERN`, `AFRONDING_PG_PATTERN`).
 - Production is on Vercel. Dev uses `MARCIO_DEV_AS=yann|camila` to short-circuit auth (hard-gated to `NODE_ENV !== "production"`).
 
 ## Layout
@@ -43,10 +45,15 @@ src/
       banks/                      CSV upload + bank-account list + per-account drill
       savings/                    Manage savings_account rows + multi-link to SAZONAIS items
     api/auth/[...all]/route.ts    Better Auth handler
+    api/rpc/[trpc]/route.ts       tRPC fetch handler (everything inner UI talks to)
 
   components/
     ui/                           shadcn primitives (button, card, input, select, popover, sheet…)
-    marcio/                       App-specific components
+    marcio/                       App-specific components, including:
+                                    - …-screen.tsx files: client components for each route
+                                    - month-scope-bar.tsx: ← month → + Joint/Me toggle
+                                    - budget-item-picker.tsx: hierarchical bottom-sheet
+                                    - ios-install-hint.tsx: one-time A2HS hint
 
   db/
     schema.ts                     ALL tables; single source of truth
@@ -57,27 +64,43 @@ src/
     request.ts                    Server-side message loader
     navigation.ts                 Locale-aware Link, useRouter
 
+  server/
+    trpc.ts                       initTRPC + context (user, allowedScopes) +
+                                  resolveVisibleScopes (privacy guard)
+    inputs.ts                     Shared zod inputs: AnchorInput, ScopeViewInput
+    routers/_app.ts               Root router, mounts everything below
+    routers/{today,month,activity,inbox,insights,buckets,tikkie,
+            transactions,settings,session}.ts
+
   lib/
     auth/                         Better Auth + closed allow-list + getCurrentUser()
-    matching/                     Seed rules + engine
+    trpc/                         createTRPCReact + Provider (incl. sessionStorage persistence)
+    matching/                     Seed rules + engine + fingerprint + rule-confidence
     import/                       Sheet/CSV parsers + adapters + DB upsert
-    payday.ts                     Payday-month math
+    payday.ts                     Payday-month math + paydayMonthForAnchor + shiftAnchor
     settings.ts                   Singleton household_setting helpers
     cadence.ts                    monthlyContributionCents (SAZONAIS yearly → monthly)
     budget-aggregates.ts          Per-section sums for headline screens
     today-data.ts                 Section drill data (paid + expected per item)
     forecast.ts                   Predicted upcoming charges with day-of-month
     format.ts                     Intl formatters
+    tikkie.ts                     parseTikkiePerson + TIKKIE_PG_PATTERN
 
   messages/{en,pt-BR}.json        i18n strings — pt-BR is the canonical copy
-  proxy.ts                        next-intl middleware (renamed in Next 16)
+  proxy.ts                        next-intl middleware (renamed in Next 16) +
+                                  auth gate (redirects to /sign-in when no session)
 
 scripts/
   seed-mock.ts                    Ingest /tmp/budget.xlsx + mockdata CSVs end-to-end
   rematch.ts                      Clear auto-rule matches and re-run matching
   clean-phantoms.ts               Delete phantom budget_item rows from older parser bug
+  generate-icons.ts               PWA icons from a single SVG source
+  test-fingerprint.ts             Smoke-tests for fingerprintCounterparty
+
+tests/e2e/                        Playwright suite — see TESTING.md
 
 public/logos/                     23 brand SVGs/PNGs for the counterparty avatar
+public/manifest.webmanifest       PWA manifest + icons
 src/mockdata/                     Two ING NL CSVs (gitignored)
 ```
 
@@ -140,13 +163,48 @@ in one round trip.
    - Otherwise score every seed rule (`SEED_RULES` array) + learned rule
      (`match_rule` table) by confidence, picking the highest-confidence rule
      that matches (regex on counterparty + description, optional amount
-     range filter).
+     range filter). **Learned rules below `CONFIDENCE_FLOOR` (0.4) are
+     skipped** — they exist in the DB for review but don't auto-match.
    - Resolve the target via `(payday-month, scope, section, naturalKey)`. If
      the target item doesn't exist this month, skip — it'll match next time
      the sheet for that month is imported.
    - Insert a `tx_match` row with `source = "auto-rule"`.
-4. User can override anything via the Inbox + "remember rule" toggle, which
-   inserts a row into `match_rule` that outranks the seed for next time.
+4. User can override anything via the Inbox + "remember rule" toggle. The
+   counterparty is normalized through `fingerprintCounterparty` (city tail
+   + terminal ID + trailing-digit stripper) so similar merchants collapse
+   to one rule. On every `inbox.assign` mutation we look at the prior
+   `tx_match`: if it was an auto-rule pick that disagreed with the user's
+   choice, we bump the matching rule's `overridden_hits`; if the user
+   confirmed an existing auto-match (or remembered a rule that already
+   exists), we bump `confirmed_hits`. Confidence is recomputed via
+   `computeRuleConfidence` (Bayesian-ish, prior 0.7 with weight 4).
+
+### Page → tRPC data flow
+
+Every authenticated page is a thin server boundary that resolves the
+locale + the default month anchor and mounts a `<…Screen>` client
+component. The screen reads `?anchor=YYYY-MM&scope=…` from the URL
+(via `parseSearch` in `month-scope-bar.tsx`) and calls
+`trpc.<router>.<proc>.useQuery({ anchor, scope })`. Mutations go via
+`trpc.<router>.<proc>.useMutation` and invalidate every query that
+could have referenced the changed row (inbox/activity/today/etc.).
+
+Routers are organized one-per-page:
+
+- `today.get` — composite headline numbers + sections + forecast + inboxCount
+- `month.get(scope, anchor)` — items + match counts for the chosen scope
+- `activity.get` — month timeline + forecast + budget-item options
+- `inbox.list` + `inbox.assign` + `inbox.assignMany`
+- `insights.get` — section breakdown + top categories + top merchants
+- `buckets.get` — savings-account groups + orphans
+- `tikkie.get` — per-person totals (uses `TIKKIE_PG_PATTERN` for SQL match)
+- `transactions.list({q, show, scope})` — full searchable history
+- `settings.get` + `settings.setPaydayDay`
+- `session.me`
+
+The TanStack Query cache is **persisted to sessionStorage** for 30 min
+so a hard refresh of a tab restores the previous data instantly while
+a background refetch lands updates.
 
 ### iOS-style bottom sheet
 
@@ -154,6 +212,19 @@ in one round trip.
 `side="bottom"` opens with a drag handle pill at top center; the whole
 content drags vertically and closes past 120px or a strong fling. The X
 button lives **inside** the motion wrapper so it follows the drag.
+
+The sheet now also:
+- Provides an invisible 64px drag-grab zone covering the header strip,
+  so vertical drags from anywhere near the title start the dismiss.
+- Locks `body { overflow: hidden; touch-action: none; }` while open via
+  `body[data-sheet-open]` so the page underneath doesn't scroll on iOS
+  when a vertical drag escapes the sheet.
+- Adds `padding-bottom: env(safe-area-inset-bottom)` so the close button
+  isn't behind the iPhone home indicator.
+
+`BudgetItemPicker` (the hierarchical "assign to" picker for inbox /
+activity / transactions / bulk-assign) renders as a Sheet rather than a
+Popover so it gets the swipe behavior + bigger touch targets for free.
 
 ## Conventions
 

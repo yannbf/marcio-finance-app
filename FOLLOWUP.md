@@ -104,28 +104,29 @@ Production-readiness gaps that aren't critical day one but bite eventually.
 
 The engine is good for v1; these are the next step.
 
-- [ ] **Per-merchant match confidence learning** — track how often a
-  rule's match was overridden vs. confirmed; decay confidence
-  accordingly.
+- [x] **Per-merchant match confidence learning** — Bayesian-ish update
+  from confirmed/overridden hits in `lib/matching/rule-confidence.ts`;
+  engine drops rules below a confidence floor.
 - [ ] **Date-window guard for repeats** — a recurring rent should only
   match the closest single transaction near its due day, not also a
   refund weeks later that happens to share the counterparty.
-- [ ] **Counterparty fingerprinting** — strip city tails ("AMSTERDAM
-  NLD"), terminal IDs ("Term: BS154523"), card sequence numbers from
-  the counterparty before learning a rule.
+- [x] **Counterparty fingerprinting** — `lib/matching/fingerprint.ts`
+  strips Dutch city tails / terminal IDs / trailing digits before the
+  rule pattern lands in `match_rule`.
 - [ ] **Currency** — every amount is treated as EUR. Schema doesn't
   store currency anywhere. Adding ISO codes is a future migration when
   someone earns in another currency.
 
 ## 8. Mobile / browser quirks observed
 
-- [ ] **Drag handle on the bottom sheet** — works in Chrome/iOS, but
-  the inertia after release could feel snappier. Try `power: 0.6` or
-  velocity-based snap thresholds.
-- [ ] **Numbers larger than the avatar** — when an amount like
-  `-€ 2.943` shows on a row with a long counterparty name, it can
-  wrap. Add `whitespace-nowrap` on the amount span in
-  `transaction-row.tsx`.
+- [x] **Bottom sheet drag** — drag now starts from the entire top
+  64px header zone (not just the handle pill); body-scroll lock kicks
+  in on open so the page underneath doesn't scroll on iOS.
+- [x] **Bottom-nav placement on iPhone X+** — body padding is now
+  `pb-[calc(5rem+env(safe-area-inset-bottom))]` so content clears the
+  home indicator.
+- [x] **Numbers larger than the avatar** — `whitespace-nowrap` on the
+  amount span landed earlier (see `transaction-row.tsx`).
 
 ## 9. Tests
 
