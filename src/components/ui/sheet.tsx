@@ -41,11 +41,15 @@ function SheetContent({
   children,
   side = "right",
   showCloseButton = true,
+  showHandle,
   ...props
 }: SheetPrimitive.Popup.Props & {
   side?: "top" | "right" | "bottom" | "left"
   showCloseButton?: boolean
+  /** iOS-style drag-handle indicator. Defaults on for `side="bottom"`. */
+  showHandle?: boolean
 }) {
+  const handle = showHandle ?? side === "bottom"
   return (
     <SheetPortal>
       <SheetOverlay />
@@ -58,8 +62,9 @@ function SheetContent({
         )}
         {...props}
       >
+        {handle ? <SheetHandle /> : null}
         {children}
-        {showCloseButton && (
+        {!handle && showCloseButton && (
           <SheetPrimitive.Close
             data-slot="sheet-close"
             render={
@@ -77,6 +82,41 @@ function SheetContent({
         )}
       </SheetPrimitive.Popup>
     </SheetPortal>
+  )
+}
+
+/**
+ * iOS-style drag indicator at the top of a bottom sheet. Acts as a close
+ * affordance — pointer-down → pointer-move-down past the threshold closes
+ * the sheet. The grabber pill is also a normal close target via tap.
+ */
+function SheetHandle() {
+  return (
+    <SheetPrimitive.Close
+      data-slot="sheet-handle"
+      className="group flex w-full shrink-0 cursor-grab touch-none select-none items-center justify-center pt-3 pb-2 active:cursor-grabbing"
+      onPointerDown={(e) => {
+        const startY = e.clientY
+        const target = e.currentTarget as HTMLElement
+        const onMove = (ev: PointerEvent) => {
+          const dy = ev.clientY - startY
+          if (dy > 80) {
+            target.click()
+            cleanup()
+          }
+        }
+        const cleanup = () => {
+          window.removeEventListener("pointermove", onMove)
+          window.removeEventListener("pointerup", cleanup)
+          window.removeEventListener("pointercancel", cleanup)
+        }
+        window.addEventListener("pointermove", onMove)
+        window.addEventListener("pointerup", cleanup)
+        window.addEventListener("pointercancel", cleanup)
+      }}
+    >
+      <span className="h-1 w-9 rounded-full bg-muted-foreground/40 transition-colors group-hover:bg-muted-foreground/60" />
+    </SheetPrimitive.Close>
   )
 }
 
