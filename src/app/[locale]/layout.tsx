@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { hasLocale } from "next-intl";
 import { routing } from "@/i18n/routing.ts";
 import { BottomNav } from "@/components/marcio/bottom-nav.tsx";
+import { TrpcProvider } from "@/lib/trpc/provider.tsx";
 import "../globals.css";
 
 const sans = Inter({
@@ -80,8 +81,10 @@ export default async function LocaleLayout({
       </head>
       <body className="min-h-full bg-background text-foreground">
         <NextIntlClientProvider messages={messages} locale={locale}>
-          <div className="pb-20">{children}</div>
-          <BottomNav />
+          <TrpcProvider>
+            <div className="pb-20">{children}</div>
+            <BottomNav />
+          </TrpcProvider>
         </NextIntlClientProvider>
       </body>
     </html>
