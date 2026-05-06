@@ -1,0 +1,44 @@
+{
+  "Brand": {
+    "name": "Marcio",
+    "tagline": "Where you are this month."
+  },
+  "Nav": {
+    "today": "Today",
+    "month": "Month",
+    "inbox": "Inbox",
+    "buckets": "Buckets",
+    "connections": "Connections"
+  },
+  "Today": {
+    "untilPayday": "{days, plural, one {# day} other {# days}} until payday",
+    "monthAnchor": "Month opens on the 25th",
+    "spentSoFar": "Spent so far",
+    "ofPlanned": "of {planned} planned",
+    "remaining": "Remaining",
+    "onTrack": "On track",
+    "ahead": "Ahead by {amount}",
+    "behind": "Behind by {amount}",
+    "allCaughtUp": "All caught up",
+    "allCaughtUpHint": "No transactions need your attention right now."
+  },
+  "Sections": {
+    "entradas": "Income",
+    "fixas": "Fixed",
+    "variaveis": "Variable",
+    "sazonais": "Annual",
+    "dividas": "Transfers",
+    "economias": "Savings",
+    "margem": "Margin"
+  },
+  "Scope": {
+    "joint": "Joint",
+    "me": "Me"
+  },
+  "Status": {
+    "loading": "Loading…",
+    "syncing": "Syncing…",
+    "lastSync": "Last sync {time}",
+    "neverSynced": "Never synced"
+  }
+}

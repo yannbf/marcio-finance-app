@@ -1,0 +1,44 @@
+{
+  "Brand": {
+    "name": "Marcio",
+    "tagline": "Onde você está nesse mês."
+  },
+  "Nav": {
+    "today": "Hoje",
+    "month": "Mês",
+    "inbox": "Caixa",
+    "buckets": "Cofres",
+    "connections": "Conexões"
+  },
+  "Today": {
+    "untilPayday": "{days, plural, one {# dia} other {# dias}} até o pagamento",
+    "monthAnchor": "O mês abre no dia 25",
+    "spentSoFar": "Gasto até agora",
+    "ofPlanned": "de {planned} planejado",
+    "remaining": "Restante",
+    "onTrack": "No ritmo",
+    "ahead": "Adiantado em {amount}",
+    "behind": "Atrasado em {amount}",
+    "allCaughtUp": "Tudo em dia",
+    "allCaughtUpHint": "Nenhuma transação precisa da sua atenção agora."
+  },
+  "Sections": {
+    "entradas": "Entradas",
+    "fixas": "Fixas",
+    "variaveis": "Variáveis",
+    "sazonais": "Sazonais",
+    "dividas": "Transferências",
+    "economias": "Economias",
+    "margem": "Margem"
+  },
+  "Scope": {
+    "joint": "Conjunta",
+    "me": "Eu"
+  },
+  "Status": {
+    "loading": "Carregando…",
+    "syncing": "Sincronizando…",
+    "lastSync": "Última sync {time}",
+    "neverSynced": "Nunca sincronizado"
+  }
+}
