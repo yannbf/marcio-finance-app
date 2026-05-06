@@ -10,6 +10,7 @@ import { getHouseholdSettings } from "@/lib/settings.ts";
 import { PaydayInline } from "@/components/marcio/payday-inline.tsx";
 import { LanguageSwitch } from "@/components/marcio/language-switch.tsx";
 import { ThemeIndicator } from "@/components/marcio/theme-indicator.tsx";
+import { SignOutButton } from "@/components/marcio/sign-out-button.tsx";
 import { AFRONDING_PATTERN } from "@/lib/matching/seed-rules.ts";
 import type { Locale } from "@/i18n/routing.ts";
 
@@ -21,6 +22,7 @@ export default async function SettingsPage({
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations("Settings");
+  const tSignIn = await getTranslations("SignIn");
   const me = await getCurrentUser();
   const settings = await getHouseholdSettings();
   const allowed: ("joint" | "camila" | "yann")[] = me
@@ -137,6 +139,12 @@ export default async function SettingsPage({
         <div className="border-t border-border/40" />
         <ThemeIndicator />
       </Card>
+
+      {me ? (
+        <div className="flex justify-center">
+          <SignOutButton label={tSignIn("signOut")} />
+        </div>
+      ) : null}
 
       <p className="text-center text-xs text-muted-foreground">Marcio v0.1</p>
     </main>

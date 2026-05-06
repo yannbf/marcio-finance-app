@@ -240,5 +240,29 @@
       "tip": "Tip: after the first upload, repeat weekly with short ranges. Marcio dedupes by (date, amount, description).",
       "officialDocs": "ING official documentation"
     }
+  },
+  "SignIn": {
+    "title": "Sign in",
+    "heading": "Welcome back",
+    "subheading": "We'll email a sign-in link.",
+    "emailLabel": "Email",
+    "emailPlaceholder": "you@example.com",
+    "submit": "Send link",
+    "sending": "Sending…",
+    "linkSent": "Check your inbox.",
+    "linkSentHint": "The link expires in 10 minutes.",
+    "errorGeneric": "Could not send the link. Try again.",
+    "errorNotAllowed": "If your email is on the household list, the link is on its way.",
+    "verifyTitle": "Signing you in",
+    "verifyBody": "Hold tight — we're verifying your link.",
+    "verifyError": "This link is invalid or expired.",
+    "tryAgain": "Try again",
+    "signOut": "Sign out"
+  },
+  "Theme": {
+    "title": "Theme",
+    "dark": "Dark",
+    "light": "Light",
+    "system": "System"
   }
 }
