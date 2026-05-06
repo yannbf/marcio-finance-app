@@ -1,7 +1,7 @@
 import { getLocale, getTranslations } from "next-intl/server";
 import { Card } from "@/components/ui/card.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
-import { Calendar, Inbox, Sparkles } from "lucide-react";
+import { Calendar, Inbox, Sparkles, ChevronRight, PieChart } from "lucide-react";
 import { sql, and, eq, inArray, notExists } from "drizzle-orm";
 import { db } from "@/db/index.ts";
 import { bankAccount, transaction, txMatch } from "@/db/schema.ts";
@@ -15,6 +15,7 @@ import {
   totalIncome,
   totalOutflow,
 } from "@/lib/budget-aggregates.ts";
+import { getUpcomingCharges } from "@/lib/forecast.ts";
 import { Link } from "@/i18n/navigation.ts";
 import type { Scope } from "@/lib/import/types.ts";
 
@@ -26,10 +27,11 @@ export async function TodayScreen() {
   const days = daysUntilNextPayday(new Date(), settings.paydayDay);
 
   const scopes: Scope[] = me ? ["joint", me.role] : ["joint"];
-  const agg = await getMonthlyAggregates(scopes);
+  const [agg, forecast] = await Promise.all([
+    getMonthlyAggregates(scopes),
+    getUpcomingCharges(scopes),
+  ]);
 
-  // Both planned and actual outflow are negative cents — flip to positive
-  // for the "spent so far" UX so growth is visually positive.
   const plannedOutflowCents = Math.abs(totalOutflow(agg.planned));
   const spentOutflowCents = Math.abs(totalOutflow(agg.actual));
   const incomeCents = totalIncome(agg.planned);
@@ -45,7 +47,7 @@ export async function TodayScreen() {
   const inboxCount = await unmatchedCount(scopes);
 
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col gap-6 px-5 pb-32 pt-8">
+    <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col gap-5 px-5 pb-32 pt-8">
       <header className="flex items-baseline justify-between">
         <div>
           <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
@@ -126,6 +128,47 @@ export async function TodayScreen() {
         />
       </div>
 
+      {forecast.charges.length > 0 ? (
+        <Card className="border-border/40 bg-card/60 p-5">
+          <header className="flex items-baseline justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                {t("Today.upcomingTitle")}
+              </p>
+              <p className="num mt-0.5 text-lg font-semibold tracking-tight">
+                {formatEUR(forecast.totalRemainingCents / 100, locale)}
+              </p>
+            </div>
+            <p className="text-xs text-muted-foreground num">
+              {t("Today.upcomingCount", { n: forecast.charges.length })}
+            </p>
+          </header>
+          <ul className="mt-3 divide-y divide-border/40">
+            {forecast.charges.slice(0, 5).map((c) => (
+              <li key={c.budgetItemId}>
+                <Link
+                  href={`/mes/${c.budgetItemId}` as `/mes/${string}`}
+                  className="flex items-center gap-3 py-2 transition-colors hover:opacity-80"
+                >
+                  <div className="grid size-8 shrink-0 place-items-center rounded-full bg-muted text-xs font-semibold text-muted-foreground num">
+                    {c.predictedDay ?? "—"}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm">{c.name}</p>
+                    <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                      {forecastSourceLabel(c.source, t)}
+                    </p>
+                  </div>
+                  <span className="num shrink-0 text-sm font-medium">
+                    {formatEUR(Math.abs(c.plannedCents) / 100, locale)}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      ) : null}
+
       {inboxCount > 0 ? (
         <Link href="/inbox" className="block">
           <Card className="flex items-center gap-3 border-border/40 bg-card/60 p-5 transition-colors hover:bg-card/80">
@@ -138,6 +181,7 @@ export async function TodayScreen() {
                 {t("Today.inboxCount", { n: inboxCount })}
               </p>
             </div>
+            <ChevronRight className="size-4 text-muted-foreground" />
           </Card>
         </Link>
       ) : (
@@ -154,6 +198,21 @@ export async function TodayScreen() {
         </Card>
       )}
 
+      <Link href="/insights" className="block">
+        <Card className="flex items-center gap-3 border-border/40 bg-card/60 p-5 transition-colors hover:bg-card/80">
+          <div className="grid size-9 place-items-center rounded-full bg-secondary text-foreground/80">
+            <PieChart className="size-4" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-medium">{t("Today.insightsTitle")}</p>
+            <p className="text-xs text-muted-foreground">
+              {t("Today.insightsHint")}
+            </p>
+          </div>
+          <ChevronRight className="size-4 text-muted-foreground" />
+        </Card>
+      </Link>
+
       <p className="text-center text-xs text-muted-foreground">
         {t("Today.monthAnchor")}
       </p>
@@ -162,6 +221,15 @@ export async function TodayScreen() {
 }
 
 /* -------------------------------------------------------------------------- */
+
+function forecastSourceLabel(
+  src: "due-day" | "history-median" | "month-end",
+  t: (k: string) => string,
+): string {
+  if (src === "due-day") return t("Today.forecastDue");
+  if (src === "history-median") return t("Today.forecastHistory");
+  return t("Today.forecastMonthEnd");
+}
 
 function SectionStat({
   label,
