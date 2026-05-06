@@ -62,7 +62,6 @@ export function ActivityRow({ tx, options, locale, sectionLabels }: Props) {
           rememberRule: remember,
         });
       }}
-      align="end"
     />
   );
 }

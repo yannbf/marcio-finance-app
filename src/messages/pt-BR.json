@@ -271,5 +271,10 @@
     "dark": "Escuro",
     "light": "Claro",
     "system": "Sistema"
+  },
+  "Install": {
+    "title": "Adicionar Marcio à tela de início",
+    "step": "Toque em Compartilhar, depois em \"Adicionar à tela de Início\".",
+    "dismiss": "Dispensar"
   }
 }

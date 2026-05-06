@@ -271,5 +271,10 @@
     "dark": "Dark",
     "light": "Light",
     "system": "System"
+  },
+  "Install": {
+    "title": "Add Marcio to your Home Screen",
+    "step": "Tap the Share button, then \"Add to Home Screen\".",
+    "dismiss": "Dismiss"
   }
 }

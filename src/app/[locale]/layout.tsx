@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { hasLocale } from "next-intl";
 import { routing } from "@/i18n/routing.ts";
 import { BottomNav } from "@/components/marcio/bottom-nav.tsx";
+import { IosInstallHint } from "@/components/marcio/ios-install-hint.tsx";
 import { TrpcProvider } from "@/lib/trpc/provider.tsx";
 import "../globals.css";
 
@@ -89,6 +90,7 @@ export default async function LocaleLayout({
               {children}
             </div>
             <BottomNav />
+            <IosInstallHint />
           </TrpcProvider>
         </NextIntlClientProvider>
       </body>

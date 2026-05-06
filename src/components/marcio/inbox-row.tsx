@@ -68,7 +68,6 @@ export function InboxRow({ tx, options, locale, sectionLabels }: Props) {
           rememberRule: remember,
         });
       }}
-      align="end"
     />
   );
 }

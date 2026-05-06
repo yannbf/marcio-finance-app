@@ -143,7 +143,6 @@ export function InboxList({
                 title={t("assignTo")}
                 subtitle={t("selected", { n: selected.size })}
                 onPick={bulkPick}
-                align="end"
               />
             ) : (
               <span className="px-2 text-xs text-destructive">
