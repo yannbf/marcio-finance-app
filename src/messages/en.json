@@ -57,6 +57,16 @@
     "noData": "No data for this month yet — run an import.",
     "items": "Items"
   },
+  "Inbox": {
+    "title": "Inbox",
+    "heading": "Needs categorizing",
+    "count": "{n}",
+    "emptyTitle": "All caught up",
+    "emptyHint": "When something new from the bank doesn't auto-match, it shows up here.",
+    "assignTo": "Assign to",
+    "noBudgetItems": "No budget items yet — import the sheet first.",
+    "remember": "Remember for next time"
+  },
   "Settings": {
     "paydayTitle": "Month rollover day",
     "paydayHelp": "Today the rollover is on day {day}. Change it if your payday moves.",
@@ -85,7 +95,7 @@
     "nicknamePlaceholder": "e.g. Main checking",
     "upload": "Import",
     "doneTitle": "Imported",
-    "doneStats": "{inserted} new · {duplicates} duplicates · {total} in file",
+    "doneStats": "{inserted} new · {duplicates} duplicates · {autoMatched} categorized · {total} in file",
     "footnote": "Nothing leaves the server: the CSV is processed and discarded, only transactions are kept in the database.",
     "csvHelp": {
       "trigger": "How to export from ING",

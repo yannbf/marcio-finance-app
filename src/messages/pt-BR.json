@@ -57,6 +57,16 @@
     "noData": "Sem dados para este mês ainda — rode uma importação.",
     "items": "Itens"
   },
+  "Inbox": {
+    "title": "Caixa",
+    "heading": "Por categorizar",
+    "count": "{n}",
+    "emptyTitle": "Tudo categorizado",
+    "emptyHint": "Quando algo novo chegar do banco e o Marcio não souber onde encaixar, aparece aqui.",
+    "assignTo": "Vincular a",
+    "noBudgetItems": "Nenhum item do orçamento — importe a planilha primeiro.",
+    "remember": "Lembrar para próximas vezes"
+  },
   "Settings": {
     "paydayTitle": "Dia da virada do mês",
     "paydayHelp": "Hoje a virada acontece no dia {day}. Mude se o pagamento mudar de dia.",
@@ -85,7 +95,7 @@
     "nicknamePlaceholder": "ex: Conta principal",
     "upload": "Importar",
     "doneTitle": "Importado",
-    "doneStats": "{inserted} novas · {duplicates} duplicadas · {total} no arquivo",
+    "doneStats": "{inserted} novas · {duplicates} duplicadas · {autoMatched} categorizadas · {total} no arquivo",
     "footnote": "Nada sai do servidor: o CSV é processado e descartado, só as transações ficam no banco.",
     "csvHelp": {
       "trigger": "Como exportar do ING",

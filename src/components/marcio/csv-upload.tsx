@@ -136,6 +136,7 @@ export function CsvUpload({ ownerOptions, defaultOwner }: Props) {
             {t("doneStats", {
               inserted: result.inserted,
               duplicates: result.duplicates,
+              autoMatched: result.autoMatched,
               total: result.total,
             })}
           </p>

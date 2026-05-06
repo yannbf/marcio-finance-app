@@ -1,4 +1,3 @@
-import "server-only";
 import ExcelJS from "exceljs";
 import type { ParsedSheet } from "./types.ts";
 import { parseSheet } from "./parser.ts";

@@ -8,6 +8,7 @@ import { bankAccount, transaction } from "@/db/schema.ts";
 import { getCurrentUser } from "@/lib/auth/current-user.ts";
 import { parseIngCsv, type IngTx } from "@/lib/import/csv-ing.ts";
 import { updatePaydayDay } from "@/lib/settings.ts";
+import { runMatchingForAccount } from "@/lib/matching/engine.ts";
 
 const OwnerSchema = z.enum(["joint", "camila", "yann"]);
 
@@ -19,6 +20,7 @@ export type CsvUploadResult =
       inserted: number;
       duplicates: number;
       total: number;
+      autoMatched: number;
       warnings: string[];
     }
   | { ok: false; error: string };
@@ -72,6 +74,11 @@ export async function uploadIngCsv(
     rows: parsed.rows,
   });
 
+  // Auto-match newly inserted transactions against seed + learned rules.
+  // Skipped-no-budget rows simply stay in the Inbox until the matching month
+  // is imported from the sheet.
+  const matchOutcome = await runMatchingForAccount(account.id);
+
   revalidatePath("/", "layout");
 
   return {
@@ -81,6 +88,7 @@ export async function uploadIngCsv(
     inserted,
     duplicates,
     total: parsed.rows.length,
+    autoMatched: matchOutcome.matched,
     warnings: parsed.warnings,
   };
 }

@@ -1,4 +1,3 @@
-import "server-only";
 import { headers } from "next/headers";
 import { eq } from "drizzle-orm";
 import { db } from "@/db/index.ts";
