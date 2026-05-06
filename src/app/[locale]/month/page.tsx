@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { setRequestLocale } from "next-intl/server";
 import { cookies } from "next/headers";
 import { MonthScreen } from "@/components/marcio/month-screen.tsx";
@@ -23,5 +24,9 @@ export default async function MonthPage({
       ? "joint"
       : me.role;
 
-  return <MonthScreen locale={locale} initialScope={initialScope} />;
+  return (
+    <Suspense>
+      <MonthScreen locale={locale} initialScope={initialScope} />
+    </Suspense>
+  );
 }

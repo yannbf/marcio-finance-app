@@ -111,19 +111,15 @@ export async function getMonthlyAggregates(
   };
 }
 
-/** Sections that count as outflow for the headline "spent" number. */
-export const OUTFLOW_SECTIONS: Section[] = [
-  "FIXAS",
-  "VARIAVEIS",
-  "SAZONAIS",
-  "DIVIDAS",
-];
-
+// Re-exported from import/sections for back-compat (db-free constant).
+export { OUTFLOW_SECTIONS } from "./import/sections.ts";
 export { monthlyContributionCents };
+
+import { OUTFLOW_SECTIONS as _OUTFLOW_SECTIONS } from "./import/sections.ts";
 
 export function totalOutflow(t: SectionTotals): number {
   let sum = 0;
-  for (const s of OUTFLOW_SECTIONS) {
+  for (const s of _OUTFLOW_SECTIONS) {
     const v = t[s];
     if (typeof v === "number") sum += v;
   }

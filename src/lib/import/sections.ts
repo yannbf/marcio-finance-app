@@ -19,3 +19,11 @@ export const SECTION_TR_KEY: Record<Section, string> = {
   DIVIDAS: "dividas",
   ECONOMIAS: "economias",
 };
+
+/** Sections that count as outflow on the headline "spent" line. */
+export const OUTFLOW_SECTIONS: Section[] = [
+  "FIXAS",
+  "VARIAVEIS",
+  "SAZONAIS",
+  "DIVIDAS",
+];
