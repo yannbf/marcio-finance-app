@@ -6,8 +6,8 @@ import { Link, usePathname } from "@/i18n/navigation.ts";
 
 const TABS = [
   { href: "/", icon: Home, key: "today" },
-  { href: "/mes", icon: ListChecks, key: "month" },
-  { href: "/atividade", icon: Activity, key: "activity" },
+  { href: "/month", icon: ListChecks, key: "month" },
+  { href: "/activity", icon: Activity, key: "activity" },
   { href: "/buckets", icon: PiggyBank, key: "buckets" },
   { href: "/settings", icon: Cog, key: "settings" },
 ] as const;

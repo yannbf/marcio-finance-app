@@ -28,7 +28,7 @@ type Props = {
 /**
  * Today section card. Tap to open a bottom sheet showing every item in the
  * section grouped into "paid this month" and "still expected". Each item
- * row links into /mes/[itemId] for full match history.
+ * row links into /month/[itemId] for full match history.
  */
 export function SectionDrillSheet({
   data,
@@ -139,7 +139,7 @@ function Group({
             return (
               <li key={it.id}>
                 <Link
-                  href={`/mes/${it.id}` as `/mes/${string}`}
+                  href={`/month/${it.id}` as `/month/${string}`}
                   className="flex items-center gap-3 px-3 py-2.5 transition-colors hover:bg-card/40"
                 >
                   <div

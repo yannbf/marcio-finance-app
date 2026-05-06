@@ -29,14 +29,14 @@ src/
   app/[locale]/
     layout.tsx                    Root: dark theme, fonts, NextIntlClientProvider, BottomNav
     page.tsx                      → TodayScreen (Hoje)
-    mes/
-      page.tsx                    Mês: items per section + scope toggle + paid/unpaid signals
+    month/
+      page.tsx                    Month: items per section + scope toggle + paid/unpaid signals
       [itemId]/page.tsx           Item drill-down: planned vs actual + matched txns
-    atividade/page.tsx            Movimentos: month txns timeline + forecast + sticky date headers
-    inbox/page.tsx                Caixa: unmatched txns, hierarchical assignment popover
+    activity/page.tsx             Activity: month txns timeline + forecast + sticky date headers
+    inbox/page.tsx                Inbox: unmatched txns, hierarchical assignment popover
     insights/page.tsx             Insights: section breakdown + top categories + top merchants
-    buckets/page.tsx              Cofres: SAZONAIS savings progress, grouped by savings_account
-    transactions/page.tsx         All Transactions (filterable; partly redundant with /atividade)
+    buckets/page.tsx              Buckets: SAZONAIS savings progress, grouped by savings_account
+    transactions/page.tsx         All Transactions (filterable; partly redundant with /activity)
     import/page.tsx               Trigger sheet ingest
     settings/
       page.tsx                    Settings index (banks/savings/inbox links + inline payday/lang/theme)

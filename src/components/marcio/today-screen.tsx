@@ -149,7 +149,7 @@ export async function TodayScreen() {
             {forecast.charges.slice(0, 5).map((c) => (
               <li key={c.budgetItemId}>
                 <Link
-                  href={`/mes/${c.budgetItemId}` as `/mes/${string}`}
+                  href={`/month/${c.budgetItemId}` as `/month/${string}`}
                   className="flex items-center gap-3 py-2 transition-colors hover:opacity-80"
                 >
                   <div className="grid size-8 shrink-0 place-items-center rounded-full bg-muted text-xs font-semibold text-muted-foreground num">

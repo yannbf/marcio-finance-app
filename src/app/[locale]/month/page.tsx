@@ -17,7 +17,7 @@ import type { Locale } from "@/i18n/routing.ts";
 
 type Scope = "joint" | "camila" | "yann";
 
-export default async function MesPage({
+export default async function MonthPage({
   params,
   searchParams,
 }: {
@@ -189,7 +189,7 @@ function ScopeToggle({
   return (
     <div className="flex gap-1 rounded-full border border-border/60 bg-card/50 p-1 text-xs">
       <Link
-        href={{ pathname: "/mes", query: { scope: "joint" } }}
+        href={{ pathname: "/month", query: { scope: "joint" } }}
         className={pillClass(activeScope === "joint")}
         aria-current={activeScope === "joint" ? "true" : undefined}
       >
@@ -197,7 +197,7 @@ function ScopeToggle({
       </Link>
       {hasMe ? (
         <Link
-          href={{ pathname: "/mes", query: { scope: "me" } }}
+          href={{ pathname: "/month", query: { scope: "me" } }}
           className={pillClass(activeScope !== "joint")}
           aria-current={activeScope !== "joint" ? "true" : undefined}
         >
@@ -270,7 +270,7 @@ function SectionCard({
         {items.map((item) => (
           <li key={item.id}>
             <Link
-              href={`/mes/${item.id}` as `/mes/${string}`}
+              href={`/month/${item.id}` as `/month/${string}`}
               className="-mx-2 flex items-center justify-between gap-3 rounded px-2 py-2 text-sm transition-colors hover:bg-card/40"
             >
               <span

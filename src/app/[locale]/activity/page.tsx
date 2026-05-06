@@ -26,7 +26,7 @@ import { formatEUR } from "@/lib/format.ts";
 import { AFRONDING_PATTERN } from "@/lib/matching/seed-rules.ts";
 import type { Locale } from "@/i18n/routing.ts";
 
-export default async function AtividadePage({
+export default async function ActivityPage({
   params,
 }: {
   params: Promise<{ locale: Locale }>;
@@ -128,7 +128,7 @@ export default async function AtividadePage({
             {forecast.charges.slice(0, 6).map((c) => (
               <li key={c.budgetItemId}>
                 <Link
-                  href={`/mes/${c.budgetItemId}` as `/mes/${string}`}
+                  href={`/month/${c.budgetItemId}` as `/month/${string}`}
                   className="flex items-center gap-3 py-2 transition-colors hover:opacity-80"
                 >
                   <div className="grid size-7 shrink-0 place-items-center rounded-full bg-muted text-xs font-semibold text-muted-foreground num">

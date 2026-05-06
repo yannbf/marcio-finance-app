@@ -77,7 +77,7 @@ export default async function BudgetItemDetailPage({
     <main className="mx-auto flex w-full max-w-md flex-col gap-5 px-5 pb-8 pt-8">
       <header className="flex items-start gap-3">
         <Link
-          href="/mes"
+          href="/month"
           className="-m-2 mt-0 rounded p-2 text-muted-foreground transition-colors hover:text-foreground"
           aria-label={t("back")}
         >
