@@ -1,6 +1,5 @@
 "use client";
 
-import { useTransition } from "react";
 import { useRouter } from "@/i18n/navigation.ts";
 
 export type Scope = "joint" | "me";
@@ -23,22 +22,17 @@ export function ScopeToggle({
   meLabel: string;
 }) {
   const router = useRouter();
-  const [pending, startTransition] = useTransition();
 
   function pick(next: Scope) {
     if (next === activeScope) return;
     setScopeCookie(next);
-    startTransition(() => {
-      router.replace(`/month?scope=${next}`);
-      router.refresh();
-    });
+    // Push a new URL — the MonthScreen reads ?scope and re-renders
+    // from the tRPC cache without a server round trip.
+    router.replace(`/month?scope=${next}`);
   }
 
   return (
-    <div
-      className="flex gap-1 rounded-full border border-border/60 bg-card/50 p-1 text-xs"
-      data-pending={pending ? "true" : undefined}
-    >
+    <div className="flex gap-1 rounded-full border border-border/60 bg-card/50 p-1 text-xs">
       <button
         type="button"
         onClick={() => pick("joint")}
