@@ -3,6 +3,13 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Moon, Sun, MonitorSmartphone } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select.tsx";
 
 type Mode = "dark" | "light" | "system";
 
@@ -16,6 +23,12 @@ function applyMode(mode: Mode) {
   document.documentElement.classList.toggle("dark", dark);
   document.documentElement.style.colorScheme = dark ? "dark" : "light";
 }
+
+const ICONS: Record<Mode, React.ReactNode> = {
+  dark: <Moon className="size-3.5" />,
+  light: <Sun className="size-3.5" />,
+  system: <MonitorSmartphone className="size-3.5" />,
+};
 
 export function ThemeToggle() {
   const t = useTranslations("Theme");
@@ -49,14 +62,10 @@ export function ThemeToggle() {
     applyMode(next);
   }
 
-  const opts: { value: Mode; icon: React.ReactNode; label: string }[] = [
-    { value: "light", icon: <Sun className="size-3.5" />, label: t("light") },
-    { value: "dark", icon: <Moon className="size-3.5" />, label: t("dark") },
-    {
-      value: "system",
-      icon: <MonitorSmartphone className="size-3.5" />,
-      label: t("system"),
-    },
+  const opts: { value: Mode; label: string }[] = [
+    { value: "light", label: t("light") },
+    { value: "dark", label: t("dark") },
+    { value: "system", label: t("system") },
   ];
 
   return (
@@ -65,34 +74,27 @@ export function ThemeToggle() {
         <p className="text-sm font-medium">{tInline("themeTitle")}</p>
         <p className="text-xs text-muted-foreground">{t("title")}</p>
       </div>
-      <div
-        className="flex gap-1 rounded-full border border-border/60 bg-card/50 p-1 text-xs"
-        role="radiogroup"
-        aria-label={t("title")}
+      <Select
+        value={mode}
+        onValueChange={(v) => pick(v as Mode)}
       >
-        {opts.map((opt) => {
-          const active = mode === opt.value;
-          return (
-            <button
-              key={opt.value}
-              type="button"
-              role="radio"
-              aria-checked={active}
-              aria-label={opt.label}
-              onClick={() => pick(opt.value)}
-              className={[
-                "flex h-7 items-center gap-1 rounded-full px-2.5 transition-colors",
-                active
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground",
-              ].join(" ")}
-            >
-              {opt.icon}
-              <span className="uppercase tracking-[0.14em]">{opt.label}</span>
-            </button>
-          );
-        })}
-      </div>
+        <SelectTrigger size="sm" aria-label={t("title")}>
+          <SelectValue>
+            <span className="flex items-center gap-1.5">
+              {ICONS[mode]}
+              {opts.find((o) => o.value === mode)?.label}
+            </span>
+          </SelectValue>
+        </SelectTrigger>
+        <SelectContent>
+          {opts.map((opt) => (
+            <SelectItem key={opt.value} value={opt.value}>
+              {ICONS[opt.value]}
+              {opt.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   );
 }

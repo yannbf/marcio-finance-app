@@ -2,8 +2,15 @@
 
 import { useMemo } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Users, User } from "lucide-react";
 import { useTranslations } from "next-intl";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select.tsx";
 import { shiftAnchor } from "@/lib/payday.ts";
 import { trpc } from "@/lib/trpc/client.ts";
 
@@ -78,42 +85,42 @@ export function MonthScopeBar({
       </div>
 
       {showScope ? (
-        <div className="flex gap-1 rounded-full border border-border/60 bg-card/50 p-1 text-xs">
-          <button
-            type="button"
-            onClick={() =>
-              navigate({ ...anchor, scope: "joint" })
-            }
-            className={pillClass(scope === "joint")}
-            aria-current={scope === "joint" ? "true" : undefined}
-          >
-            {t("Scope.joint")}
-          </button>
-          {meScope ? (
-            <button
-              type="button"
-              onClick={() =>
-                navigate({ ...anchor, scope: meScope })
-              }
-              className={pillClass(scope !== "joint" && scope === meScope)}
-              aria-current={scope === meScope ? "true" : undefined}
-            >
-              {t("Scope.me")}
-            </button>
-          ) : null}
-        </div>
+        <Select
+          value={scope}
+          onValueChange={(v) =>
+            navigate({ ...anchor, scope: v as Scope })
+          }
+        >
+          <SelectTrigger size="sm" aria-label={t("Scope.joint")}>
+            <SelectValue>
+              <span className="flex items-center gap-1.5">
+                {scope === "joint" ? (
+                  <Users className="size-3.5" />
+                ) : (
+                  <User className="size-3.5" />
+                )}
+                {scope === "joint"
+                  ? t("Scope.joint")
+                  : t("Scope.me")}
+              </span>
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="joint">
+              <Users className="size-3.5" />
+              {t("Scope.joint")}
+            </SelectItem>
+            {meScope ? (
+              <SelectItem value={meScope}>
+                <User className="size-3.5" />
+                {t("Scope.me")}
+              </SelectItem>
+            ) : null}
+          </SelectContent>
+        </Select>
       ) : null}
     </div>
   );
-}
-
-function pillClass(active: boolean): string {
-  return [
-    "px-3 py-1.5 rounded-full uppercase tracking-[0.14em] transition-colors",
-    active
-      ? "bg-primary text-primary-foreground"
-      : "text-muted-foreground hover:text-foreground",
-  ].join(" ");
 }
 
 function anchorLabel(year: number, month: number, locale: string): string {
