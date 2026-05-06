@@ -18,7 +18,7 @@ the deferred-work backlog, then this file for orientation.
 - Stack: **Next.js 16.2 (App Router), Tailwind v4, base-ui via shadcn, Drizzle, Postgres (Neon), Better Auth + Google OAuth, next-intl 4 (pt-BR default + en), Motion 12, tRPC 11 + TanStack Query 5**.
 - Two users only (Yann + Camila), declared by allow-list (Better Auth `databaseHooks.user.create.before`).
 - Months are **payday-anchored** (default day 25). Don't think calendar months — think `paydayMonthFor(date, paydayDay)` and `paydayMonthForAnchor(year, month, paydayDay)` everywhere.
-- **Scope** is `joint | yann | camila`. Privacy guards on every server boundary: a personal item / account / savings is only visible to its owner; joint is visible to both. The `scope` URL param + `MonthScopeBar` lets the user filter to Joint or Me on every page that supports it.
+- **Scope** is `joint | yann | camila`. Privacy guards on every server boundary: a personal item / account / savings is only visible to its owner; joint is visible to both. The `scope` URL param + `MonthScopeBar` (a `Joint / Me` Select dropdown) lets the user filter on every page that supports it. The cookie `marcio-month-scope` carries the last-chosen scope across pages.
 - **Inner pages are client-rendered** from a tRPC API at `/api/rpc/*` cached by TanStack Query (with sessionStorage persistence). The page boundary is a thin server component that resolves the locale + the default month anchor and mounts a `<…Screen>` client component. The screen reads URL state (`?anchor=YYYY-MM&scope=…`) and calls `trpc.<router>.<proc>.useQuery({ anchor, scope })`. Sign-in and the import flow stay server-rendered.
 - Matching engine: hand-tuned **seed rules** in `src/lib/matching/seed-rules.ts` + learned rules in `match_rule` table. Confidence is updated by a Bayesian-ish formula (`lib/matching/rule-confidence.ts`); rules below 0.4 are dropped from the candidate pool. Counterparty fingerprints are normalized via `lib/matching/fingerprint.ts` (city tails, terminal IDs, trailing digits stripped) before learning.
 - **Postgres regex gotcha**: `~*` runs POSIX regex, which treats JS-style `\b` as backspace and `\s` as the literal "s". Hardcoded patterns that get shipped to SQL live as separate constants (e.g. `TIKKIE_PG_PATTERN`, `AFRONDING_PG_PATTERN`).
@@ -46,13 +46,19 @@ src/
       savings/                    Manage savings_account rows + multi-link to SAZONAIS items
     api/auth/[...all]/route.ts    Better Auth handler
     api/rpc/[trpc]/route.ts       tRPC fetch handler (everything inner UI talks to)
+    api/cron/import-sheet/route.ts  Daily Vercel cron — pulls Google Sheets,
+                                  upserts each tab, runs the matching engine.
+                                  Auth via Authorization: Bearer ${CRON_SECRET}.
 
   components/
     ui/                           shadcn primitives (button, card, input, select, popover, sheet…)
     marcio/                       App-specific components, including:
                                     - …-screen.tsx files: client components for each route
-                                    - month-scope-bar.tsx: ← month → + Joint/Me toggle
+                                    - month-scope-bar.tsx: ← month → + Joint/Me dropdown
                                     - budget-item-picker.tsx: hierarchical bottom-sheet
+                                    - theme-applier.tsx: keeps html.dark in sync
+                                                         across locale switches
+                                    - theme-toggle.tsx: Light/Dark/System dropdown
                                     - ios-install-hint.tsx: one-time A2HS hint
 
   db/
@@ -96,6 +102,9 @@ scripts/
   clean-phantoms.ts               Delete phantom budget_item rows from older parser bug
   generate-icons.ts               PWA icons from a single SVG source
   test-fingerprint.ts             Smoke-tests for fingerprintCounterparty
+
+vercel.json                       Cron config: 0 6 * * * → /api/cron/import-sheet
+public/theme-init.js              Pre-paint theme bootstrap (loaded from <head>)
 
 tests/e2e/                        Playwright suite — see TESTING.md
 
@@ -214,8 +223,11 @@ content drags vertically and closes past 120px or a strong fling. The X
 button lives **inside** the motion wrapper so it follows the drag.
 
 The sheet now also:
-- Provides an invisible 64px drag-grab zone covering the header strip,
-  so vertical drags from anywhere near the title start the dismiss.
+- Drag starts from anywhere inside the motion.div via a single
+  `onPointerDown` that calls `controls.start(e)`. If the gesture
+  starts inside an element marked `data-sheet-scroll` AND that element
+  is scrolled past the top, we let the inner scroll take it — iOS
+  pattern.
 - Locks `body { overflow: hidden; touch-action: none; }` while open via
   `body[data-sheet-open]` so the page underneath doesn't scroll on iOS
   when a vertical drag escapes the sheet.
@@ -225,6 +237,30 @@ The sheet now also:
 `BudgetItemPicker` (the hierarchical "assign to" picker for inbox /
 activity / transactions / bulk-assign) renders as a Sheet rather than a
 Popover so it gets the swipe behavior + bigger touch targets for free.
+
+### Daily Google Sheets sync
+
+`vercel.json` schedules `0 6 * * *` (06:00 UTC) → `/api/cron/import-sheet`.
+The route authenticates via `Authorization: Bearer ${CRON_SECRET}` (Vercel
+sends this automatically), then runs `readGoogleSheet()` →
+`upsertParsedMonth()` per tab → `runMatchingAllAccounts()`. Returns
+`{ months, inserted, updated, unchanged, matched }`. Manual user-triggered
+import via `/import` still works the same way.
+
+### Theme application
+
+The theme has two parts:
+- `public/theme-init.js` runs synchronously from `<head>`, reads
+  localStorage, sets `.dark` + `color-scheme` before the first paint
+  to avoid FOUC.
+- `<ThemeApplier />` is a tiny client component mounted in the locale
+  layout body that re-runs the same logic in `useLayoutEffect` on
+  every render. Without it, switching locale via next-intl's
+  `<Link locale={…} />` would have React's reconciler wipe the `.dark`
+  class back to the static server value during a soft navigation.
+
+Theme + scope are now both `<Select>` dropdowns rather than radio
+segments — saves horizontal space on the mobile-first layout.
 
 ## Conventions
 

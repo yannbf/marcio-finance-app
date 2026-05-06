@@ -14,8 +14,9 @@ test.describe("MonthScopeBar coverage", () => {
       await expect(
         page.getByRole("button", { name: "Next month" }),
       ).toBeVisible();
+      // Scope is a dropdown — its trigger has the current label "Joint".
       await expect(
-        page.getByRole("button", { name: /^Joint$/ }),
+        page.getByRole("combobox").filter({ hasText: "Joint" }),
       ).toBeVisible();
     });
   }

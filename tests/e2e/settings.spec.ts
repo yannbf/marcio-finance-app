@@ -19,22 +19,24 @@ test.describe("Settings", () => {
     ).toBeVisible();
   });
 
-  test("theme toggle switches html.dark on click", async ({ page }) => {
+  test("theme dropdown switches html.dark on pick", async ({ page }) => {
     await page.goto("/en/settings");
     // Default storage value is "dark" — html should have .dark.
     await expect(page.locator("html")).toHaveClass(/(?:^|\s)dark(?:\s|$)/);
 
-    await page.getByRole("radio", { name: "Light" }).click();
+    // Open the theme Select and pick Light.
+    await page.getByRole("combobox", { name: /Theme/ }).click();
+    await page.getByRole("option", { name: "Light" }).click();
     await expect(page.locator("html")).not.toHaveClass(
       /(?:^|\s)dark(?:\s|$)/,
     );
-    // localStorage should now hold "light".
     expect(
       await page.evaluate(() => localStorage.getItem("marcio-theme")),
     ).toBe("light");
 
     // Flip back so subsequent tests don't see a light theme.
-    await page.getByRole("radio", { name: "Dark" }).click();
+    await page.getByRole("combobox", { name: /Theme/ }).click();
+    await page.getByRole("option", { name: "Dark" }).click();
     await expect(page.locator("html")).toHaveClass(/(?:^|\s)dark(?:\s|$)/);
   });
 });
