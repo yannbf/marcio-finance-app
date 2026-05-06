@@ -11,7 +11,7 @@ import { PaydayInline } from "@/components/marcio/payday-inline.tsx";
 import { LanguageSwitch } from "@/components/marcio/language-switch.tsx";
 import { ThemeToggle } from "@/components/marcio/theme-toggle.tsx";
 import { SignOutButton } from "@/components/marcio/sign-out-button.tsx";
-import { AFRONDING_PATTERN } from "@/lib/matching/seed-rules.ts";
+import { AFRONDING_PG_PATTERN } from "@/lib/matching/seed-rules.ts";
 import type { Locale } from "@/i18n/routing.ts";
 
 export default async function SettingsPage({
@@ -44,7 +44,7 @@ export default async function SettingsPage({
             .from(txMatch)
             .where(eq(txMatch.transactionId, transaction.id)),
         ),
-        sql`NOT (${transaction.counterparty} ~* ${AFRONDING_PATTERN.source})`,
+        sql`NOT (${transaction.counterparty} ~* ${AFRONDING_PG_PATTERN})`,
       ),
     );
   const inboxCount = Number.parseInt(n, 10);

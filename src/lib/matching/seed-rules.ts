@@ -459,6 +459,14 @@ export const AFRONDING_PATTERN =
   /afronding|notprovided.*spaarrekening|round\s*up/i;
 
 /**
+ * Postgres-flavored equivalent of AFRONDING_PATTERN. JS `\s` becomes
+ * literal `s` under POSIX regex (`~*`); use a character class instead.
+ * The `.*` flavor is fine — POSIX supports it identically.
+ */
+export const AFRONDING_PG_PATTERN =
+  "afronding|notprovided.*spaarrekening|round[[:space:]]*up";
+
+/**
  * Identify a counterparty as a savings-bucket transfer.
  * Returns the bucket reference id when it matches.
  */

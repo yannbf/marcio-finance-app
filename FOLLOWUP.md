@@ -39,7 +39,7 @@ Done.
   `icon-maskable-512.png`. Source SVG → PNG via `scripts/generate-icons.ts`.
 - [x] `<link rel="manifest">` and apple-touch-icon meta in the layout
   (Next 16 Metadata API `manifest` + `icons` fields).
-- [ ] Test "Add to Home Screen" on an iPhone. (manual verification)
+- [x] Test "Add to Home Screen" on an iPhone. (manual verification)
 
 ## 3. Daily Google Sheets sync (cron)
 

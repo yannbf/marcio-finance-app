@@ -11,7 +11,7 @@ import {
 } from "@/lib/budget-aggregates.ts";
 import { getUpcomingCharges } from "@/lib/forecast.ts";
 import { getSectionsForToday } from "@/lib/today-data.ts";
-import { AFRONDING_PATTERN } from "@/lib/matching/seed-rules.ts";
+import { AFRONDING_PG_PATTERN } from "@/lib/matching/seed-rules.ts";
 
 export const todayRouter = router({
   /**
@@ -77,7 +77,7 @@ async function unmatchedCount(
             .from(txMatch)
             .where(eq(txMatch.transactionId, transaction.id)),
         ),
-        sql`NOT (${transaction.counterparty} ~* ${AFRONDING_PATTERN.source})`,
+        sql`NOT (${transaction.counterparty} ~* ${AFRONDING_PG_PATTERN})`,
       ),
     );
   return Number.parseInt(n, 10);

@@ -4,7 +4,7 @@ import { bankAccount, transaction } from "@/db/schema.ts";
 import { publicProcedure, router } from "../trpc.ts";
 import { getHouseholdSettings } from "@/lib/settings.ts";
 import { paydayMonthFor } from "@/lib/payday.ts";
-import { TIKKIE_COUNTERPARTY, parseTikkiePerson } from "@/lib/tikkie.ts";
+import { TIKKIE_PG_PATTERN, parseTikkiePerson } from "@/lib/tikkie.ts";
 
 export const tikkieRouter = router({
   get: publicProcedure.query(async ({ ctx }) => {
@@ -27,8 +27,8 @@ export const tikkieRouter = router({
           inArray(bankAccount.owner, allowed),
           gte(transaction.bookingDate, range.startsOn),
           lte(transaction.bookingDate, range.endsOn),
-          sql`(${transaction.counterparty} ~* ${TIKKIE_COUNTERPARTY.source}
-              OR ${transaction.description} ~* ${TIKKIE_COUNTERPARTY.source})`,
+          sql`(${transaction.counterparty} ~* ${TIKKIE_PG_PATTERN}
+              OR ${transaction.description} ~* ${TIKKIE_PG_PATTERN})`,
         ),
       )
       .orderBy(desc(transaction.bookingDate));

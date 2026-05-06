@@ -8,6 +8,14 @@
  */
 export const TIKKIE_COUNTERPARTY = /\btikkie\b|aab\s*inz\s*tikkie/i;
 
+/**
+ * Postgres-flavored equivalent. JS `\b` becomes backspace under POSIX
+ * regex (which is what `~*` runs); Postgres uses `\y` for word
+ * boundaries. We also can't trust `\s` to mean what JS does, so this
+ * pattern is conservative — it just looks for the literal "tikkie".
+ */
+export const TIKKIE_PG_PATTERN = "tikkie";
+
 export function isTikkie(row: {
   counterparty: string | null;
   description: string | null;

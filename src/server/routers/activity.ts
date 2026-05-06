@@ -11,7 +11,7 @@ import { publicProcedure, router } from "../trpc.ts";
 import { getHouseholdSettings } from "@/lib/settings.ts";
 import { paydayMonthFor } from "@/lib/payday.ts";
 import { getUpcomingCharges } from "@/lib/forecast.ts";
-import { AFRONDING_PATTERN } from "@/lib/matching/seed-rules.ts";
+import { AFRONDING_PG_PATTERN } from "@/lib/matching/seed-rules.ts";
 import type { Section } from "@/lib/import/types.ts";
 
 export const activityRouter = router({
@@ -45,7 +45,7 @@ export const activityRouter = router({
             inArray(bankAccount.owner, allowed),
             gte(transaction.bookingDate, range.startsOn),
             lte(transaction.bookingDate, range.endsOn),
-            sql`NOT (${transaction.counterparty} ~* ${AFRONDING_PATTERN.source})`,
+            sql`NOT (${transaction.counterparty} ~* ${AFRONDING_PG_PATTERN})`,
           ),
         )
         .orderBy(desc(transaction.bookingDate))
