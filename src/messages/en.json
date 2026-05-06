@@ -40,5 +40,21 @@
     "syncing": "Syncing…",
     "lastSync": "Last sync {time}",
     "neverSynced": "Never synced"
+  },
+  "Import": {
+    "title": "Sync",
+    "heading": "Import from sheet",
+    "sourceLabel": "Source",
+    "sourceMissing": "Not configured — set MARCIO_LOCAL_XLSX or GOOGLE_SHEET_ID.",
+    "run": "Import now",
+    "help": "Imports every month tab found in the workbook. Existing items are updated by their natural key; rows you removed from the sheet are kept here so previously matched transactions still resolve."
+  },
+  "Month": {
+    "scopeLabel": "Showing",
+    "income": "Income",
+    "outflow": "Outflow",
+    "margin": "Margin",
+    "noData": "No data for this month yet — run an import.",
+    "items": "Items"
   }
 }

@@ -40,5 +40,21 @@
     "syncing": "Sincronizando…",
     "lastSync": "Última sync {time}",
     "neverSynced": "Nunca sincronizado"
+  },
+  "Import": {
+    "title": "Sync",
+    "heading": "Importar da planilha",
+    "sourceLabel": "Fonte",
+    "sourceMissing": "Não configurado — defina MARCIO_LOCAL_XLSX ou GOOGLE_SHEET_ID.",
+    "run": "Importar agora",
+    "help": "Importa toda aba mensal que encontrar. Itens existentes são atualizados pela chave natural; linhas que você removeu da planilha continuam aqui para que as transações já vinculadas a elas continuem fazendo sentido."
+  },
+  "Month": {
+    "scopeLabel": "Mostrando",
+    "income": "Entradas",
+    "outflow": "Saídas",
+    "margin": "Margem",
+    "noData": "Sem dados para este mês ainda — rode uma importação.",
+    "items": "Itens"
   }
 }

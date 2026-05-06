@@ -5,6 +5,7 @@ import { getMessages, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { hasLocale } from "next-intl";
 import { routing } from "@/i18n/routing.ts";
+import { BottomNav } from "@/components/marcio/bottom-nav.tsx";
 import "../globals.css";
 
 const sans = Inter({
@@ -58,7 +59,8 @@ export default async function LocaleLayout({
     >
       <body className="min-h-full bg-background text-foreground">
         <NextIntlClientProvider messages={messages} locale={locale}>
-          {children}
+          <div className="pb-20">{children}</div>
+          <BottomNav />
         </NextIntlClientProvider>
       </body>
     </html>
