@@ -93,26 +93,27 @@ const JOINT: SeedRule[] = [
     confidence: 0.95,
     label: "Eletricidade + Aquecimento",
   },
-  // Health insurance — Yann's premium (~€159)
+  // Health insurance — Yann's premium (~€159.75 in current data).
+  // Tighten the ceiling below Camila's floor so the two premiums don't overlap.
   {
     pattern: /vgz\s*zorgverzekeraar/i,
     scopes: ["joint"],
     section: "FIXAS",
     naturalKey: "plano-saude-yann",
     minAbsCents: 14000,
-    maxAbsCents: 16500,
+    maxAbsCents: 16100,
     confidence: 0.93,
     label: "Plano saúde Yann",
   },
-  // Health insurance — Camila's premium (~€162)
+  // Health insurance — Camila's premium (~€162.84 in current data).
   {
     pattern: /vgz\s*zorgverzekeraar/i,
     scopes: ["joint"],
     section: "FIXAS",
     naturalKey: "plano-saude-camila",
-    minAbsCents: 16000,
+    minAbsCents: 16200,
     maxAbsCents: 17500,
-    confidence: 0.93,
+    confidence: 0.94,
     label: "Plano saúde Camila",
   },
   // Internet KPN
