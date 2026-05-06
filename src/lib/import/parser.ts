@@ -48,6 +48,20 @@ const TOTAL_TOKENS = new Set([
   "por mes",
   "por mês",
   "por semana",
+  // Summary block at the bottom of each snapshot — these are roll-up rows,
+  // not budget items, but they appear in col C/D where items live.
+  "entradas",
+  "saidas",
+  "saídas",
+  "dividas",
+  "dívidas",
+  "economias",
+  "fixas",
+  "variaveis",
+  "variáveis",
+  "sazonais",
+  "margem",
+  "saldo",
 ]);
 
 const SCOPE_LABELS: Record<string, Scope> = {
