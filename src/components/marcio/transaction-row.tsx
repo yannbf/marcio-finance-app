@@ -41,7 +41,7 @@ export function TransactionRow({
         </p>
       </div>
       <p
-        className={`num text-right text-sm font-semibold ${
+        className={`num whitespace-nowrap text-right text-sm font-semibold ${
           isCredit ? "text-primary" : ""
         }`}
       >
