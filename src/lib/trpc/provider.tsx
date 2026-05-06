@@ -2,6 +2,11 @@
 
 import { useState, type ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  PersistQueryClientProvider,
+  type Persister,
+} from "@tanstack/react-query-persist-client";
+import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
 import { httpBatchLink } from "@trpc/client";
 import superjson from "superjson";
 import { trpc } from "./client.ts";
@@ -10,6 +15,12 @@ import { trpc } from "./client.ts";
  * Mounts a single QueryClient + tRPC client for the lifetime of the app
  * shell. Stale-time defaults are tuned for "freshness within a session":
  * 30s before refetching on focus, infinite for the per-session cache.
+ *
+ * The cache is mirrored into sessionStorage (per-tab) via
+ * PersistQueryClientProvider so a hard reload of the same tab restores
+ * the previous data instantly while the network request fires in the
+ * background. localStorage would survive cross-tab but also survives
+ * sign-out, which we don't want.
  */
 export function TrpcProvider({ children }: { children: ReactNode }) {
   const [queryClient] = useState(
@@ -18,12 +29,28 @@ export function TrpcProvider({ children }: { children: ReactNode }) {
         defaultOptions: {
           queries: {
             staleTime: 30_000,
+            gcTime: 1000 * 60 * 60 * 24, // 24h — kept around for persister
             refetchOnWindowFocus: false,
             retry: 1,
           },
         },
       }),
   );
+
+  const [persister] = useState<Persister | null>(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      return createSyncStoragePersister({
+        storage: window.sessionStorage,
+        key: "marcio-query-cache-v1",
+        // Don't persist the most volatile queries.
+        serialize: (data) => JSON.stringify(data),
+        deserialize: (s) => JSON.parse(s),
+      });
+    } catch {
+      return null;
+    }
+  });
 
   const [client] = useState(() =>
     trpc.createClient({
@@ -36,11 +63,29 @@ export function TrpcProvider({ children }: { children: ReactNode }) {
     }),
   );
 
+  // SSR has no window → no persister → fall back to a plain
+  // QueryClientProvider. Hydration creates the persister via the
+  // useState init and renders the persistent variant from then on.
   return (
     <trpc.Provider client={client} queryClient={queryClient}>
-      <QueryClientProvider client={queryClient}>
-        {children}
-      </QueryClientProvider>
+      {persister ? (
+        <PersistQueryClientProvider
+          client={queryClient}
+          persistOptions={{
+            persister,
+            maxAge: 1000 * 60 * 30, // 30 min — older entries refetch
+            dehydrateOptions: {
+              shouldDehydrateQuery: (q) => q.state.status === "success",
+            },
+          }}
+        >
+          {children}
+        </PersistQueryClientProvider>
+      ) : (
+        <QueryClientProvider client={queryClient}>
+          {children}
+        </QueryClientProvider>
+      )}
     </trpc.Provider>
   );
 }
