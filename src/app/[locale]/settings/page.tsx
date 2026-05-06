@@ -9,7 +9,7 @@ import { getCurrentUser } from "@/lib/auth/current-user.ts";
 import { getHouseholdSettings } from "@/lib/settings.ts";
 import { PaydayInline } from "@/components/marcio/payday-inline.tsx";
 import { LanguageSwitch } from "@/components/marcio/language-switch.tsx";
-import { ThemeIndicator } from "@/components/marcio/theme-indicator.tsx";
+import { ThemeToggle } from "@/components/marcio/theme-toggle.tsx";
 import { SignOutButton } from "@/components/marcio/sign-out-button.tsx";
 import { AFRONDING_PATTERN } from "@/lib/matching/seed-rules.ts";
 import type { Locale } from "@/i18n/routing.ts";
@@ -137,7 +137,7 @@ export default async function SettingsPage({
         <div className="border-t border-border/40" />
         <LanguageSwitch current={locale} />
         <div className="border-t border-border/40" />
-        <ThemeIndicator />
+        <ThemeToggle />
       </Card>
 
       {me ? (

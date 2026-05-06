@@ -66,9 +66,18 @@ export default async function LocaleLayout({
   return (
     <html
       lang={locale}
-      className={`${sans.variable} ${mono.variable} dark h-full antialiased`}
+      className={`${sans.variable} ${mono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
+      <head>
+        <script
+          // Apply the saved theme synchronously before paint to avoid FOUC.
+          // Reads marcio-theme = "dark" | "light" | "system"; defaults to dark.
+          dangerouslySetInnerHTML={{
+            __html: `(()=>{try{var t=localStorage.getItem('marcio-theme')||'dark';var d=t==='dark'||(t==='system'&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.classList.toggle('dark',d);document.documentElement.style.colorScheme=d?'dark':'light';}catch(e){document.documentElement.classList.add('dark');}})();`,
+          }}
+        />
+      </head>
       <body className="min-h-full bg-background text-foreground">
         <NextIntlClientProvider messages={messages} locale={locale}>
           <div className="pb-20">{children}</div>
