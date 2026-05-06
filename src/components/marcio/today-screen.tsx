@@ -16,8 +16,10 @@ import {
   totalOutflow,
 } from "@/lib/budget-aggregates.ts";
 import { getUpcomingCharges } from "@/lib/forecast.ts";
+import { getSectionsForToday } from "@/lib/today-data.ts";
+import { SectionDrillSheet } from "./section-drill-sheet.tsx";
 import { Link } from "@/i18n/navigation.ts";
-import type { Scope } from "@/lib/import/types.ts";
+import type { Scope, Section } from "@/lib/import/types.ts";
 
 export async function TodayScreen() {
   const locale = await getLocale();
@@ -27,10 +29,12 @@ export async function TodayScreen() {
   const days = daysUntilNextPayday(new Date(), settings.paydayDay);
 
   const scopes: Scope[] = me ? ["joint", me.role] : ["joint"];
-  const [agg, forecast] = await Promise.all([
+  const [agg, forecast, sectionData] = await Promise.all([
     getMonthlyAggregates(scopes),
     getUpcomingCharges(scopes),
+    getSectionsForToday(scopes),
   ]);
+  const sectionByKey = new Map(sectionData.map((s) => [s.section, s]));
 
   const plannedOutflowCents = Math.abs(totalOutflow(agg.planned));
   const spentOutflowCents = Math.abs(totalOutflow(agg.actual));
@@ -99,25 +103,23 @@ export async function TodayScreen() {
       </Card>
 
       <div className="grid grid-cols-2 gap-3">
-        <SectionStat
-          label={t("Sections.fixas")}
-          plannedCents={Math.abs(agg.planned["FIXAS"] ?? 0)}
-          actualCents={Math.abs(agg.actual["FIXAS"] ?? 0)}
-          locale={locale}
-          accent
-        />
-        <SectionStat
-          label={t("Sections.variaveis")}
-          plannedCents={Math.abs(agg.planned["VARIAVEIS"] ?? 0)}
-          actualCents={Math.abs(agg.actual["VARIAVEIS"] ?? 0)}
-          locale={locale}
-        />
-        <SectionStat
-          label={t("Sections.sazonais")}
-          plannedCents={Math.abs(agg.planned["SAZONAIS"] ?? 0)}
-          actualCents={Math.abs(agg.actual["SAZONAIS"] ?? 0)}
-          locale={locale}
-        />
+        {(["FIXAS", "VARIAVEIS", "SAZONAIS"] as const).map((s) => {
+          const data = sectionByKey.get(s);
+          if (!data) return null;
+          return (
+            <SectionDrillSheet
+              key={s}
+              data={data}
+              label={t(`Sections.${labelKeyFor(s)}`)}
+              locale={locale}
+              accent={s === "FIXAS"}
+              paidLabel={t("Today.paidThisMonth")}
+              expectedLabel={t("Today.expectedThisMonth")}
+              totalLabel={t("Today.sectionEmpty")}
+              daySuffix={t("Today.dayPrefix")}
+            />
+          );
+        })}
         <SectionStat
           label={t("Sections.margem")}
           plannedCents={marginCents}
@@ -229,6 +231,15 @@ function forecastSourceLabel(
   if (src === "due-day") return t("Today.forecastDue");
   if (src === "history-median") return t("Today.forecastHistory");
   return t("Today.forecastMonthEnd");
+}
+
+function labelKeyFor(s: Section): string {
+  if (s === "FIXAS") return "fixas";
+  if (s === "VARIAVEIS") return "variaveis";
+  if (s === "SAZONAIS") return "sazonais";
+  if (s === "DIVIDAS") return "dividas";
+  if (s === "ECONOMIAS") return "economias";
+  return "entradas";
 }
 
 function SectionStat({
