@@ -226,29 +226,31 @@ function SectionCard({
       </header>
       <ul className="mt-3 divide-y divide-border/40">
         {items.map((item) => (
-          <li
-            key={item.id}
-            className="flex items-baseline justify-between gap-3 py-2 text-sm"
-          >
-            <span className="flex items-baseline gap-2 truncate">
-              <span className="truncate">{item.name}</span>
-              {item.dueDay ? (
-                <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">
-                  {item.dueDay}
-                </Badge>
-              ) : null}
-              {section === "SAZONAIS" && item.sazonalKind ? (
-                <Badge
-                  variant={item.sazonalKind === "O" ? "default" : "secondary"}
-                  className="px-1.5 py-0 text-[10px]"
-                >
-                  {item.sazonalKind}
-                </Badge>
-              ) : null}
-            </span>
-            <span className="num text-foreground">
-              {formatEUR(item.plannedCents / 100, locale)}
-            </span>
+          <li key={item.id}>
+            <Link
+              href={`/mes/${item.id}` as `/mes/${string}`}
+              className="-mx-2 flex items-baseline justify-between gap-3 rounded px-2 py-2 text-sm transition-colors hover:bg-card/40"
+            >
+              <span className="flex items-baseline gap-2 truncate">
+                <span className="truncate">{item.name}</span>
+                {item.dueDay ? (
+                  <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">
+                    {item.dueDay}
+                  </Badge>
+                ) : null}
+                {section === "SAZONAIS" && item.sazonalKind ? (
+                  <Badge
+                    variant={item.sazonalKind === "O" ? "default" : "secondary"}
+                    className="px-1.5 py-0 text-[10px]"
+                  >
+                    {item.sazonalKind}
+                  </Badge>
+                ) : null}
+              </span>
+              <span className="num text-foreground">
+                {formatEUR(item.plannedCents / 100, locale)}
+              </span>
+            </Link>
           </li>
         ))}
       </ul>
