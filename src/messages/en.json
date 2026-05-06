@@ -8,6 +8,7 @@
     "month": "Month",
     "inbox": "Inbox",
     "buckets": "Buckets",
+    "insights": "Insights",
     "connections": "Connections"
   },
   "Today": {
@@ -59,6 +60,16 @@
     "noData": "No data for this month yet — run an import.",
     "items": "Items"
   },
+  "Transactions": {
+    "title": "Activity",
+    "heading": "All transactions",
+    "searchPlaceholder": "Search by name or description",
+    "filterAll": "All",
+    "filterMatched": "Categorized",
+    "filterUnmatched": "Uncategorized",
+    "empty": "No transactions found.",
+    "limited": "Showing the {n} most recent."
+  },
   "Account": {
     "back": "Back",
     "empty": "No transactions yet — upload a CSV.",
@@ -77,6 +88,17 @@
     "remember": "Remember for next time",
     "back": "Back"
   },
+  "Insights": {
+    "title": "Insights",
+    "heading": "Where the money went",
+    "totalSpent": "Total spent this month",
+    "bySectionTitle": "By section",
+    "bySectionHint": "% of total spend.",
+    "topCategoriesTitle": "Top categories",
+    "topMerchantsTitle": "Top merchants",
+    "emptyHint": "Nothing yet — categorize a few transactions in Caixa.",
+    "hits": "{n, plural, one {# transaction} other {# transactions}}"
+  },
   "Settings": {
     "paydayTitle": "Month rollover day",
     "paydayHelp": "Today the rollover is on day {day}. Change it if your payday moves.",
@@ -91,6 +113,7 @@
     "uploadTitle": "Upload ING CSV",
     "uploadHint": "Export the CSV from Mijn ING and drop it here. Re-uploads of overlapping periods are deduplicated automatically.",
     "accountsTitle": "Known accounts",
+    "seeAllTransactions": "See all",
     "noAccounts": "No accounts yet — upload a CSV to get started.",
     "txCount": "transactions",
     "file": "File",

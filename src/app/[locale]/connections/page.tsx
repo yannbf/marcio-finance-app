@@ -75,9 +75,17 @@ export default async function ConnectionsPage({
       </Card>
 
       <section className="flex flex-col gap-2">
-        <h2 className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-          {t("accountsTitle")}
-        </h2>
+        <div className="flex items-baseline justify-between">
+          <h2 className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+            {t("accountsTitle")}
+          </h2>
+          <Link
+            href="/transactions"
+            className="text-xs text-primary hover:underline"
+          >
+            {t("seeAllTransactions")}
+          </Link>
+        </div>
         {accounts.length === 0 ? (
           <Card className="border-border/40 bg-card/40 p-5 text-sm text-muted-foreground">
             {t("noAccounts")}

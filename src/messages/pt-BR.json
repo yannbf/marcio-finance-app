@@ -8,6 +8,7 @@
     "month": "Mês",
     "inbox": "Caixa",
     "buckets": "Cofres",
+    "insights": "Análises",
     "connections": "Conexões"
   },
   "Today": {
@@ -59,6 +60,16 @@
     "noData": "Sem dados para este mês ainda — rode uma importação.",
     "items": "Itens"
   },
+  "Transactions": {
+    "title": "Movimentos",
+    "heading": "Todas as transações",
+    "searchPlaceholder": "Buscar por nome ou descrição",
+    "filterAll": "Todas",
+    "filterMatched": "Categorizadas",
+    "filterUnmatched": "Por categorizar",
+    "empty": "Nenhuma transação encontrada.",
+    "limited": "Mostrando as {n} mais recentes."
+  },
   "Account": {
     "back": "Voltar",
     "empty": "Nenhuma transação ainda — suba um CSV.",
@@ -77,6 +88,17 @@
     "remember": "Lembrar para próximas vezes",
     "back": "Voltar"
   },
+  "Insights": {
+    "title": "Análises",
+    "heading": "Para onde vai o dinheiro",
+    "totalSpent": "Total gasto neste mês",
+    "bySectionTitle": "Por seção",
+    "bySectionHint": "% do total gasto.",
+    "topCategoriesTitle": "Top categorias",
+    "topMerchantsTitle": "Top estabelecimentos",
+    "emptyHint": "Sem dados ainda — categorize transações na Caixa.",
+    "hits": "{n, plural, one {# transação} other {# transações}}"
+  },
   "Settings": {
     "paydayTitle": "Dia da virada do mês",
     "paydayHelp": "Hoje a virada acontece no dia {day}. Mude se o pagamento mudar de dia.",
@@ -91,6 +113,7 @@
     "uploadTitle": "Subir CSV do ING",
     "uploadHint": "Exporte o CSV do Mijn ING e suba aqui. Re-uploads do mesmo período são desduplicados automaticamente.",
     "accountsTitle": "Contas conhecidas",
+    "seeAllTransactions": "Ver todas",
     "noAccounts": "Nenhuma conta ainda — suba um CSV para começar.",
     "txCount": "transações",
     "file": "Arquivo",
