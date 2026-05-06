@@ -82,7 +82,12 @@ export default async function LocaleLayout({
       <body className="min-h-full bg-background text-foreground">
         <NextIntlClientProvider messages={messages} locale={locale}>
           <TrpcProvider>
-            <div className="pb-20">{children}</div>
+            <div
+              className="pb-[calc(5rem+env(safe-area-inset-bottom))]"
+              style={{ viewTransitionName: "page" }}
+            >
+              {children}
+            </div>
             <BottomNav />
           </TrpcProvider>
         </NextIntlClientProvider>

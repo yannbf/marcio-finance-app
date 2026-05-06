@@ -146,3 +146,46 @@
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
 }
+
+/*
+ * View Transitions API. Falling back gracefully on browsers without it
+ * (Firefox today). Cross-fades the inner page region when next-intl's
+ * Link triggers a navigation; the BottomNav stays put because it's
+ * outside the [view-transition-name: page] container.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-old(page),
+  ::view-transition-new(page) {
+    animation-duration: 180ms;
+    animation-timing-function: cubic-bezier(0.32, 0.72, 0.36, 1);
+  }
+  ::view-transition-old(page) {
+    animation-name: marcio-fade-out;
+  }
+  ::view-transition-new(page) {
+    animation-name: marcio-fade-in;
+  }
+}
+
+@keyframes marcio-fade-out {
+  to {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes marcio-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+/*
+ * iOS sheet open: stop background scroll. Combined with body[data-sheet-open]
+ * being toggled by BottomSheetDraggable.
+ */
+body[data-sheet-open] {
+  overscroll-behavior: contain;
+  touch-action: none;
+}

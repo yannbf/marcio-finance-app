@@ -124,6 +124,19 @@ function BottomSheetDraggable({
   const controls = useDragControls()
   const [dragging, setDragging] = React.useState(false)
 
+  // Lock the body while the sheet is open so iOS doesn't scroll the page
+  // underneath when a vertical drag escapes the sheet.
+  React.useEffect(() => {
+    const body = document.body
+    const prev = body.style.overflow
+    body.style.overflow = "hidden"
+    body.dataset.sheetOpen = "true"
+    return () => {
+      body.style.overflow = prev
+      delete body.dataset.sheetOpen
+    }
+  }, [])
+
   // Imperatively close by clicking a hidden close button. Keeps base-ui's
   // open state in charge.
   const closeRef = React.useRef<HTMLButtonElement>(null)
@@ -142,9 +155,17 @@ function BottomSheetDraggable({
     animate(y, 0, { type: "spring", stiffness: 420, damping: 36 })
   }
 
+  // The "drag zone" covers the handle + ~52px below it (typical sheet
+  // header area). That makes it easy to grab from anywhere near the top
+  // without stealing pointer events from the scrollable content below.
+  const startDrag = React.useCallback(
+    (e: React.PointerEvent) => controls.start(e),
+    [controls],
+  )
+
   return (
     <motion.div
-      style={{ y }}
+      style={{ y, paddingBottom: "env(safe-area-inset-bottom)" }}
       drag="y"
       dragControls={controls}
       dragListener={false}
@@ -160,9 +181,19 @@ function BottomSheetDraggable({
         className="hidden"
         aria-hidden
       />
+      {/* Drag-grab zone — overlays the top ~64px of the sheet so touches
+          on the handle, title, or near-header area all start a drag. */}
+      <div
+        onPointerDown={startDrag}
+        className={cn(
+          "absolute inset-x-0 top-0 z-10 h-16 touch-none select-none",
+          dragging ? "cursor-grabbing" : "cursor-grab",
+        )}
+        aria-hidden
+      />
       {showHandle ? (
         <div
-          onPointerDown={(e) => controls.start(e)}
+          onPointerDown={startDrag}
           className={cn(
             "flex w-full shrink-0 touch-none select-none items-center justify-center pt-3 pb-1.5",
             dragging ? "cursor-grabbing" : "cursor-grab"
@@ -177,7 +208,7 @@ function BottomSheetDraggable({
           render={
             <Button
               variant="ghost"
-              className="absolute top-2 right-3 z-10"
+              className="absolute top-2 right-3 z-20"
               size="icon-sm"
             />
           }
