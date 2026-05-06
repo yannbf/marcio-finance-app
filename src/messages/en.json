@@ -20,7 +20,9 @@
     "ahead": "Ahead by {amount}",
     "behind": "Behind by {amount}",
     "allCaughtUp": "All caught up",
-    "allCaughtUpHint": "No transactions need your attention right now."
+    "allCaughtUpHint": "No transactions need your attention right now.",
+    "inboxTitle": "Needs categorizing",
+    "inboxCount": "{n, plural, one {# transaction} other {# transactions}}"
   },
   "Sections": {
     "entradas": "Income",
@@ -57,6 +59,13 @@
     "noData": "No data for this month yet — run an import.",
     "items": "Items"
   },
+  "Account": {
+    "back": "Back",
+    "empty": "No transactions yet — upload a CSV.",
+    "ownerJoint": "Joint",
+    "ownerYann": "Yann personal",
+    "ownerCamila": "Camila personal"
+  },
   "Inbox": {
     "title": "Inbox",
     "heading": "Needs categorizing",
@@ -65,7 +74,8 @@
     "emptyHint": "When something new from the bank doesn't auto-match, it shows up here.",
     "assignTo": "Assign to",
     "noBudgetItems": "No budget items yet — import the sheet first.",
-    "remember": "Remember for next time"
+    "remember": "Remember for next time",
+    "back": "Back"
   },
   "Settings": {
     "paydayTitle": "Month rollover day",

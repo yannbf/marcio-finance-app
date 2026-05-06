@@ -2,9 +2,11 @@ import { setRequestLocale, getTranslations, getLocale } from "next-intl/server";
 import { desc, count, eq } from "drizzle-orm";
 import { db } from "@/db/index.ts";
 import { bankAccount, transaction } from "@/db/schema.ts";
+import { ChevronRight } from "lucide-react";
 import { Card } from "@/components/ui/card.tsx";
 import { CsvUpload } from "@/components/marcio/csv-upload.tsx";
 import { PaydaySetting } from "@/components/marcio/payday-setting.tsx";
+import { Link } from "@/i18n/navigation.ts";
 import { getCurrentUser } from "@/lib/auth/current-user.ts";
 import { getHouseholdSettings } from "@/lib/settings.ts";
 import type { Locale } from "@/i18n/routing.ts";
@@ -82,23 +84,26 @@ export default async function ConnectionsPage({
           </Card>
         ) : (
           accounts.map((a) => (
-            <Card
+            <Link
               key={a.id}
-              className="flex items-center justify-between border-border/40 bg-card/60 p-4"
+              href={`/connections/${a.id}` as `/connections/${string}`}
             >
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">{a.nickname}</p>
-                <p className="num truncate text-xs text-muted-foreground">
-                  {ownerLabel(a.owner, t)} · {a.iban || "—"}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="num text-sm font-semibold">{a.txCount}</p>
-                <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-                  {t("txCount")}
-                </p>
-              </div>
-            </Card>
+              <Card className="flex flex-row items-center gap-3 border-border/40 bg-card/60 px-4 py-3 transition-colors hover:bg-card/80">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">{a.nickname}</p>
+                  <p className="num truncate text-xs text-muted-foreground">
+                    {ownerLabel(a.owner, t)} · {a.iban || "—"}
+                  </p>
+                </div>
+                <div className="text-right leading-none">
+                  <p className="num text-sm font-semibold">{a.txCount}</p>
+                  <p className="mt-0.5 text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                    {t("txCount")}
+                  </p>
+                </div>
+                <ChevronRight className="size-4 text-muted-foreground" />
+              </Card>
+            </Link>
           ))
         )}
       </section>
