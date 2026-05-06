@@ -71,26 +71,31 @@ function SheetContent({
         {...props}
       >
         {isBottom ? (
-          <BottomSheetDraggable showHandle={handle}>
+          <BottomSheetDraggable
+            showHandle={handle}
+            showCloseButton={showCloseButton}
+          >
             {children}
           </BottomSheetDraggable>
         ) : (
-          children
-        )}
-        {showCloseButton && (
-          <SheetPrimitive.Close
-            data-slot="sheet-close"
-            render={
-              <Button
-                variant="ghost"
-                className="absolute top-3 right-3 z-10"
-                size="icon-sm"
-              />
-            }
-          >
-            <XIcon />
-            <span className="sr-only">Close</span>
-          </SheetPrimitive.Close>
+          <>
+            {children}
+            {showCloseButton && (
+              <SheetPrimitive.Close
+                data-slot="sheet-close"
+                render={
+                  <Button
+                    variant="ghost"
+                    className="absolute top-3 right-3 z-10"
+                    size="icon-sm"
+                  />
+                }
+              >
+                <XIcon />
+                <span className="sr-only">Close</span>
+              </SheetPrimitive.Close>
+            )}
+          </>
         )}
       </SheetPrimitive.Popup>
     </SheetPortal>
@@ -109,9 +114,11 @@ function SheetContent({
 function BottomSheetDraggable({
   children,
   showHandle,
+  showCloseButton,
 }: {
   children: React.ReactNode
   showHandle: boolean
+  showCloseButton: boolean
 }) {
   const y = useMotionValue(0)
   const controls = useDragControls()
@@ -146,7 +153,7 @@ function BottomSheetDraggable({
       onDragStart={() => setDragging(true)}
       onDragEnd={onDragEnd}
       transition={{ type: "spring", stiffness: 420, damping: 36 }}
-      className="flex flex-col gap-4"
+      className="relative flex flex-col gap-4"
     >
       <SheetPrimitive.Close
         ref={closeRef}
@@ -163,6 +170,21 @@ function BottomSheetDraggable({
         >
           <span className="h-1 w-9 rounded-full bg-muted-foreground/40 transition-colors hover:bg-muted-foreground/60" />
         </div>
+      ) : null}
+      {showCloseButton ? (
+        <SheetPrimitive.Close
+          data-slot="sheet-close"
+          render={
+            <Button
+              variant="ghost"
+              className="absolute top-2 right-3 z-10"
+              size="icon-sm"
+            />
+          }
+        >
+          <XIcon />
+          <span className="sr-only">Close</span>
+        </SheetPrimitive.Close>
       ) : null}
       {children}
     </motion.div>
