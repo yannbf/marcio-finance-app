@@ -3,6 +3,15 @@
 Why navigating Marcio feels slow today, and how to fix it without
 boxing out the future "native app" goal.
 
+> **Status: Option B landed.** All authenticated screens are now
+> client-rendered React components reading from a tRPC API
+> (`/api/rpc/*`) cached by TanStack Query. The page boundaries are thin
+> server components that just set the locale and mount the screen.
+> Mutations (assign, bulk-assign) flow through tRPC and invalidate the
+> relevant queries on success. Sign-in, settings, and the import
+> wrappers stay server-rendered. The future-features doc tracks
+> tier-2+ improvements (optimistic patches, persistent cache, etc.).
+
 > **TL;DR.** App Router is fine for the marketing/auth surface but the
 > wrong shape for the **inner mobile-first app** — every tap pays for a
 > server round trip + Postgres queries + RSC payload. Move the
