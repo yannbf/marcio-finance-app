@@ -1,5 +1,5 @@
 import { setRequestLocale, getTranslations } from "next-intl/server";
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { ChevronLeft } from "lucide-react";
 import { db } from "@/db/index.ts";
 import { budgetItem, month, savingsAccount } from "@/db/schema.ts";
@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card.tsx";
 import { Link } from "@/i18n/navigation.ts";
 import {
   SavingsForm,
+  type BudgetSuggestion,
   type SavingsRow,
 } from "@/components/marcio/savings-form.tsx";
 import { getCurrentUser } from "@/lib/auth/current-user.ts";
@@ -29,14 +30,14 @@ export default async function SavingsSettingsPage({
     ? ["joint", me.role]
     : ["joint"];
 
-  const rows = (await db
+  const rawRows = await db
     .select()
     .from(savingsAccount)
     .where(inArray(savingsAccount.owner, allowed))
-    .orderBy(asc(savingsAccount.owner), asc(savingsAccount.nickname))) as SavingsRow[];
+    .orderBy(asc(savingsAccount.owner), asc(savingsAccount.nickname));
 
   // Suggest SAZONAIS items from the current month so the user can link
-  // a savings account to the line that draws from it.
+  // multiple to one savings account.
   const range = paydayMonthFor(new Date(), settings.paydayDay);
   const [monthRow] = await db
     .select()
@@ -47,11 +48,14 @@ export default async function SavingsSettingsPage({
         eq(month.anchorMonth, range.anchorMonth),
       ),
     );
-  const suggestions = monthRow
+
+  const items = monthRow
     ? await db
         .select({
           naturalKey: budgetItem.naturalKey,
           name: budgetItem.name,
+          scope: budgetItem.scope,
+          savingsAccountId: budgetItem.savingsAccountId,
         })
         .from(budgetItem)
         .where(
@@ -63,6 +67,37 @@ export default async function SavingsSettingsPage({
         )
         .orderBy(asc(budgetItem.name))
     : [];
+
+  // Collapse duplicate naturalKeys (across months) for the multi-select UX.
+  const seen = new Set<string>();
+  const suggestions: BudgetSuggestion[] = [];
+  for (const it of items) {
+    const k = `${it.scope}:${it.naturalKey}`;
+    if (seen.has(k)) continue;
+    seen.add(k);
+    suggestions.push({
+      naturalKey: it.naturalKey,
+      name: it.name,
+      scope: it.scope as "joint" | "camila" | "yann",
+    });
+  }
+
+  // Compute currently-linked naturalKeys for each savings account.
+  const rows: SavingsRow[] = rawRows.map((r) => {
+    const linkedNaturalKeys = items
+      .filter((it) => it.savingsAccountId === r.id)
+      .map((it) => it.naturalKey)
+      .filter((v, i, arr) => arr.indexOf(v) === i);
+    return {
+      id: r.id,
+      ref: r.ref,
+      nickname: r.nickname,
+      owner: r.owner as "joint" | "camila" | "yann",
+      defaultBudgetItemNaturalKey: r.defaultBudgetItemNaturalKey,
+      notes: r.notes,
+      linkedNaturalKeys,
+    };
+  });
 
   const tConn = await getTranslations("Connections");
   const ownerOptions: { value: "joint" | "camila" | "yann"; label: string }[] =

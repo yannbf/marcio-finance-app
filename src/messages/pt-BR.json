@@ -10,7 +10,16 @@
     "buckets": "Cofres",
     "insights": "Análises",
     "connections": "Conexões",
-    "settings": "Ajustes"
+    "settings": "Ajustes",
+    "activity": "Movimentos"
+  },
+  "Activity": {
+    "title": "Movimentos",
+    "heading": "Este mês",
+    "monthSpend": "Gasto do mês",
+    "txCount": "{n, plural, one {# transação} other {# transações}}",
+    "upcomingTitle": "A pagar ainda",
+    "empty": "Nenhuma transação neste mês ainda — suba um CSV em Ajustes."
   },
   "Today": {
     "untilPayday": "{days, plural, one {# dia} other {# dias}} até o pagamento",
@@ -117,14 +126,14 @@
     "heading": "Contribuições do mês",
     "monthlySummary": "Total contribuído",
     "monthlyHint": "{count, plural, one {# cofre} other {# cofres}} para acompanhar.",
-    "obrigatorio": "Obrigatórios",
-    "obrigatorioHint": "Impostos e custos anuais — não dá pra pular.",
-    "lazer": "Lazer",
-    "lazerHint": "Viagens e gastos planejados.",
-    "untagged": "Outros",
+    "noAccounts": "Nenhum cofre cadastrado. Cada cofre representa uma conta de poupança.",
+    "addOne": "Cadastrar primeiro cofre",
+    "linkItems": "Vincular itens da planilha",
+    "noLinkedItems": "Sem itens vinculados.",
+    "untagged": "Itens sem cofre",
+    "untaggedHint": "Vincule estes itens a um cofre em Ajustes → Poupanças para o Marcio acompanhar as contribuições.",
     "yearEstimate": "ano:",
-    "missed": "Faltando",
-    "empty": "Nenhum cofre ainda — importe a planilha primeiro."
+    "missed": "Faltando"
   },
   "Insights": {
     "title": "Análises",
@@ -146,11 +155,15 @@
         "hint": "Subir CSV, ver contas conectadas",
         "crumb": "Bancos"
       },
+      "inbox": {
+        "title": "Caixa",
+        "hint": "Transações por categorizar"
+      },
       "savings": {
         "title": "Cofres / Poupanças",
         "hint": "Definir contas de poupança e referências",
         "crumb": "Poupanças",
-        "about": "Cadastre cada conta de poupança que vocês usam (ex: Oranje Spaarrekening V12602730). O Marcio reconhece transferências quando o ID aparece na descrição.",
+        "about": "Cada cofre representa uma conta de poupança real (ex: Oranje Spaarrekening V12602730). Vincule múltiplos itens da planilha ao mesmo cofre — o Marcio agrega as contribuições no nível da conta.",
         "empty": "Nenhuma conta de poupança ainda.",
         "addNew": "Adicionar conta de poupança",
         "save": "Salvar",
@@ -161,7 +174,11 @@
         "nicknameLabel": "Apelido",
         "nicknamePlaceholder": "ex: Cofre Impostos",
         "ownerLabel": "Conta dona",
-        "linkedItemLabel": "Item de orçamento ligado",
+        "linkedItemsLabel": "Itens da planilha que esta conta cobre",
+        "linkedItemsHint": "Toque para selecionar/desselecionar. Apenas itens de SAZONAIS do dono escolhido aparecem aqui.",
+        "linkedCount": "{n, plural, one {# item vinculado} other {# itens vinculados}}",
+        "noLinkedItems": "Nenhum item vinculado.",
+        "noCandidates": "Nenhum item SAZONAIS no mês — importe a planilha primeiro.",
         "notesLabel": "Notas",
         "notesPlaceholder": "ex: depósitos mensais para impostos anuais",
         "optional": "opcional"

@@ -92,18 +92,28 @@ export async function runMatchingForAccount(
     // description carries a known ref.
     let ruleHit: SeedRule | null = null;
     if (/spaarrekening|savings/i.test(text)) {
-      const sa = savings.find(
-        (s) => s.defaultBudgetItemNaturalKey != null && text.includes(s.ref.toLowerCase()),
-      );
-      if (sa && sa.defaultBudgetItemNaturalKey) {
-        ruleHit = {
-          pattern: /./,
-          scopes: [sa.owner as Scope],
-          section: "SAZONAIS",
-          naturalKey: sa.defaultBudgetItemNaturalKey,
-          confidence: 0.95,
-          label: `savings:${sa.ref}`,
-        };
+      const sa = savings.find((s) => text.includes(s.ref.toLowerCase()));
+      if (sa) {
+        // Find ANY budget item linked to this savings account in the
+        // active payday-month — every match in the same account aggregates
+        // in Cofres anyway, so the specific row is fine.
+        const linked = await db
+          .select({ naturalKey: budgetItem.naturalKey })
+          .from(budgetItem)
+          .where(eq(budgetItem.savingsAccountId, sa.id))
+          .limit(1);
+        const target =
+          linked[0]?.naturalKey ?? sa.defaultBudgetItemNaturalKey;
+        if (target) {
+          ruleHit = {
+            pattern: /./,
+            scopes: [sa.owner as Scope],
+            section: "SAZONAIS",
+            naturalKey: target,
+            confidence: 0.95,
+            label: `savings:${sa.ref}`,
+          };
+        }
       }
     }
 

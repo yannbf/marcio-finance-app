@@ -203,6 +203,11 @@ export const budgetItem = pgTable(
       () => savingsBucket.id,
       { onDelete: "set null" },
     ),
+    /** Optional link to a savings account that the user has declared in
+     * Settings → Cofres. When set, Cofres aggregates this item under that
+     * account, and the matching engine treats transfers to the account's
+     * ref as candidates for this item. */
+    savingsAccountId: uuid("savings_account_id"),
     /** Income contribution ratio (0..1) — only set on personal salary rows. */
     contributionRatio: numeric("contribution_ratio", {
       precision: 6,

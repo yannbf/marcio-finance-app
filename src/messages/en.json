@@ -10,7 +10,16 @@
     "buckets": "Buckets",
     "insights": "Insights",
     "connections": "Connections",
-    "settings": "Settings"
+    "settings": "Settings",
+    "activity": "Activity"
+  },
+  "Activity": {
+    "title": "Activity",
+    "heading": "This month",
+    "monthSpend": "Spent this month",
+    "txCount": "{n, plural, one {# transaction} other {# transactions}}",
+    "upcomingTitle": "Still to pay",
+    "empty": "No transactions this month yet — upload a CSV in Settings."
   },
   "Today": {
     "untilPayday": "{days, plural, one {# day} other {# days}} until payday",
@@ -117,14 +126,14 @@
     "heading": "Monthly contributions",
     "monthlySummary": "Total contributed",
     "monthlyHint": "{count, plural, one {# bucket} other {# buckets}} to track.",
-    "obrigatorio": "Mandatory",
-    "obrigatorioHint": "Taxes and annual fees — can't skip.",
-    "lazer": "Leisure",
-    "lazerHint": "Travel and planned spend.",
-    "untagged": "Others",
+    "noAccounts": "No buckets registered yet. Each bucket maps to one savings account.",
+    "addOne": "Register your first bucket",
+    "linkItems": "Link sheet items",
+    "noLinkedItems": "No linked items.",
+    "untagged": "Items not in a bucket",
+    "untaggedHint": "Link these to a bucket in Settings → Savings so Marcio can track contributions.",
     "yearEstimate": "year:",
-    "missed": "Missing",
-    "empty": "No buckets yet — import the sheet first."
+    "missed": "Missing"
   },
   "Insights": {
     "title": "Insights",
@@ -146,11 +155,15 @@
         "hint": "Upload CSV, see connected accounts",
         "crumb": "Banks"
       },
+      "inbox": {
+        "title": "Inbox",
+        "hint": "Transactions still to categorize"
+      },
       "savings": {
         "title": "Savings accounts",
         "hint": "Define which savings accounts you use",
         "crumb": "Savings",
-        "about": "Register each savings account you use (e.g. Oranje Spaarrekening V12602730). Marcio recognizes transfers when the ID shows up in the description.",
+        "about": "Each bucket maps to one real savings account (e.g. Oranje Spaarrekening V12602730). Link multiple sheet items to the same bucket — Marcio aggregates contributions at the account level.",
         "empty": "No savings accounts yet.",
         "addNew": "Add savings account",
         "save": "Save",
@@ -161,7 +174,11 @@
         "nicknameLabel": "Nickname",
         "nicknamePlaceholder": "e.g. Tax pot",
         "ownerLabel": "Owning account",
-        "linkedItemLabel": "Linked budget item",
+        "linkedItemsLabel": "Sheet items this account covers",
+        "linkedItemsHint": "Tap to toggle. Only SAZONAIS items for the chosen owner are listed.",
+        "linkedCount": "{n, plural, one {# linked item} other {# linked items}}",
+        "noLinkedItems": "No linked items.",
+        "noCandidates": "No SAZONAIS items in this month — import the sheet first.",
         "notesLabel": "Notes",
         "notesPlaceholder": "e.g. monthly deposits for annual taxes",
         "optional": "optional"
