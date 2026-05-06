@@ -57,6 +57,14 @@
     "noData": "No data for this month yet — run an import.",
     "items": "Items"
   },
+  "Settings": {
+    "paydayTitle": "Month rollover day",
+    "paydayHelp": "Today the rollover is on day {day}. Change it if your payday moves.",
+    "paydayLabel": "Day (1–28)",
+    "paydaySave": "Save",
+    "paydaySaved": "Saved",
+    "paydayInvalid": "Pick a whole number between 1 and 28."
+  },
   "Connections": {
     "title": "Connections",
     "heading": "Banks & accounts",
@@ -89,9 +97,9 @@
       "step5": "Confirm — the file will be named NL_[account]_[date].csv.",
       "webLink": "Open Mijn ING",
       "appHeading": "In the mobile app",
-      "appStep1": "Open the ING app and select the account.",
-      "appStep2": "Tap the three dots in the top right.",
-      "appStep3": "Choose \"Download transactions\" → CSV → date range → send by email.",
+      "appStep1": "Open the ING app and pick the account.",
+      "appStep2": "Tap \"Settings\" (gear) on the account page.",
+      "appStep3": "Choose \"Download statements\" → CSV → date range → send/save.",
       "tip": "Tip: after the first upload, repeat weekly with short ranges. Marcio dedupes by (date, amount, description).",
       "officialDocs": "ING official documentation"
     }

@@ -3,6 +3,7 @@ import { and, asc, eq } from "drizzle-orm";
 import { db } from "@/db/index.ts";
 import { budgetItem, month } from "@/db/schema.ts";
 import { paydayMonthFor } from "@/lib/payday.ts";
+import { getHouseholdSettings } from "@/lib/settings.ts";
 import { SECTION_ORDER, SECTION_TR_KEY } from "@/lib/import/sections.ts";
 import type { Section } from "@/lib/import/types.ts";
 import { Card } from "@/components/ui/card.tsx";
@@ -35,7 +36,8 @@ export default async function MesPage({
       : me?.role ?? "joint"; // "me" resolves to the signed-in user's scope
 
   // Find or fall back: current payday-month → its DB row.
-  const range = paydayMonthFor(new Date());
+  const settings = await getHouseholdSettings();
+  const range = paydayMonthFor(new Date(), settings.paydayDay);
   const [monthRow] = await db
     .select()
     .from(month)

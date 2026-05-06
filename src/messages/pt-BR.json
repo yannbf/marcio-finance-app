@@ -57,6 +57,14 @@
     "noData": "Sem dados para este mês ainda — rode uma importação.",
     "items": "Itens"
   },
+  "Settings": {
+    "paydayTitle": "Dia da virada do mês",
+    "paydayHelp": "Hoje a virada acontece no dia {day}. Mude se o pagamento mudar de dia.",
+    "paydayLabel": "Dia (1–28)",
+    "paydaySave": "Salvar",
+    "paydaySaved": "Salvo",
+    "paydayInvalid": "Use um número inteiro entre 1 e 28."
+  },
   "Connections": {
     "title": "Conexões",
     "heading": "Bancos e contas",
@@ -90,8 +98,8 @@
       "webLink": "Abrir Mijn ING",
       "appHeading": "No app móvel",
       "appStep1": "Abra o app ING e selecione a conta.",
-      "appStep2": "Toque nos três pontinhos no canto superior direito.",
-      "appStep3": "Escolha \"Download transactions\" → CSV → defina o período → enviar por e-mail.",
+      "appStep2": "Toque em \"Settings\" (engrenagem) na página da conta.",
+      "appStep3": "Escolha \"Download statements\" → CSV → defina o período → enviar/baixar.",
       "tip": "Dica: depois do primeiro upload, repita semanalmente com o intervalo curto. Marcio deduplica linhas iguais por (data, valor, descrição).",
       "officialDocs": "Documentação oficial do ING"
     }

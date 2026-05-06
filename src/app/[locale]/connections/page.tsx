@@ -4,8 +4,9 @@ import { db } from "@/db/index.ts";
 import { bankAccount, transaction } from "@/db/schema.ts";
 import { Card } from "@/components/ui/card.tsx";
 import { CsvUpload } from "@/components/marcio/csv-upload.tsx";
+import { PaydaySetting } from "@/components/marcio/payday-setting.tsx";
 import { getCurrentUser } from "@/lib/auth/current-user.ts";
-import { formatEUR } from "@/lib/format.ts";
+import { getHouseholdSettings } from "@/lib/settings.ts";
 import type { Locale } from "@/i18n/routing.ts";
 
 export default async function ConnectionsPage({
@@ -17,6 +18,7 @@ export default async function ConnectionsPage({
   setRequestLocale(locale);
   const t = await getTranslations("Connections");
   const me = await getCurrentUser();
+  const settings = await getHouseholdSettings();
 
   const accounts = await db
     .select({
@@ -54,6 +56,8 @@ export default async function ConnectionsPage({
           {t("heading")}
         </h1>
       </header>
+
+      <PaydaySetting initialDay={settings.paydayDay} />
 
       <Card className="border-border/40 bg-card/60 p-5">
         <h2 className="text-sm font-medium">{t("uploadTitle")}</h2>

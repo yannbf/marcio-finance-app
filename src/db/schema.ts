@@ -18,6 +18,17 @@ import { relations } from "drizzle-orm";
 /* -------------------------------------------------------------------------- */
 
 export const userRole = pgEnum("user_role", ["camila", "yann"]);
+
+/* -------------------------------------------------------------------------- */
+/* Household settings — singleton row keyed by a fixed id                      */
+/* -------------------------------------------------------------------------- */
+
+export const householdSetting = pgTable("household_setting", {
+  id: text("id").primaryKey().default("singleton"),
+  /** Day of the month payday lands on. Defaults to 25, can be changed in UI. */
+  paydayDay: integer("payday_day").notNull().default(25),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
 export const accountKind = pgEnum("account_kind", ["checking", "savings"]);
 export const accountOwner = pgEnum("account_owner", [
   "camila",

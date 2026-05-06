@@ -4,6 +4,7 @@ import { db } from "@/db/index.ts";
 import { budgetItem, month } from "@/db/schema.ts";
 import type { ParsedSheet, Scope, Section } from "./types.ts";
 import { paydayMonthFor } from "../payday.ts";
+import { getHouseholdSettings } from "../settings.ts";
 
 export type ImportResult = {
   monthId: string;
@@ -24,7 +25,12 @@ export type ImportResult = {
 export async function upsertParsedMonth(
   parsed: ParsedSheet,
 ): Promise<ImportResult> {
-  const range = paydayMonthForAnchor(parsed.anchorYear, parsed.anchorMonth);
+  const settings = await getHouseholdSettings();
+  const range = paydayMonthForAnchor(
+    parsed.anchorYear,
+    parsed.anchorMonth,
+    settings.paydayDay,
+  );
 
   const monthRow = await ensureMonth({
     anchorYear: parsed.anchorYear,
@@ -159,8 +165,13 @@ function keyOf(scope: Scope, section: Section, naturalKey: string) {
   return `${scope}|${section}|${naturalKey}`;
 }
 
-function paydayMonthForAnchor(anchorYear: number, anchorMonth: number) {
-  // The payday-month named "May 2026" runs Apr 25 → May 24.
+function paydayMonthForAnchor(
+  anchorYear: number,
+  anchorMonth: number,
+  paydayDay: number,
+) {
+  // A point inside the calendar month before payday — paydayMonthFor maps
+  // it back to the right anchor.
   const middleOfMonth = new Date(anchorYear, anchorMonth - 1, 10);
-  return paydayMonthFor(middleOfMonth);
+  return paydayMonthFor(middleOfMonth, paydayDay);
 }

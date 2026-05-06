@@ -5,6 +5,7 @@ import { ArrowRight, Calendar, Sparkles } from "lucide-react";
 import { AnimatedNumber } from "./animated-number.tsx";
 import { formatEUR, formatPercent } from "@/lib/format.ts";
 import { daysUntilNextPayday } from "@/lib/payday.ts";
+import { getHouseholdSettings } from "@/lib/settings.ts";
 
 /**
  * v1 demo Today screen. Real data hooks come in Phase 2 (CSV ingest) and
@@ -13,7 +14,8 @@ import { daysUntilNextPayday } from "@/lib/payday.ts";
 export async function TodayScreen() {
   const locale = await getLocale();
   const t = await getTranslations();
-  const days = daysUntilNextPayday(new Date());
+  const settings = await getHouseholdSettings();
+  const days = daysUntilNextPayday(new Date(), settings.paydayDay);
 
   const planned = 5500;
   const spent = 1820;

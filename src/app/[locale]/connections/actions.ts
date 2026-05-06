@@ -7,6 +7,7 @@ import { db } from "@/db/index.ts";
 import { bankAccount, transaction } from "@/db/schema.ts";
 import { getCurrentUser } from "@/lib/auth/current-user.ts";
 import { parseIngCsv, type IngTx } from "@/lib/import/csv-ing.ts";
+import { updatePaydayDay } from "@/lib/settings.ts";
 
 const OwnerSchema = z.enum(["joint", "camila", "yann"]);
 
@@ -185,4 +186,18 @@ function defaultNicknameFor(owner: "joint" | "camila" | "yann"): string {
   if (owner === "joint") return "Joint checking";
   if (owner === "yann") return "Yann personal";
   return "Camila personal";
+}
+
+export async function setPaydayDayAction(
+  day: number,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const me = await getCurrentUser();
+  if (!me) return { ok: false, error: "Not signed in." };
+  try {
+    await updatePaydayDay(day);
+    revalidatePath("/", "layout");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: (err as Error).message };
+  }
 }
