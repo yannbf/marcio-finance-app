@@ -68,15 +68,14 @@ optional `anchor` and `scope`; the existing helpers
 (`getMonthlyAggregates`, `getUpcomingCharges`, `getSectionsForToday`)
 gained an `anchor` argument.
 
-### 7. Sheet sync as a cron job
+### 7. Sheet sync as a cron job ✅
 
-**Why:** Already in `FOLLOWUP.md` §3. Adapter exists; just needs a Vercel
-cron + a small bearer-secured route.
-
-**Build:**
-- `vercel.json`: `{ "crons": [{ "path": "/api/cron/import-sheet", "schedule": "0 6 * * *" }] }`
-- `src/app/api/cron/import-sheet/route.ts`: check `Authorization: Bearer ${CRON_SECRET}`, call `readGoogleSheet()` + `upsertParsedMonth()`, return counts.
-- Vercel env var `CRON_SECRET`.
+Done — Vercel cron at `0 6 * * *` hits `/api/cron/import-sheet`, which
+authenticates via `Authorization: Bearer ${CRON_SECRET}`, runs
+`readGoogleSheet()` → `upsertParsedMonth()` per tab, then
+`runMatchingAllAccounts()`, and returns `{ months, inserted, updated,
+unchanged, matched }`. Cron schedule lives in `vercel.json`; route is at
+`src/app/api/cron/import-sheet/route.ts`.
 
 ### 8. Match-rule confidence learning ✅
 

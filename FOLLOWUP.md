@@ -41,17 +41,17 @@ Done.
   (Next 16 Metadata API `manifest` + `icons` fields).
 - [x] Test "Add to Home Screen" on an iPhone. (manual verification)
 
-## 3. Daily Google Sheets sync (cron)
+## 3. Daily Google Sheets sync (cron) ✅
 
 Adapter is implemented (`src/lib/import/source-google.ts`) but only runs
 on user-triggered import.
 
-- [ ] `vercel.json` cron config: `0 6 * * *` → `/api/cron/import-sheet`.
-- [ ] New route at `src/app/api/cron/import-sheet/route.ts` that
+- [x] `vercel.json` cron config: `0 6 * * *` → `/api/cron/import-sheet`.
+- [x] New route at `src/app/api/cron/import-sheet/route.ts` that
   authenticates via `Authorization: Bearer ${CRON_SECRET}`, calls
   `readGoogleSheet()` + `upsertParsedMonth()` for every returned tab,
-  and returns counts.
-- [ ] `CRON_SECRET` env var in Vercel.
+  re-runs `runMatchingAllAccounts()`, and returns counts.
+- [x] `CRON_SECRET` env var in Vercel.
 
 ## 4. Sheet/CSV sources outside dev
 
