@@ -1,12 +1,17 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { magicLink } from "better-auth/plugins";
 import { db } from "@/db/index.ts";
-import { isAllowed } from "./config.ts";
+import { isAllowed, roleFor } from "./config.ts";
 
 /**
- * Better Auth — magic-link only, closed allow-list, server-side checks at
- * every entrypoint. Password auth and OAuth are intentionally disabled.
+ * Better Auth — Google OAuth only, closed allow-list, server-side checks at
+ * every entrypoint. Email/password and other OAuth providers are intentionally
+ * disabled.
+ *
+ * Allow-list enforcement happens in `databaseHooks.user.create.before`:
+ * Google may hand us a verified email for any Google account, but we only
+ * let the two configured emails actually create a Marcio account. Everyone
+ * else gets rejected before a user row is written.
  *
  * NB: this module reads DATABASE_URL at import time via the db proxy. In
  * environments where the DB is not yet configured, importing this file will
@@ -22,47 +27,34 @@ export const auth = betterAuth({
   trustedOrigins: process.env.MARCIO_TRUSTED_ORIGINS?.split(",") ?? [],
   secret: process.env.BETTER_AUTH_SECRET,
   emailAndPassword: { enabled: false },
-  plugins: [
-    magicLink({
-      sendMagicLink: async ({ email, url }) => {
-        if (!isAllowed(email)) {
-          // Silent drop. Don't tell the world whether an email is on the list.
-          return;
-        }
-        await sendLoginEmail(email, url);
-      },
-      expiresIn: 600,
-    }),
-  ],
-});
-
-async function sendLoginEmail(email: string, url: string): Promise<void> {
-  const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.MARCIO_FROM_EMAIL ?? "Marcio <onboarding@resend.dev>";
-  if (!apiKey) {
-    // Dev fallback — log the link so we can copy it. NEVER do this in prod.
-    if (process.env.NODE_ENV === "production") {
-      throw new Error("RESEND_API_KEY missing in production.");
-    }
-    // eslint-disable-next-line no-console
-    console.warn(`[marcio] dev magic link for ${email}: ${url}`);
-    return;
-  }
-
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
+  socialProviders: {
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID ?? "",
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
     },
-    body: JSON.stringify({
-      from,
-      to: [email],
-      subject: "Entrar no Marcio",
-      text: `Click to sign in: ${url}\n\n(This link expires in 10 minutes.)`,
-    }),
-  });
-  if (!res.ok) {
-    throw new Error(`Resend error: ${res.status} ${await res.text()}`);
-  }
-}
+  },
+  databaseHooks: {
+    user: {
+      create: {
+        before: async (incoming) => {
+          const email = String(incoming.email ?? "").toLowerCase();
+          if (!isAllowed(email)) {
+            // Stop the user-row insert. The OAuth callback then fails — we
+            // don't reveal whether the email exists.
+            return false;
+          }
+          const role = roleFor(email);
+          if (!role) return false;
+          return {
+            data: {
+              ...incoming,
+              email,
+              role,
+              emailVerified: true,
+            },
+          };
+        },
+      },
+    },
+  },
+});

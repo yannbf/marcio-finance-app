@@ -16,7 +16,7 @@ export default async function SignInPage({
   const t = await getTranslations("SignIn");
 
   return (
-    <main className="mx-auto flex min-h-[calc(100dvh-5rem)] w-full max-w-md flex-col justify-center gap-6 px-5 py-10">
+    <main className="mx-auto flex min-h-[100dvh] w-full max-w-md flex-col justify-center gap-6 px-5 py-10">
       <header className="flex flex-col gap-1">
         <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
           {t("title")}
@@ -28,16 +28,15 @@ export default async function SignInPage({
       </header>
       <SignInForm
         labels={{
-          emailLabel: t("emailLabel"),
-          emailPlaceholder: t("emailPlaceholder"),
-          submit: t("submit"),
-          sending: t("sending"),
-          linkSent: t("linkSent"),
-          linkSentHint: t("linkSentHint"),
+          google: t("google"),
+          signingIn: t("signingIn"),
           errorGeneric: t("errorGeneric"),
         }}
-        callbackPath={`/${locale}/sign-in/verify`}
+        callbackPath={`/${locale}`}
       />
+      <p className="text-center text-xs text-muted-foreground">
+        {t("allowlistHint")}
+      </p>
     </main>
   );
 }

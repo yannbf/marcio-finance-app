@@ -15,6 +15,8 @@ const TABS = [
 export function BottomNav() {
   const t = useTranslations("Nav");
   const pathname = usePathname();
+  // Hide the nav on auth flows — they're full-screen, no in-app navigation.
+  if (pathname === "/sign-in" || pathname.startsWith("/sign-in/")) return null;
   const isActive = (href: string) =>
     href === "/"
       ? pathname === "/"
