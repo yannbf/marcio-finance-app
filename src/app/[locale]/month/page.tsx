@@ -1,5 +1,6 @@
-import { setRequestLocale, getTranslations, getLocale } from "next-intl/server";
+import { setRequestLocale, getTranslations } from "next-intl/server";
 import { and, asc, eq, gte, inArray, lte, sql } from "drizzle-orm";
+import { cookies } from "next/headers";
 import { db } from "@/db/index.ts";
 import { budgetItem, month, transaction, txMatch } from "@/db/schema.ts";
 import { paydayMonthFor } from "@/lib/payday.ts";
@@ -13,9 +14,11 @@ import { Badge } from "@/components/ui/badge.tsx";
 import { Link } from "@/i18n/navigation.ts";
 import { formatEUR } from "@/lib/format.ts";
 import { getCurrentUser } from "@/lib/auth/current-user.ts";
+import { ScopeToggle } from "@/components/marcio/scope-toggle.tsx";
 import type { Locale } from "@/i18n/routing.ts";
 
 type Scope = "joint" | "camila" | "yann";
+const SCOPE_COOKIE = "marcio-month-scope";
 
 export default async function MonthPage({
   params,
@@ -29,13 +32,18 @@ export default async function MonthPage({
   const t = await getTranslations();
   const me = await getCurrentUser();
   const sp = await searchParams;
+  const cookieScope = (await cookies()).get(SCOPE_COOKIE)?.value;
 
-  // Default to "me" scope when we have a user, "joint" otherwise.
-  const requested = (sp.scope ?? (me ? "me" : "joint")).toLowerCase();
+  // URL > cookie > default. Default = "me" when signed in, else "joint".
+  const requested = (
+    sp.scope ?? cookieScope ?? (me ? "me" : "joint")
+  ).toLowerCase();
   const activeScope: Scope =
     requested === "joint"
       ? "joint"
       : me?.role ?? "joint"; // "me" resolves to the signed-in user's scope
+  const toggleScope: "joint" | "me" =
+    activeScope === "joint" ? "joint" : "me";
 
   // Find or fall back: current payday-month → its DB row.
   const settings = await getHouseholdSettings();
@@ -118,7 +126,7 @@ export default async function MonthPage({
           </h1>
         </div>
         <ScopeToggle
-          activeScope={activeScope}
+          activeScope={toggleScope}
           hasMe={!!me}
           jointLabel={t("Scope.joint")}
           meLabel={t("Scope.me")}
@@ -174,48 +182,6 @@ export default async function MonthPage({
 }
 
 /* -------------------------------------------------------------------------- */
-
-function ScopeToggle({
-  activeScope,
-  hasMe,
-  jointLabel,
-  meLabel,
-}: {
-  activeScope: Scope;
-  hasMe: boolean;
-  jointLabel: string;
-  meLabel: string;
-}) {
-  return (
-    <div className="flex gap-1 rounded-full border border-border/60 bg-card/50 p-1 text-xs">
-      <Link
-        href={{ pathname: "/month", query: { scope: "joint" } }}
-        className={pillClass(activeScope === "joint")}
-        aria-current={activeScope === "joint" ? "true" : undefined}
-      >
-        {jointLabel}
-      </Link>
-      {hasMe ? (
-        <Link
-          href={{ pathname: "/month", query: { scope: "me" } }}
-          className={pillClass(activeScope !== "joint")}
-          aria-current={activeScope !== "joint" ? "true" : undefined}
-        >
-          {meLabel}
-        </Link>
-      ) : null}
-    </div>
-  );
-}
-
-function pillClass(active: boolean): string {
-  return [
-    "px-3 py-1.5 rounded-full uppercase tracking-[0.14em] transition-colors",
-    active
-      ? "bg-primary text-primary-foreground"
-      : "text-muted-foreground hover:text-foreground",
-  ].join(" ");
-}
 
 function SummaryCard({
   label,
