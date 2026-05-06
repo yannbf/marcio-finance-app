@@ -36,7 +36,7 @@ src/
     inbox/page.tsx                Inbox: unmatched txns, hierarchical assignment popover
     insights/page.tsx             Insights: section breakdown + top categories + top merchants
     buckets/page.tsx              Buckets: SAZONAIS savings progress, grouped by savings_account
-    transactions/page.tsx         All Transactions (filterable; partly redundant with /activity)
+    transactions/page.tsx         All Transactions (full searchable history; reachable via /activity "see full history")
     import/page.tsx               Trigger sheet ingest
     settings/
       page.tsx                    Settings index (banks/savings/inbox links + inline payday/lang/theme)

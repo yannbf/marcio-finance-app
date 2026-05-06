@@ -19,7 +19,8 @@
     "monthSpend": "Spent this month",
     "txCount": "{n, plural, one {# transaction} other {# transactions}}",
     "upcomingTitle": "Still to pay",
-    "empty": "No transactions this month yet — upload a CSV in Settings."
+    "empty": "No transactions this month yet — upload a CSV in Settings.",
+    "seeAllHistory": "See full history"
   },
   "Today": {
     "untilPayday": "{days, plural, one {# day} other {# days}} until payday",

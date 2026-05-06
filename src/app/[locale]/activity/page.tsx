@@ -195,7 +195,8 @@ export default async function ActivityPage({
           {t("empty")}
         </Card>
       ) : (
-        groups.map((g) => (
+        <>
+        {groups.map((g) => (
           <section key={g.date} className="flex flex-col gap-1">
             <p className="sticky top-0 z-10 -mx-1 bg-background/85 px-2 py-1.5 text-xs uppercase tracking-[0.14em] text-muted-foreground backdrop-blur supports-backdrop-filter:bg-background/70">
               {g.date}
@@ -228,7 +229,14 @@ export default async function ActivityPage({
               </ul>
             </Card>
           </section>
-        ))
+        ))}
+        <Link
+          href="/transactions"
+          className="text-center text-xs text-primary underline-offset-2 hover:underline"
+        >
+          {t("seeAllHistory")}
+        </Link>
+        </>
       )}
     </main>
   );

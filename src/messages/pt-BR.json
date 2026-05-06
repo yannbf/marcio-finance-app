@@ -19,7 +19,8 @@
     "monthSpend": "Gasto do mês",
     "txCount": "{n, plural, one {# transação} other {# transações}}",
     "upcomingTitle": "A pagar ainda",
-    "empty": "Nenhuma transação neste mês ainda — suba um CSV em Ajustes."
+    "empty": "Nenhuma transação neste mês ainda — suba um CSV em Ajustes.",
+    "seeAllHistory": "Ver histórico completo"
   },
   "Today": {
     "untilPayday": "{days, plural, one {# dia} other {# dias}} até o pagamento",

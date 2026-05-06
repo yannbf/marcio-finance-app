@@ -1,9 +1,10 @@
 import { setRequestLocale, getTranslations } from "next-intl/server";
-import { and, desc, eq, inArray, or, ilike, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, or, ilike, sql } from "drizzle-orm";
 import { db } from "@/db/index.ts";
 import {
   bankAccount,
   budgetItem,
+  month,
   transaction,
   txMatch,
 } from "@/db/schema.ts";
@@ -11,7 +12,12 @@ import { Card } from "@/components/ui/card.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Link } from "@/i18n/navigation.ts";
 import { getCurrentUser } from "@/lib/auth/current-user.ts";
-import { TransactionRow } from "@/components/marcio/transaction-row.tsx";
+import { getHouseholdSettings } from "@/lib/settings.ts";
+import { paydayMonthFor } from "@/lib/payday.ts";
+import { ActivityRow } from "@/components/marcio/activity-row.tsx";
+import type { BudgetItemOption } from "@/components/marcio/inbox-row.tsx";
+import { SECTION_ORDER, SECTION_TR_KEY } from "@/lib/import/sections.ts";
+import type { Section } from "@/lib/import/types.ts";
 import type { Locale } from "@/i18n/routing.ts";
 
 const PAGE_SIZE = 100;
@@ -26,7 +32,9 @@ export default async function TransactionsPage({
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations("Transactions");
+  const tSections = await getTranslations("Sections");
   const me = await getCurrentUser();
+  const settings = await getHouseholdSettings();
   const sp = await searchParams;
 
   const allowed: ("joint" | "camila" | "yann")[] = me
@@ -63,6 +71,7 @@ export default async function TransactionsPage({
       bookingDate: transaction.bookingDate,
       amountCents: transaction.amountCents,
       matchedName: budgetItem.name,
+      owner: bankAccount.owner,
     })
     .from(transaction)
     .innerJoin(bankAccount, eq(bankAccount.id, transaction.bankAccountId))
@@ -71,6 +80,45 @@ export default async function TransactionsPage({
     .where(and(...filters))
     .orderBy(desc(transaction.bookingDate))
     .limit(PAGE_SIZE);
+
+  // Pre-load this payday-month's items for the per-row reassign popover.
+  const range = paydayMonthFor(new Date(), settings.paydayDay);
+  const [monthRow] = await db
+    .select()
+    .from(month)
+    .where(
+      and(
+        eq(month.anchorYear, range.anchorYear),
+        eq(month.anchorMonth, range.anchorMonth),
+      ),
+    );
+  const items = monthRow
+    ? await db
+        .select({
+          id: budgetItem.id,
+          name: budgetItem.name,
+          section: budgetItem.section,
+          scope: budgetItem.scope,
+        })
+        .from(budgetItem)
+        .where(eq(budgetItem.monthId, monthRow.id))
+        .orderBy(asc(budgetItem.section), asc(budgetItem.name))
+    : [];
+  const optionsAll: BudgetItemOption[] = items
+    .filter((i) => allowed.includes(i.scope as "joint" | "camila" | "yann"))
+    .map((i) => ({
+      id: i.id,
+      name: i.name,
+      section: i.section as Section,
+      scope: i.scope as "joint" | "camila" | "yann",
+    }));
+  const sectionLabels = SECTION_ORDER.reduce(
+    (acc, s) => {
+      acc[s] = tSections(SECTION_TR_KEY[s] as never);
+      return acc;
+    },
+    {} as Record<Section, string>,
+  );
 
   // Group by date for a calmer scroll.
   const groups: { date: string; rows: typeof rows }[] = [];
@@ -133,19 +181,29 @@ export default async function TransactionsPage({
             </p>
             <Card className="border-border/40 bg-card/60 p-1">
               <ul className="divide-y divide-border/40">
-                {g.rows.map((r) => (
-                  <li key={r.id} className="px-2">
-                    <TransactionRow
-                      counterparty={r.counterparty}
-                      description={r.description}
-                      bookingDate={r.bookingDate}
-                      amountCents={r.amountCents}
-                      locale={locale}
-                      matchedLabel={r.matchedName ?? null}
-                      unmatched={!r.matchedName}
-                    />
-                  </li>
-                ))}
+                {g.rows.map((r) => {
+                  const optsForScope = optionsAll.filter(
+                    (o) => o.scope === r.owner,
+                  );
+                  return (
+                    <li key={r.id} className="px-2">
+                      <ActivityRow
+                        tx={{
+                          id: r.id,
+                          counterparty: r.counterparty,
+                          description: r.description,
+                          bookingDate: r.bookingDate.toISOString(),
+                          amountCents: r.amountCents,
+                          matchedName: r.matchedName ?? null,
+                          owner: r.owner as "joint" | "camila" | "yann",
+                        }}
+                        options={optsForScope}
+                        locale={locale}
+                        sectionLabels={sectionLabels}
+                      />
+                    </li>
+                  );
+                })}
               </ul>
             </Card>
           </section>
