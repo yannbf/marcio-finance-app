@@ -7,46 +7,39 @@ ordered by leverage. Each section ends with a concrete starting point.
 > branch. The `MARCIO_DEV_AS` bypass is hard-gated to non-production, but
 > there is no real sign-in flow yet — see "Auth & sign-in" below.
 
-## 0. Rename app routes and code that is in portuguese.
+## 0. Rename app routes and code that is in portuguese. ✅
 
-The app has dual language, but the code or routes should be in english to be easier to maintain.
+Done — `/mes` → `/month`, `/atividade` → `/activity`, plus matching
+component renames (`MesPage` → `MonthPage`, `AtividadePage` → `ActivityPage`).
 
 ## 1. Auth & sign-in (blocker for real prod use)
 
-Magic-link infrastructure exists (`src/lib/auth/index.ts`) but no UI to
-trigger it.
+Magic-link infrastructure exists (`src/lib/auth/index.ts`) and the UI is
+now in place.
 
-- [ ] **Sign-in page** at `/[locale]/sign-in` with an email input that calls
-  `auth.api.signIn.magicLink({ email })`.
-- [ ] **Verify page** at `/[locale]/sign-in/verify` for the magic-link
-  callback (Better Auth handles the token, just render confirmation +
-  redirect to `/`).
-- [ ] **Auth gate** — middleware-style redirect to `/sign-in` for any
-  authenticated path when `getCurrentUser()` is null and `MARCIO_DEV_AS`
-  isn't set. Currently every page checks `me` independently and either
-  hides personal data or shows joint-only.
-- [ ] **Logout button** — single Settings entry calling `signOut()` from
-  `@/lib/auth/client.ts`.
+- [x] **Sign-in page** at `/[locale]/sign-in` with an email input that calls
+  `signIn.magicLink({ email })`.
+- [x] **Verify page** at `/[locale]/sign-in/verify` (renders error if the
+  user lands without a session; Better Auth's callback redirect lands them
+  on `/` directly when the link is valid).
+- [x] **Auth gate** in `src/proxy.ts` — redirects to `/sign-in` when no
+  Better Auth session cookie is present and `MARCIO_DEV_AS` isn't set.
+- [x] **Logout button** in Settings.
 - [ ] **Resend domain verification** — production magic links currently
   send only to your own email (Resend `onboarding@resend.dev` sender
   limitation). Verify a domain at https://resend.com/domains and update
   `MARCIO_FROM_EMAIL` so Camila can sign in too.
 
-Starting point: `src/lib/auth/client.ts` already exports `signIn` and
-`signOut`. A 30-line client component calling those is enough.
+## 2. PWA install on iPhone ✅
 
-## 2. PWA install on iPhone
+Done.
 
-The viewport meta and dark theme are already in `src/app/[locale]/layout.tsx`,
-but there's no manifest.
-
-- [ ] `public/manifest.webmanifest` with name, short_name, theme_color,
-  background_color, icons (use `/logos/ing.svg` style colored circles, or
-  generate proper icons).
-- [ ] `public/icon-192.png`, `public/icon-512.png`, `apple-touch-icon.png`.
-- [ ] `<link rel="manifest">` and apple-touch-icon meta in the layout.
-- [ ] Test "Add to Home Screen" on an iPhone — the bottom-nav already
-  respects `safe-area-inset-bottom`.
+- [x] `public/manifest.webmanifest`.
+- [x] `public/icon-192.png`, `public/icon-512.png`, `apple-touch-icon.png`,
+  `icon-maskable-512.png`. Source SVG → PNG via `scripts/generate-icons.ts`.
+- [x] `<link rel="manifest">` and apple-touch-icon meta in the layout
+  (Next 16 Metadata API `manifest` + `icons` fields).
+- [ ] Test "Add to Home Screen" on an iPhone. (manual verification)
 
 ## 3. Daily Google Sheets sync (cron)
 
@@ -88,28 +81,24 @@ Production-readiness gaps that aren't critical day one but bite eventually.
 - [ ] **Encrypted nightly DB dump** to a private bucket. Restore drill
   once.
 
-## 6. UX polish
+## 6. UX polish ✅ (mostly)
 
-Small things that nudge the app from "useful" to "delightful".
-
-- [ ] **Light theme** — `Settings → Tema` page currently shows a
-  read-only "Dark" pill. The CSS tokens for `:root` (light) already
-  exist in `globals.css`; just need a client store to toggle the `.dark`
-  class on `<html>`.
-- [ ] **Mês scope toggle persistence** — the choice resets on tab
-  switch. Persist via cookie or localStorage.
-- [ ] **Bulk assign in Inbox** — select multiple unmatched txns → one
-  popover, one rule. The Inbox currently does row-by-row.
-- [ ] **Reassign category** - upon clicking any transaction in the `/atividade` list, be able to reassign a category or to assign to a new category if it hasn't been assigned yet.
-- [ ] **/transactions vs /atividade overlap** — `/transactions` is the
-  full filterable list, `/atividade` is the current-month timeline.
-  Decide which is canonical and either delete or unify the other.
-- [ ] **Tikkie counterparty grouping view** — the user wants to see
-  totals paid/received per Tikkie counterparty (e.g. "Vieira"). The
-  Insights "Top merchants" already groups, but Tikkie txns have the
-  person buried in `description`. A Tikkie-specific page that parses
-  the person name from the description would be the small-but-nice
-  follow-up.
+- [x] **Light theme** — `Settings → Theme` is now a real Light/Dark/System
+  toggle stored in localStorage; layout pre-paint script applies the
+  saved value to avoid FOUC.
+- [x] **Month scope toggle persistence** — stored in
+  `marcio-month-scope` cookie, URL `?scope` still wins when present.
+- [x] **Bulk assign in Inbox** — checkboxes on each row with a sticky
+  bottom bar for batch assignment using a shared `BudgetItemPicker`.
+- [x] **Reassign category** — clicking any row in `/activity` (and
+  `/transactions`) opens the same picker; reassigns via
+  `assignTransactionAction`.
+- [x] **/transactions vs /activity overlap** — split cleanly: Activity
+  is the canonical month timeline, Transactions the full searchable
+  history. Cross-linked from Activity.
+- [x] **Tikkie counterparty grouping view** — `/[locale]/tikkie` groups
+  Tikkie movements by parsed person name with paid/received totals,
+  linked from Insights.
 
 ## 7. Matching improvements
 
