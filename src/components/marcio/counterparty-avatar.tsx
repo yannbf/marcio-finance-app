@@ -57,6 +57,7 @@ const LOGO_MAP: Logo[] = [
   { pattern: /belastingdienst/i, src: "/logos/belastingdienst.svg", alt: "Belastingdienst" },
   { pattern: /gemeente\s*amsterdam|belastingen/i, src: "/logos/amsterdam.svg", alt: "Gemeente Amsterdam" },
   { pattern: /\bideal\b|i?wero/i, src: "/logos/ideal.svg", alt: "iDEAL" },
+  { pattern: /\btikkie\b|aab\s*inz\s*tikkie/i, src: "/logos/tikkie.png", alt: "Tikkie" },
   // International / fintech
   { pattern: /\bwise\b/i, src: "/logos/wise.png", alt: "Wise", bg: "dark" },
   { pattern: /sumup/i, src: "/logos/sumup.jpg", alt: "SumUp", bg: "dark" },

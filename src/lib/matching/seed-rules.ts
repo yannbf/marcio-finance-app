@@ -255,6 +255,45 @@ const JOINT: SeedRule[] = [
 ];
 
 /* -------------------------------------------------------------------------- */
+/* Tikkie — applies to every scope (joint + personal). Tikkie is a Dutch       */
+/* social-payment rail: split-the-bill with friends, pay back / get paid for   */
+/* small services. We surface them under their own bucket so Insights can      */
+/* aggregate by counterparty (who you paid / received from).                   */
+/* -------------------------------------------------------------------------- */
+
+// Tikkie routes to whichever "out with friends" line exists per scope.
+// Joint → Saídas casal · Yann → Saídas · Camila → Saídas/compras.
+// If the user later adds a dedicated "Tikkie" line, they can re-assign one
+// transaction via the Inbox + "remember rule" and the learned rule will
+// outrank these going forward.
+const TIKKIE_RULES: SeedRule[] = [
+  {
+    pattern: /\btikkie\b|aab\s*inz\s*tikkie/i,
+    scopes: ["joint"],
+    section: "VARIAVEIS",
+    naturalKey: "saidas-casal",
+    confidence: 0.72,
+    label: "Tikkie (joint)",
+  },
+  {
+    pattern: /\btikkie\b|aab\s*inz\s*tikkie/i,
+    scopes: ["yann"],
+    section: "VARIAVEIS",
+    naturalKey: "saidas",
+    confidence: 0.72,
+    label: "Tikkie (Yann)",
+  },
+  {
+    pattern: /\btikkie\b|aab\s*inz\s*tikkie/i,
+    scopes: ["camila"],
+    section: "VARIAVEIS",
+    naturalKey: "saidas-compras",
+    confidence: 0.72,
+    label: "Tikkie (Camila)",
+  },
+];
+
+/* -------------------------------------------------------------------------- */
 /* Yann personal                                                               */
 /* -------------------------------------------------------------------------- */
 
@@ -401,7 +440,15 @@ const CAMILA: SeedRule[] = [
 
 /* -------------------------------------------------------------------------- */
 
-export const SEED_RULES: SeedRule[] = [...JOINT, ...YANN, ...CAMILA];
+export const SEED_RULES: SeedRule[] = [
+  ...JOINT,
+  ...YANN,
+  ...CAMILA,
+  // Tikkie last — generic catch-all that runs only when nothing else matched
+  // (the engine picks highest confidence regardless of order, so the lower
+  // 0.72 here only wins when no merchant-specific rule applies).
+  ...TIKKIE_RULES,
+];
 
 /**
  * Detect ING round-up "Afronding" transfers — small (sub-€2) automated
