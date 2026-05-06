@@ -26,33 +26,15 @@ export function TodayScreen({
   const { anchor, scope } = parseSearch(sp, defaultAnchor);
   const { data } = trpc.today.get.useQuery({ anchor, scope });
 
-  if (!data) {
-    return (
-      <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col gap-5 px-5 pb-32 pt-8">
-        <Skeleton className="h-12 w-3/4" />
-        <Skeleton className="h-32 w-full" />
-        <div className="grid grid-cols-2 gap-3">
-          <Skeleton className="h-24" />
-          <Skeleton className="h-24" />
-          <Skeleton className="h-24" />
-          <Skeleton className="h-24" />
-        </div>
-      </main>
-    );
-  }
-
-  const {
-    daysUntilPayday,
-    plannedOutflowCents,
-    spentOutflowCents,
-    incomeCents,
-    marginCents,
-    progress,
-    remainingCents,
-    forecast,
-    sectionData,
-    inboxCount,
-  } = data;
+  const daysUntilPayday = data?.daysUntilPayday ?? 0;
+  const plannedOutflowCents = data?.plannedOutflowCents ?? 0;
+  const spentOutflowCents = data?.spentOutflowCents ?? 0;
+  const marginCents = data?.marginCents ?? 0;
+  const progress = data?.progress ?? 0;
+  const remainingCents = data?.remainingCents ?? 0;
+  const forecast = data?.forecast ?? { charges: [], totalRemainingCents: 0 };
+  const sectionData = data?.sectionData ?? [];
+  const inboxCount = data?.inboxCount ?? 0;
   const sectionByKey = new Map(sectionData.map((s) => [s.section, s]));
 
   return (
@@ -67,10 +49,14 @@ export function TodayScreen({
               {t("Today.spentSoFar")}
             </h1>
           </div>
-          <Badge variant="secondary" className="gap-1.5 px-2.5 py-1">
-            <Calendar className="size-3" />
-            {t("Today.untilPayday", { days: daysUntilPayday })}
-          </Badge>
+          {data ? (
+            <Badge variant="secondary" className="gap-1.5 px-2.5 py-1">
+              <Calendar className="size-3" />
+              {t("Today.untilPayday", { days: daysUntilPayday })}
+            </Badge>
+          ) : (
+            <Skeleton className="h-6 w-24 rounded-full" />
+          )}
         </div>
         <MonthScopeBar defaultAnchor={defaultAnchor} />
       </header>
@@ -80,18 +66,26 @@ export function TodayScreen({
           {t("Today.spentSoFar")}
         </p>
         <div className="mt-1 flex items-baseline gap-2">
-          <AnimatedNumber
-            value={spentOutflowCents / 100}
-            locale={locale}
-            currency="EUR"
-            className="text-5xl font-semibold tracking-tight"
-            cacheKey="today-spent"
-          />
+          {data ? (
+            <AnimatedNumber
+              value={spentOutflowCents / 100}
+              locale={locale}
+              currency="EUR"
+              className="text-5xl font-semibold tracking-tight"
+              cacheKey="today-spent"
+            />
+          ) : (
+            <Skeleton className="h-12 w-40" />
+          )}
         </div>
         <p className="num mt-1 text-sm text-muted-foreground">
-          {t("Today.ofPlanned", {
-            planned: formatEUR(plannedOutflowCents / 100, locale),
-          })}
+          {data ? (
+            t("Today.ofPlanned", {
+              planned: formatEUR(plannedOutflowCents / 100, locale),
+            })
+          ) : (
+            <Skeleton className="inline-block h-3 w-32 align-middle" />
+          )}
         </p>
 
         <div className="mt-6 h-1.5 w-full overflow-hidden rounded-full bg-muted">
@@ -103,29 +97,52 @@ export function TodayScreen({
           />
         </div>
         <div className="num mt-3 flex items-center justify-between text-xs text-muted-foreground">
-          <span>{formatPercent(progress, locale)}</span>
-          <span>
-            {t("Today.remaining")}: {formatEUR(remainingCents / 100, locale)}
-          </span>
+          {data ? (
+            <>
+              <span>{formatPercent(progress, locale)}</span>
+              <span>
+                {t("Today.remaining")}: {formatEUR(remainingCents / 100, locale)}
+              </span>
+            </>
+          ) : (
+            <>
+              <Skeleton className="h-3 w-10" />
+              <Skeleton className="h-3 w-24" />
+            </>
+          )}
         </div>
       </Card>
 
       <div className="grid grid-cols-2 gap-3">
         {(["FIXAS", "VARIAVEIS", "SAZONAIS"] as const).map((s) => {
           const sec = sectionByKey.get(s);
-          if (!sec) return null;
+          if (sec) {
+            return (
+              <SectionDrillSheet
+                key={s}
+                data={sec}
+                label={t(`Sections.${labelKeyFor(s)}`)}
+                locale={locale}
+                accent={s === "FIXAS"}
+                paidLabel={t("Today.paidThisMonth")}
+                expectedLabel={t("Today.expectedThisMonth")}
+                totalLabel={t("Today.sectionEmpty")}
+                daySuffix={t("Today.dayPrefix")}
+              />
+            );
+          }
+          // Reserve space while data loads so the section grid doesn't shift.
           return (
-            <SectionDrillSheet
+            <Card
               key={s}
-              data={sec}
-              label={t(`Sections.${labelKeyFor(s)}`)}
-              locale={locale}
-              accent={s === "FIXAS"}
-              paidLabel={t("Today.paidThisMonth")}
-              expectedLabel={t("Today.expectedThisMonth")}
-              totalLabel={t("Today.sectionEmpty")}
-              daySuffix={t("Today.dayPrefix")}
-            />
+              className="border-border/40 bg-card/60 p-4"
+            >
+              <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                {t(`Sections.${labelKeyFor(s)}`)}
+              </p>
+              <Skeleton className="mt-1 h-6 w-24" />
+              <Skeleton className="mt-2 h-1 w-full" />
+            </Card>
           );
         })}
         <SectionStat

@@ -5,11 +5,33 @@ import { useTranslations } from "next-intl";
 import { X, Share } from "lucide-react";
 
 const DISMISS_KEY = "marcio-ios-install-dismissed-v1";
+const DISMISS_COOKIE = "marcio-install-dismissed";
+
+function alreadyDismissed(): boolean {
+  try {
+    if (localStorage.getItem(DISMISS_KEY)) return true;
+  } catch {
+    /* private mode */
+  }
+  return document.cookie.includes(`${DISMISS_COOKIE}=1`);
+}
+
+function persistDismissed(): void {
+  try {
+    localStorage.setItem(DISMISS_KEY, "1");
+  } catch {
+    /* private mode — fall back to cookie */
+  }
+  // Cookie is the belt to localStorage's suspenders — survives Safari
+  // "Clear website data" partially and works even in private mode.
+  document.cookie = `${DISMISS_COOKIE}=1; max-age=${60 * 60 * 24 * 365}; path=/; samesite=lax`;
+}
 
 /**
  * One-time hint shown to iOS Safari users who aren't already in
- * standalone mode (PWA). Self-dismissing; remembers dismissal in
- * localStorage so it never reappears.
+ * standalone mode (PWA). Self-dismissing — persists dismissal to both
+ * localStorage and a cookie so it never reappears even if one storage
+ * is wiped.
  */
 export function IosInstallHint() {
   const t = useTranslations("Install");
@@ -17,7 +39,7 @@ export function IosInstallHint() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (localStorage.getItem(DISMISS_KEY)) return;
+    if (alreadyDismissed()) return;
 
     const ua = navigator.userAgent;
     const isIos = /iPhone|iPad|iPod/.test(ua);
@@ -30,11 +52,7 @@ export function IosInstallHint() {
 
   function dismiss() {
     setShow(false);
-    try {
-      localStorage.setItem(DISMISS_KEY, "1");
-    } catch {
-      /* private mode — ignore */
-    }
+    persistDismissed();
   }
 
   if (!show) return null;

@@ -57,16 +57,6 @@ export function BucketsScreen({
   const ratio =
     groups.totalPlanned > 0 ? groups.totalActual / groups.totalPlanned : 0;
 
-  if (isLoading) {
-    return (
-      <main className="mx-auto flex w-full max-w-md flex-col gap-5 px-5 pb-8 pt-8">
-        <Skeleton className="h-12 w-3/4" />
-        <Skeleton className="h-32 w-full" />
-        <Skeleton className="h-32 w-full" />
-      </main>
-    );
-  }
-
   return (
     <main className="mx-auto flex w-full max-w-md flex-col gap-5 px-5 pb-8 pt-8">
       <header className="flex flex-col gap-3">
@@ -79,7 +69,12 @@ export function BucketsScreen({
         <MonthScopeBar defaultAnchor={defaultAnchor} />
       </header>
 
-      {!data || data.accounts.length === 0 ? (
+      {isLoading ? (
+        <>
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-32 w-full" />
+        </>
+      ) : !data || data.accounts.length === 0 ? (
         <Card className="flex flex-col items-start gap-3 border-border/40 bg-card/40 p-5 text-sm">
           <p className="text-muted-foreground">{t("noAccounts")}</p>
           <Link
