@@ -152,7 +152,7 @@ export default async function AtividadePage({
       ) : (
         groups.map((g) => (
           <section key={g.date} className="flex flex-col gap-1">
-            <p className="px-1 pt-2 text-xs uppercase tracking-[0.14em] text-muted-foreground">
+            <p className="sticky top-0 z-10 -mx-1 bg-background/85 px-2 py-1.5 text-xs uppercase tracking-[0.14em] text-muted-foreground backdrop-blur supports-backdrop-filter:bg-background/70">
               {g.date}
             </p>
             <Card className="border-border/40 bg-card/60 p-1">

@@ -76,9 +76,8 @@ export function SectionDrillSheet({
       <SheetContent
         side="bottom"
         className="max-h-[80dvh] rounded-t-2xl bg-background"
-        showCloseButton={false}
       >
-        <SheetHeader className="pt-1">
+        <SheetHeader className="pt-1 pr-12">
           <SheetTitle className="flex items-baseline justify-between text-lg">
             <span>{label}</span>
             <span className="num text-base font-normal text-muted-foreground">

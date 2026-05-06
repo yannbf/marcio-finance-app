@@ -2,6 +2,13 @@
 
 import * as React from "react"
 import { Dialog as SheetPrimitive } from "@base-ui/react/dialog"
+import {
+  motion,
+  useMotionValue,
+  useDragControls,
+  animate,
+  type PanInfo,
+} from "motion/react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -50,6 +57,7 @@ function SheetContent({
   showHandle?: boolean
 }) {
   const handle = showHandle ?? side === "bottom"
+  const isBottom = side === "bottom"
   return (
     <SheetPortal>
       <SheetOverlay />
@@ -62,21 +70,25 @@ function SheetContent({
         )}
         {...props}
       >
-        {handle ? <SheetHandle /> : null}
-        {children}
-        {!handle && showCloseButton && (
+        {isBottom ? (
+          <BottomSheetDraggable showHandle={handle}>
+            {children}
+          </BottomSheetDraggable>
+        ) : (
+          children
+        )}
+        {showCloseButton && (
           <SheetPrimitive.Close
             data-slot="sheet-close"
             render={
               <Button
                 variant="ghost"
-                className="absolute top-3 right-3"
+                className="absolute top-3 right-3 z-10"
                 size="icon-sm"
               />
             }
           >
-            <XIcon
-            />
+            <XIcon />
             <span className="sr-only">Close</span>
           </SheetPrimitive.Close>
         )}
@@ -86,37 +98,74 @@ function SheetContent({
 }
 
 /**
- * iOS-style drag indicator at the top of a bottom sheet. Acts as a close
- * affordance — pointer-down → pointer-move-down past the threshold closes
- * the sheet. The grabber pill is also a normal close target via tap.
+ * iOS-style drag-to-dismiss for bottom sheets.
+ *
+ * The whole content area is a motion.div that drags vertically. Drag is
+ * gated by dragControls so it only kicks in from the handle bar — body
+ * scrolling stays untouched. Dismiss threshold mirrors iOS: ~120px of
+ * downward offset OR a strong downward fling closes it; otherwise the
+ * sheet springs back to its resting position.
  */
-function SheetHandle() {
+function BottomSheetDraggable({
+  children,
+  showHandle,
+}: {
+  children: React.ReactNode
+  showHandle: boolean
+}) {
+  const y = useMotionValue(0)
+  const controls = useDragControls()
+  const [dragging, setDragging] = React.useState(false)
+
+  // Imperatively close by clicking a hidden close button. Keeps base-ui's
+  // open state in charge.
+  const closeRef = React.useRef<HTMLButtonElement>(null)
+  const close = React.useCallback(() => {
+    closeRef.current?.click()
+  }, [])
+
+  function onDragEnd(_: PointerEvent, info: PanInfo) {
+    setDragging(false)
+    const past = info.offset.y > 120
+    const fling = info.velocity.y > 500
+    if (past || fling) {
+      close()
+      return
+    }
+    animate(y, 0, { type: "spring", stiffness: 420, damping: 36 })
+  }
+
   return (
-    <SheetPrimitive.Close
-      data-slot="sheet-handle"
-      className="group flex w-full shrink-0 cursor-grab touch-none select-none items-center justify-center pt-3 pb-2 active:cursor-grabbing"
-      onPointerDown={(e) => {
-        const startY = e.clientY
-        const target = e.currentTarget as HTMLElement
-        const onMove = (ev: PointerEvent) => {
-          const dy = ev.clientY - startY
-          if (dy > 80) {
-            target.click()
-            cleanup()
-          }
-        }
-        const cleanup = () => {
-          window.removeEventListener("pointermove", onMove)
-          window.removeEventListener("pointerup", cleanup)
-          window.removeEventListener("pointercancel", cleanup)
-        }
-        window.addEventListener("pointermove", onMove)
-        window.addEventListener("pointerup", cleanup)
-        window.addEventListener("pointercancel", cleanup)
-      }}
+    <motion.div
+      style={{ y }}
+      drag="y"
+      dragControls={controls}
+      dragListener={false}
+      dragConstraints={{ top: 0 }}
+      dragElastic={{ top: 0.04, bottom: 0 }}
+      onDragStart={() => setDragging(true)}
+      onDragEnd={onDragEnd}
+      transition={{ type: "spring", stiffness: 420, damping: 36 }}
+      className="flex flex-col gap-4"
     >
-      <span className="h-1 w-9 rounded-full bg-muted-foreground/40 transition-colors group-hover:bg-muted-foreground/60" />
-    </SheetPrimitive.Close>
+      <SheetPrimitive.Close
+        ref={closeRef}
+        className="hidden"
+        aria-hidden
+      />
+      {showHandle ? (
+        <div
+          onPointerDown={(e) => controls.start(e)}
+          className={cn(
+            "flex w-full shrink-0 touch-none select-none items-center justify-center pt-3 pb-1.5",
+            dragging ? "cursor-grabbing" : "cursor-grab"
+          )}
+        >
+          <span className="h-1 w-9 rounded-full bg-muted-foreground/40 transition-colors hover:bg-muted-foreground/60" />
+        </div>
+      ) : null}
+      {children}
+    </motion.div>
   )
 }
 
