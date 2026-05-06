@@ -48,3 +48,17 @@ export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
   }
   return next({ ctx: { ...ctx, user: ctx.user } });
 });
+
+/**
+ * Given a context's allowed scopes and the caller's optional scope view,
+ * resolve which scopes the response should include. The scope view never
+ * expands beyond allowedScopes — privacy guard.
+ */
+export function resolveVisibleScopes(
+  allowed: Scope[],
+  view: Scope | undefined,
+): Scope[] {
+  if (!view) return allowed;
+  if (!allowed.includes(view)) return allowed;
+  return [view];
+}

@@ -1,5 +1,8 @@
+import { Suspense } from "react";
 import { setRequestLocale } from "next-intl/server";
 import { TikkieScreen } from "@/components/marcio/tikkie-screen.tsx";
+import { getHouseholdSettings } from "@/lib/settings.ts";
+import { paydayMonthFor } from "@/lib/payday.ts";
 import type { Locale } from "@/i18n/routing.ts";
 
 export default async function TikkiePage({
@@ -9,5 +12,14 @@ export default async function TikkiePage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  return <TikkieScreen locale={locale} />;
+  const settings = await getHouseholdSettings();
+  const range = paydayMonthFor(new Date(), settings.paydayDay);
+  return (
+    <Suspense>
+      <TikkieScreen
+        locale={locale}
+        defaultAnchor={{ year: range.anchorYear, month: range.anchorMonth }}
+      />
+    </Suspense>
+  );
 }

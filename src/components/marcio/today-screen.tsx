@@ -1,20 +1,30 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { Calendar, Inbox, Sparkles, ChevronRight, PieChart } from "lucide-react";
 import { AnimatedNumber } from "./animated-number.tsx";
+import { MonthScopeBar, parseSearch } from "./month-scope-bar.tsx";
 import { formatEUR, formatPercent } from "@/lib/format.ts";
 import { trpc } from "@/lib/trpc/client.ts";
 import { SectionDrillSheet } from "./section-drill-sheet.tsx";
 import { Link } from "@/i18n/navigation.ts";
 import type { Section } from "@/lib/import/types.ts";
 
-export function TodayScreen({ locale }: { locale: string }) {
+export function TodayScreen({
+  locale,
+  defaultAnchor,
+}: {
+  locale: string;
+  defaultAnchor: { year: number; month: number };
+}) {
   const t = useTranslations();
-  const { data, isLoading } = trpc.today.get.useQuery();
+  const sp = useSearchParams();
+  const { anchor, scope } = parseSearch(sp, defaultAnchor);
+  const { data } = trpc.today.get.useQuery({ anchor, scope });
 
   if (!data) {
     return (
@@ -47,19 +57,22 @@ export function TodayScreen({ locale }: { locale: string }) {
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col gap-5 px-5 pb-32 pt-8">
-      <header className="flex items-baseline justify-between">
-        <div>
-          <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-            {t("Brand.name")}
-          </p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight">
-            {t("Today.spentSoFar")}
-          </h1>
+      <header className="flex flex-col gap-3">
+        <div className="flex items-baseline justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+              {t("Brand.name")}
+            </p>
+            <h1 className="mt-1 text-2xl font-semibold tracking-tight">
+              {t("Today.spentSoFar")}
+            </h1>
+          </div>
+          <Badge variant="secondary" className="gap-1.5 px-2.5 py-1">
+            <Calendar className="size-3" />
+            {t("Today.untilPayday", { days: daysUntilPayday })}
+          </Badge>
         </div>
-        <Badge variant="secondary" className="gap-1.5 px-2.5 py-1">
-          <Calendar className="size-3" />
-          {t("Today.untilPayday", { days: daysUntilPayday })}
-        </Badge>
+        <MonthScopeBar defaultAnchor={defaultAnchor} />
       </header>
 
       <Card className="relative overflow-hidden border-border/40 bg-card/60 p-6">

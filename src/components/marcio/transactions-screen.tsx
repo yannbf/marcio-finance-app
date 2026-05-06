@@ -8,11 +8,18 @@ import { Input } from "@/components/ui/input.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { Link } from "@/i18n/navigation.ts";
 import { ActivityRow } from "./activity-row.tsx";
+import { MonthScopeBar, parseSearch } from "./month-scope-bar.tsx";
 import { trpc } from "@/lib/trpc/client.ts";
 import { SECTION_ORDER, SECTION_TR_KEY } from "@/lib/import/sections.ts";
 import type { Section } from "@/lib/import/types.ts";
 
-export function TransactionsScreen({ locale }: { locale: string }) {
+export function TransactionsScreen({
+  locale,
+  defaultAnchor,
+}: {
+  locale: string;
+  defaultAnchor: { year: number; month: number };
+}) {
   const t = useTranslations("Transactions");
   const tSections = useTranslations("Sections");
   const sp = useSearchParams();
@@ -21,10 +28,12 @@ export function TransactionsScreen({ locale }: { locale: string }) {
   const show = (showRaw === "matched" || showRaw === "unmatched"
     ? showRaw
     : "all") as "all" | "matched" | "unmatched";
+  const { scope } = parseSearch(sp, defaultAnchor);
 
   const { data, isLoading } = trpc.transactions.list.useQuery({
     q: q || undefined,
     show,
+    scope,
   });
 
   const sectionLabels = useMemo(
@@ -53,13 +62,14 @@ export function TransactionsScreen({ locale }: { locale: string }) {
 
   return (
     <main className="mx-auto flex w-full max-w-md flex-col gap-4 px-5 pb-8 pt-8">
-      <header>
+      <header className="flex flex-col gap-3">
         <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
           {t("title")}
         </p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight">
+        <h1 className="text-2xl font-semibold tracking-tight">
           {t("heading")}
         </h1>
+        <MonthScopeBar defaultAnchor={defaultAnchor} />
       </header>
 
       <form className="flex flex-col gap-3">

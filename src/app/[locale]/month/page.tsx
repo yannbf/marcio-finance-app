@@ -1,11 +1,9 @@
 import { Suspense } from "react";
 import { setRequestLocale } from "next-intl/server";
-import { cookies } from "next/headers";
 import { MonthScreen } from "@/components/marcio/month-screen.tsx";
-import { getCurrentUser } from "@/lib/auth/current-user.ts";
+import { getHouseholdSettings } from "@/lib/settings.ts";
+import { paydayMonthFor } from "@/lib/payday.ts";
 import type { Locale } from "@/i18n/routing.ts";
-
-const SCOPE_COOKIE = "marcio-month-scope";
 
 export default async function MonthPage({
   params,
@@ -15,18 +13,17 @@ export default async function MonthPage({
   const { locale } = await params;
   setRequestLocale(locale);
 
-  // Resolve the initial scope on the server so the first paint isn't
-  // forced into "joint" before the client cookie is read.
-  const me = await getCurrentUser();
-  const cookieScope = (await cookies()).get(SCOPE_COOKIE)?.value;
-  const initialScope: "joint" | "yann" | "camila" =
-    cookieScope === "joint" || !me
-      ? "joint"
-      : me.role;
+  // Compute the current payday-month server-side so the client doesn't
+  // need to know about paydayDay; the URL anchor still wins when set.
+  const settings = await getHouseholdSettings();
+  const range = paydayMonthFor(new Date(), settings.paydayDay);
 
   return (
     <Suspense>
-      <MonthScreen locale={locale} initialScope={initialScope} />
+      <MonthScreen
+        locale={locale}
+        defaultAnchor={{ year: range.anchorYear, month: range.anchorMonth }}
+      />
     </Suspense>
   );
 }

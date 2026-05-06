@@ -1,36 +1,40 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { Link } from "@/i18n/navigation.ts";
 import { CounterpartyAvatar } from "./counterparty-avatar.tsx";
+import { MonthScopeBar, parseSearch } from "./month-scope-bar.tsx";
 import { trpc } from "@/lib/trpc/client.ts";
 import { formatEUR } from "@/lib/format.ts";
 import { OUTFLOW_SECTIONS, SECTION_TR_KEY } from "@/lib/import/sections.ts";
 
-export function InsightsScreen({ locale }: { locale: string }) {
+export function InsightsScreen({
+  locale,
+  defaultAnchor,
+}: {
+  locale: string;
+  defaultAnchor: { year: number; month: number };
+}) {
   const t = useTranslations("Insights");
   const tSections = useTranslations("Sections");
   const tTikkie = useTranslations("Tikkie");
-  const { data, isLoading } = trpc.insights.get.useQuery();
+  const sp = useSearchParams();
+  const { anchor, scope } = parseSearch(sp, defaultAnchor);
+  const { data, isLoading } = trpc.insights.get.useQuery({ anchor, scope });
 
   return (
     <main className="mx-auto flex w-full max-w-md flex-col gap-5 px-5 pb-8 pt-8">
-      <header>
+      <header className="flex flex-col gap-3">
         <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
           {t("title")}
         </p>
-        <div className="mt-1 flex items-baseline justify-between">
-          <h1 className="text-2xl font-semibold tracking-tight">
-            {t("heading")}
-          </h1>
-          <span className="text-xs text-muted-foreground">
-            {data?.anchor
-              ? anchorLabel(data.anchor.year, data.anchor.month, locale)
-              : ""}
-          </span>
-        </div>
+        <h1 className="text-2xl font-semibold tracking-tight">
+          {t("heading")}
+        </h1>
+        <MonthScopeBar defaultAnchor={defaultAnchor} />
       </header>
 
       <Card className="border-border/40 bg-card/60 p-5">
@@ -155,12 +159,3 @@ export function InsightsScreen({ locale }: { locale: string }) {
   );
 }
 
-function anchorLabel(year: number, month: number, locale: string): string {
-  const date = new Date(year, month - 1, 1);
-  return new Intl.DateTimeFormat(locale, {
-    month: "long",
-    year: "numeric",
-  })
-    .format(date)
-    .replace(/^\w/, (c) => c.toUpperCase());
-}

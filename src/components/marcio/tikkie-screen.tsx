@@ -1,26 +1,37 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { CounterpartyAvatar } from "./counterparty-avatar.tsx";
+import { MonthScopeBar, parseSearch } from "./month-scope-bar.tsx";
 import { trpc } from "@/lib/trpc/client.ts";
 import { formatEUR } from "@/lib/format.ts";
 
-export function TikkieScreen({ locale }: { locale: string }) {
+export function TikkieScreen({
+  locale,
+  defaultAnchor,
+}: {
+  locale: string;
+  defaultAnchor: { year: number; month: number };
+}) {
   const t = useTranslations("Tikkie");
-  const { data, isLoading } = trpc.tikkie.get.useQuery();
+  const sp = useSearchParams();
+  const { anchor, scope } = parseSearch(sp, defaultAnchor);
+  const { data, isLoading } = trpc.tikkie.get.useQuery({ anchor, scope });
 
   return (
     <main className="mx-auto flex w-full max-w-md flex-col gap-5 px-5 pb-8 pt-8">
-      <header>
+      <header className="flex flex-col gap-3">
         <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
           {t("title")}
         </p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight">
+        <h1 className="text-2xl font-semibold tracking-tight">
           {t("heading")}
         </h1>
-        <p className="mt-1 text-xs text-muted-foreground">{t("hint")}</p>
+        <p className="text-xs text-muted-foreground">{t("hint")}</p>
+        <MonthScopeBar defaultAnchor={defaultAnchor} />
       </header>
 
       <div className="grid grid-cols-2 gap-3">

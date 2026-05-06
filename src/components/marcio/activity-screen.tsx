@@ -1,20 +1,30 @@
 "use client";
 
 import { useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { Link } from "@/i18n/navigation.ts";
 import { ActivityRow } from "./activity-row.tsx";
+import { MonthScopeBar, parseSearch } from "./month-scope-bar.tsx";
 import { trpc } from "@/lib/trpc/client.ts";
 import { formatEUR } from "@/lib/format.ts";
 import { SECTION_ORDER, SECTION_TR_KEY } from "@/lib/import/sections.ts";
 import type { Section } from "@/lib/import/types.ts";
 
-export function ActivityScreen({ locale }: { locale: string }) {
+export function ActivityScreen({
+  locale,
+  defaultAnchor,
+}: {
+  locale: string;
+  defaultAnchor: { year: number; month: number };
+}) {
   const t = useTranslations("Activity");
   const tSections = useTranslations("Sections");
-  const { data, isLoading } = trpc.activity.get.useQuery();
+  const sp = useSearchParams();
+  const { anchor, scope } = parseSearch(sp, defaultAnchor);
+  const { data, isLoading } = trpc.activity.get.useQuery({ anchor, scope });
 
   const sectionLabels = useMemo(
     () =>
@@ -42,20 +52,14 @@ export function ActivityScreen({ locale }: { locale: string }) {
 
   return (
     <main className="mx-auto flex w-full max-w-md flex-col gap-5 px-5 pb-8 pt-8">
-      <header>
+      <header className="flex flex-col gap-3">
         <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
           {t("title")}
         </p>
-        <div className="mt-1 flex items-baseline justify-between">
-          <h1 className="text-2xl font-semibold tracking-tight">
-            {t("heading")}
-          </h1>
-          <span className="text-xs text-muted-foreground">
-            {data?.anchor
-              ? anchorLabel(data.anchor.year, data.anchor.month, locale)
-              : ""}
-          </span>
-        </div>
+        <h1 className="text-2xl font-semibold tracking-tight">
+          {t("heading")}
+        </h1>
+        <MonthScopeBar defaultAnchor={defaultAnchor} />
       </header>
 
       <Card className="border-border/40 bg-card/60 p-5">
@@ -180,12 +184,3 @@ function formatGroupDate(d: Date, locale: string): string {
   });
 }
 
-function anchorLabel(year: number, monthVal: number, locale: string): string {
-  const date = new Date(year, monthVal - 1, 1);
-  return new Intl.DateTimeFormat(locale, {
-    month: "long",
-    year: "numeric",
-  })
-    .format(date)
-    .replace(/^\w/, (c) => c.toUpperCase());
-}

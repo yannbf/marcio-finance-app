@@ -1,18 +1,28 @@
 "use client";
 
 import { useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { AlertCircle, Check, Plus } from "lucide-react";
 import { Card } from "@/components/ui/card.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { Link } from "@/i18n/navigation.ts";
+import { MonthScopeBar, parseSearch } from "./month-scope-bar.tsx";
 import { trpc } from "@/lib/trpc/client.ts";
 import { formatEUR } from "@/lib/format.ts";
 
-export function BucketsScreen({ locale }: { locale: string }) {
+export function BucketsScreen({
+  locale,
+  defaultAnchor,
+}: {
+  locale: string;
+  defaultAnchor: { year: number; month: number };
+}) {
   const t = useTranslations("Buckets");
-  const { data, isLoading } = trpc.buckets.get.useQuery();
+  const sp = useSearchParams();
+  const { anchor, scope } = parseSearch(sp, defaultAnchor);
+  const { data, isLoading } = trpc.buckets.get.useQuery({ anchor, scope });
 
   const groups = useMemo(() => {
     if (!data) return { groups: [], orphans: [], totalPlanned: 0, totalActual: 0 };
@@ -59,20 +69,14 @@ export function BucketsScreen({ locale }: { locale: string }) {
 
   return (
     <main className="mx-auto flex w-full max-w-md flex-col gap-5 px-5 pb-8 pt-8">
-      <header>
+      <header className="flex flex-col gap-3">
         <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
           {t("title")}
         </p>
-        <div className="mt-1 flex items-baseline justify-between">
-          <h1 className="text-2xl font-semibold tracking-tight">
-            {t("heading")}
-          </h1>
-          <span className="text-xs text-muted-foreground">
-            {data?.anchor
-              ? anchorLabel(data.anchor.year, data.anchor.month, locale)
-              : ""}
-          </span>
-        </div>
+        <h1 className="text-2xl font-semibold tracking-tight">
+          {t("heading")}
+        </h1>
+        <MonthScopeBar defaultAnchor={defaultAnchor} />
       </header>
 
       {!data || data.accounts.length === 0 ? (
@@ -290,12 +294,3 @@ function BucketCard({
   );
 }
 
-function anchorLabel(year: number, month: number, locale: string): string {
-  const date = new Date(year, month - 1, 1);
-  return new Intl.DateTimeFormat(locale, {
-    month: "long",
-    year: "numeric",
-  })
-    .format(date)
-    .replace(/^\w/, (c) => c.toUpperCase());
-}

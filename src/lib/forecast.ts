@@ -7,7 +7,7 @@ import {
   txMatch,
 } from "@/db/schema.ts";
 import type { Scope } from "./import/types.ts";
-import { paydayMonthFor } from "./payday.ts";
+import { paydayMonthFor, paydayMonthForAnchor } from "./payday.ts";
 import { getHouseholdSettings } from "./settings.ts";
 
 export type UpcomingCharge = {
@@ -34,9 +34,12 @@ export type UpcomingCharge = {
  */
 export async function getUpcomingCharges(
   scopes: Scope[],
+  anchor?: { year: number; month: number },
 ): Promise<{ charges: UpcomingCharge[]; totalRemainingCents: number }> {
   const settings = await getHouseholdSettings();
-  const range = paydayMonthFor(new Date(), settings.paydayDay);
+  const range = anchor
+    ? paydayMonthForAnchor(anchor.year, anchor.month, settings.paydayDay)
+    : paydayMonthFor(new Date(), settings.paydayDay);
 
   const [monthRow] = await db
     .select({ id: month.id })

@@ -1,16 +1,34 @@
+import { z } from "zod";
 import { and, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import { db } from "@/db/index.ts";
 import { bankAccount, transaction } from "@/db/schema.ts";
-import { publicProcedure, router } from "../trpc.ts";
+import {
+  publicProcedure,
+  resolveVisibleScopes,
+  router,
+} from "../trpc.ts";
+import { AnchorInput, ScopeViewInput } from "../inputs.ts";
 import { getHouseholdSettings } from "@/lib/settings.ts";
-import { paydayMonthFor } from "@/lib/payday.ts";
+import { paydayMonthFor, paydayMonthForAnchor } from "@/lib/payday.ts";
 import { TIKKIE_PG_PATTERN, parseTikkiePerson } from "@/lib/tikkie.ts";
 
 export const tikkieRouter = router({
-  get: publicProcedure.query(async ({ ctx }) => {
+  get: publicProcedure
+    .input(
+      z
+        .object({ anchor: AnchorInput, scope: ScopeViewInput })
+        .optional(),
+    )
+    .query(async ({ ctx, input }) => {
     const settings = await getHouseholdSettings();
-    const range = paydayMonthFor(new Date(), settings.paydayDay);
-    const allowed = ctx.allowedScopes;
+    const range = input?.anchor
+      ? paydayMonthForAnchor(
+          input.anchor.year,
+          input.anchor.month,
+          settings.paydayDay,
+        )
+      : paydayMonthFor(new Date(), settings.paydayDay);
+    const allowed = resolveVisibleScopes(ctx.allowedScopes, input?.scope);
 
     const rows = await db
       .select({
@@ -65,6 +83,10 @@ export const tikkieRouter = router({
       },
       { paid: 0, received: 0 },
     );
-    return { byPerson: sorted, totals };
+    return {
+      anchor: { year: range.anchorYear, month: range.anchorMonth },
+      byPerson: sorted,
+      totals,
+    };
   }),
 });

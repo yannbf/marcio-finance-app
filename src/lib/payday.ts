@@ -42,6 +42,33 @@ export function paydayMonthFor(date: Date, paydayDay = DEFAULT_PAYDAY): PaydayMo
   return { anchorYear, anchorMonth, startsOn, endsOn };
 }
 
+/**
+ * Build a PaydayMonth from explicit anchor coordinates. Use this when
+ * the user is browsing a non-current month via a picker.
+ */
+export function paydayMonthForAnchor(
+  anchorYear: number,
+  anchorMonth: number,
+  paydayDay = DEFAULT_PAYDAY,
+): PaydayMonth {
+  // Pick a date that's safely *before* payday inside the anchor month so
+  // paydayMonthFor maps back to the requested anchor.
+  const middleOfMonth = new Date(anchorYear, anchorMonth - 1, 10);
+  return paydayMonthFor(middleOfMonth, paydayDay);
+}
+
+/** Walk one payday-month forward (delta=1) or back (delta=-1). */
+export function shiftAnchor(
+  year: number,
+  month: number,
+  delta: number,
+): { year: number; month: number } {
+  const m = month + delta;
+  if (m >= 1 && m <= 12) return { year, month: m };
+  if (m < 1) return { year: year - 1, month: 12 + m };
+  return { year: year + 1, month: m - 12 };
+}
+
 export function daysUntilNextPayday(now: Date, paydayDay = DEFAULT_PAYDAY): number {
   const month = paydayMonthFor(now, paydayDay);
   const next = new Date(month.endsOn);

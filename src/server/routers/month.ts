@@ -3,8 +3,9 @@ import { and, asc, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import { db } from "@/db/index.ts";
 import { budgetItem, month, transaction, txMatch } from "@/db/schema.ts";
 import { publicProcedure, router } from "../trpc.ts";
+import { AnchorInput } from "../inputs.ts";
 import { getHouseholdSettings } from "@/lib/settings.ts";
-import { paydayMonthFor } from "@/lib/payday.ts";
+import { paydayMonthFor, paydayMonthForAnchor } from "@/lib/payday.ts";
 import { monthlyContributionCents } from "@/lib/cadence.ts";
 import type { Section } from "@/lib/import/types.ts";
 
@@ -16,7 +17,7 @@ export const monthRouter = router({
    * the active payday-month coordinates so the client can render the header.
    */
   get: publicProcedure
-    .input(z.object({ scope: ScopeInput }))
+    .input(z.object({ scope: ScopeInput, anchor: AnchorInput }))
     .query(async ({ ctx, input }) => {
       // Privacy guard: reject scopes the viewer isn't allowed to see.
       if (!ctx.allowedScopes.includes(input.scope)) {
@@ -24,7 +25,13 @@ export const monthRouter = router({
       }
 
       const settings = await getHouseholdSettings();
-      const range = paydayMonthFor(new Date(), settings.paydayDay);
+      const range = input.anchor
+        ? paydayMonthForAnchor(
+            input.anchor.year,
+            input.anchor.month,
+            settings.paydayDay,
+          )
+        : paydayMonthFor(new Date(), settings.paydayDay);
       const [monthRow] = await db
         .select({ id: month.id })
         .from(month)

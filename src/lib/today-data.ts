@@ -9,7 +9,7 @@ import { and, asc, eq, gte, inArray, isNull, lte, notExists, sql } from "drizzle
 import { db } from "@/db/index.ts";
 import { budgetItem, month, transaction, txMatch } from "@/db/schema.ts";
 import type { Scope, Section } from "./import/types.ts";
-import { paydayMonthFor } from "./payday.ts";
+import { paydayMonthFor, paydayMonthForAnchor } from "./payday.ts";
 import { getHouseholdSettings } from "./settings.ts";
 import { monthlyContributionCents } from "./cadence.ts";
 
@@ -38,9 +38,12 @@ const RECURRING_SECTIONS: Section[] = ["FIXAS", "VARIAVEIS", "SAZONAIS"];
 
 export async function getSectionsForToday(
   scopes: Scope[],
+  anchor?: { year: number; month: number },
 ): Promise<SectionData[]> {
   const settings = await getHouseholdSettings();
-  const range = paydayMonthFor(new Date(), settings.paydayDay);
+  const range = anchor
+    ? paydayMonthForAnchor(anchor.year, anchor.month, settings.paydayDay)
+    : paydayMonthFor(new Date(), settings.paydayDay);
 
   const [monthRow] = await db
     .select({ id: month.id })

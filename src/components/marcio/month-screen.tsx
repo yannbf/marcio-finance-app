@@ -8,13 +8,14 @@ import { Badge } from "@/components/ui/badge.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { Check } from "lucide-react";
 import { Link } from "@/i18n/navigation.ts";
-import { ScopeToggle } from "./scope-toggle.tsx";
+import {
+  MonthScopeBar,
+  parseSearch,
+} from "./month-scope-bar.tsx";
 import { trpc } from "@/lib/trpc/client.ts";
 import { formatEUR } from "@/lib/format.ts";
 import { SECTION_ORDER, SECTION_TR_KEY } from "@/lib/import/sections.ts";
 import type { Section } from "@/lib/import/types.ts";
-
-type Scope = "joint" | "yann" | "camila";
 
 type ItemRow = {
   id: string;
@@ -26,29 +27,20 @@ type ItemRow = {
   matchCount: number;
 };
 
-const SCOPE_COOKIE = "marcio-month-scope";
-
 export function MonthScreen({
   locale,
-  initialScope,
+  defaultAnchor,
 }: {
   locale: string;
-  initialScope: Scope;
+  defaultAnchor: { year: number; month: number };
 }) {
   const t = useTranslations();
   const sp = useSearchParams();
-  const me = trpc.session.me.useQuery();
-
-  const requested = sp.get("scope") ?? readScopeCookie() ?? "joint";
-  const activeScope: Scope =
-    requested === "joint"
-      ? "joint"
-      : me.data?.role ?? initialScope;
-  const toggleScope: "joint" | "me" =
-    activeScope === "joint" ? "joint" : "me";
+  const { anchor, scope } = parseSearch(sp, defaultAnchor);
 
   const { data, isLoading } = trpc.month.get.useQuery({
-    scope: activeScope,
+    scope,
+    anchor,
   });
 
   const grouped = useMemo(() => {
@@ -64,23 +56,11 @@ export function MonthScreen({
 
   return (
     <main className="mx-auto flex w-full max-w-md flex-col gap-5 px-5 pb-8 pt-8">
-      <header className="flex items-center justify-between">
-        <div>
-          <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-            {data?.anchor
-              ? anchorLabel(data.anchor.year, data.anchor.month, locale)
-              : ""}
-          </p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight">
-            {t("Nav.month")}
-          </h1>
-        </div>
-        <ScopeToggle
-          activeScope={toggleScope}
-          hasMe={!!me.data}
-          jointLabel={t("Scope.joint")}
-          meLabel={t("Scope.me")}
-        />
+      <header className="flex flex-col gap-3">
+        <h1 className="text-2xl font-semibold tracking-tight">
+          {t("Nav.month")}
+        </h1>
+        <MonthScopeBar defaultAnchor={defaultAnchor} />
       </header>
 
       <div className="grid grid-cols-3 gap-3">
@@ -244,18 +224,3 @@ function SectionCard({
   );
 }
 
-function readScopeCookie(): string | null {
-  if (typeof document === "undefined") return null;
-  const m = document.cookie.match(/(?:^|;\s*)marcio-month-scope=([^;]+)/);
-  return m?.[1] ?? null;
-}
-
-function anchorLabel(year: number, month: number, locale: string): string {
-  const date = new Date(year, month - 1, 1);
-  return new Intl.DateTimeFormat(locale, {
-    month: "long",
-    year: "numeric",
-  })
-    .format(date)
-    .replace(/^\w/, (c) => c.toUpperCase());
-}

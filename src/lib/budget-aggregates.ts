@@ -10,7 +10,7 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db/index.ts";
 import { budgetItem, month, txMatch } from "@/db/schema.ts";
 import type { Scope, Section } from "./import/types.ts";
-import { paydayMonthFor } from "./payday.ts";
+import { paydayMonthFor, paydayMonthForAnchor } from "./payday.ts";
 import { getHouseholdSettings } from "./settings.ts";
 import { monthlyContributionCents } from "./cadence.ts";
 
@@ -31,9 +31,12 @@ export type MonthlyAggregates = {
  */
 export async function getMonthlyAggregates(
   scopes: Scope[],
+  anchor?: { year: number; month: number },
 ): Promise<MonthlyAggregates> {
   const settings = await getHouseholdSettings();
-  const range = paydayMonthFor(new Date(), settings.paydayDay);
+  const range = anchor
+    ? paydayMonthForAnchor(anchor.year, anchor.month, settings.paydayDay)
+    : paydayMonthFor(new Date(), settings.paydayDay);
 
   const [monthRow] = await db
     .select({ id: month.id })

@@ -8,7 +8,12 @@ import {
   transaction,
   txMatch,
 } from "@/db/schema.ts";
-import { publicProcedure, router } from "../trpc.ts";
+import {
+  publicProcedure,
+  resolveVisibleScopes,
+  router,
+} from "../trpc.ts";
+import { ScopeViewInput } from "../inputs.ts";
 import { getHouseholdSettings } from "@/lib/settings.ts";
 import { paydayMonthFor } from "@/lib/payday.ts";
 import type { Section } from "@/lib/import/types.ts";
@@ -24,11 +29,12 @@ export const transactionsRouter = router({
         .object({
           q: z.string().optional(),
           show: ShowFilter.optional(),
+          scope: ScopeViewInput,
         })
         .optional(),
     )
     .query(async ({ ctx, input }) => {
-      const allowed = ctx.allowedScopes;
+      const allowed = resolveVisibleScopes(ctx.allowedScopes, input?.scope);
       const filterText = (input?.q ?? "").trim();
       const show = input?.show ?? "all";
 
