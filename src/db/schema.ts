@@ -266,6 +266,12 @@ export const matchRule = pgTable(
     confidence: numeric("confidence", { precision: 4, scale: 3 }).default(
       "0.700",
     ),
+    /** Bumped when the user confirms (assigns to the same item the rule
+     *  would have picked, or accepts an existing auto-match). */
+    confirmedHits: integer("confirmed_hits").notNull().default(0),
+    /** Bumped when the user reassigns away from this rule's pick. */
+    overriddenHits: integer("overridden_hits").notNull().default(0),
+    lastUsedAt: timestamp("last_used_at"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [index("match_rule_scope_idx").on(t.scope)],

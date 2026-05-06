@@ -13,6 +13,8 @@ import { protectedProcedure, publicProcedure, router } from "../trpc.ts";
 import { getHouseholdSettings } from "@/lib/settings.ts";
 import { paydayMonthFor } from "@/lib/payday.ts";
 import { AFRONDING_PATTERN } from "@/lib/matching/seed-rules.ts";
+import { fingerprintCounterparty } from "@/lib/matching/fingerprint.ts";
+import { computeRuleConfidence } from "@/lib/matching/rule-confidence.ts";
 import type { Section } from "@/lib/import/types.ts";
 
 export const inboxRouter = router({
@@ -115,6 +117,25 @@ export const inboxRouter = router({
         .where(eq(budgetItem.id, input.budgetItemId));
       if (!bi) throw new Error("Budget item not found.");
 
+      // Look up the prior auto-rule match (if any) so we can punish the
+      // rule that picked the wrong target.
+      const [prior] = await db
+        .select({
+          source: txMatch.source,
+          budgetItemId: txMatch.budgetItemId,
+        })
+        .from(txMatch)
+        .where(eq(txMatch.transactionId, tx.id));
+      const wasOverride =
+        prior?.source === "auto-rule" && prior.budgetItemId !== bi.id;
+      const wasConfirm =
+        prior?.source === "auto-rule" && prior.budgetItemId === bi.id;
+      if (wasOverride && tx.counterparty) {
+        await bumpRule(tx.counterparty, "overridden");
+      } else if (wasConfirm && tx.counterparty) {
+        await bumpRule(tx.counterparty, "confirmed");
+      }
+
       await db
         .delete(txMatch)
         .where(eq(txMatch.transactionId, tx.id));
@@ -155,6 +176,27 @@ export const inboxRouter = router({
         .where(inArray(transaction.id, input.transactionIds));
       if (txns.length === 0) throw new Error("No transactions.");
 
+      // Bump rule overrides for any prior auto-matches the user is
+      // moving away from.
+      const priors = await db
+        .select({
+          transactionId: txMatch.transactionId,
+          source: txMatch.source,
+          budgetItemId: txMatch.budgetItemId,
+        })
+        .from(txMatch)
+        .where(inArray(txMatch.transactionId, txns.map((t) => t.id)));
+      const priorByTx = new Map(priors.map((p) => [p.transactionId, p]));
+      for (const tx of txns) {
+        const p = priorByTx.get(tx.id);
+        if (!p || p.source !== "auto-rule" || !tx.counterparty) continue;
+        if (p.budgetItemId !== bi.id) {
+          await bumpRule(tx.counterparty, "overridden");
+        } else {
+          await bumpRule(tx.counterparty, "confirmed");
+        }
+      }
+
       await db
         .delete(txMatch)
         .where(inArray(txMatch.transactionId, txns.map((t) => t.id)));
@@ -184,15 +226,49 @@ export const inboxRouter = router({
     }),
 });
 
+/**
+ * Find learned rules whose pattern matches the given counterparty in
+ * the user's scope and bump confirmedHits / overriddenHits accordingly.
+ * Recomputes confidence after each bump.
+ */
+async function bumpRule(
+  counterparty: string,
+  kind: "confirmed" | "overridden",
+): Promise<void> {
+  const text = counterparty.toLowerCase();
+  // We don't know the scope a priori — try across all rows. Cheap; the
+  // table is tiny in a two-user app.
+  const candidates = await db.select().from(matchRule);
+  for (const r of candidates) {
+    let re: RegExp;
+    try {
+      re = new RegExp(r.counterpartyPattern, "i");
+    } catch {
+      continue;
+    }
+    if (!re.test(text)) continue;
+    const confirmed =
+      r.confirmedHits + (kind === "confirmed" ? 1 : 0);
+    const overridden =
+      r.overriddenHits + (kind === "overridden" ? 1 : 0);
+    const conf = computeRuleConfidence(confirmed, overridden);
+    await db
+      .update(matchRule)
+      .set({
+        confirmedHits: confirmed,
+        overriddenHits: overridden,
+        confidence: conf.toFixed(3),
+        lastUsedAt: new Date(),
+      })
+      .where(eq(matchRule.id, r.id));
+  }
+}
+
 async function rememberRule(
   counterparty: string,
   bi: typeof budgetItem.$inferSelect,
 ): Promise<void> {
-  const pattern = counterparty
-    .toLowerCase()
-    .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-    .replace(/\s+\d+.*/g, "")
-    .trim();
+  const pattern = fingerprintCounterparty(counterparty);
   const [existing] = await db
     .select()
     .from(matchRule)
@@ -204,13 +280,26 @@ async function rememberRule(
         eq(matchRule.targetNaturalKey, bi.naturalKey),
       ),
     );
-  if (!existing) {
-    await db.insert(matchRule).values({
-      scope: bi.scope,
-      counterpartyPattern: pattern,
-      targetSection: bi.section,
-      targetNaturalKey: bi.naturalKey,
-      confidence: "0.800",
-    });
+  if (existing) {
+    // Same rule already exists — count this as a confirmation.
+    const confirmed = existing.confirmedHits + 1;
+    const overridden = existing.overriddenHits;
+    await db
+      .update(matchRule)
+      .set({
+        confirmedHits: confirmed,
+        confidence: computeRuleConfidence(confirmed, overridden).toFixed(3),
+        lastUsedAt: new Date(),
+      })
+      .where(eq(matchRule.id, existing.id));
+    return;
   }
+  await db.insert(matchRule).values({
+    scope: bi.scope,
+    counterpartyPattern: pattern,
+    targetSection: bi.section,
+    targetNaturalKey: bi.naturalKey,
+    confidence: "0.800",
+    lastUsedAt: new Date(),
+  });
 }

@@ -12,6 +12,7 @@ import {
 import { paydayMonthFor } from "../payday.ts";
 import { getHouseholdSettings } from "../settings.ts";
 import { SEED_RULES, type SeedRule } from "./seed-rules.ts";
+import { CONFIDENCE_FLOOR } from "./rule-confidence.ts";
 import type { Scope, Section } from "../import/types.ts";
 
 export type MatchOutcome = {
@@ -120,16 +121,21 @@ export async function runMatchingForAccount(
     if (!ruleHit) {
       ruleHit = bestRuleHit({
         seed: SEED_RULES,
-        learned: learnedRules.map((r) => ({
-          pattern: new RegExp(r.counterpartyPattern, "i"),
-          scopes: [r.scope as Scope],
-          section: r.targetSection as Section,
-          naturalKey: r.targetNaturalKey,
-          minAbsCents: r.minCents ?? undefined,
-          maxAbsCents: r.maxCents ?? undefined,
-          confidence: r.confidence ? Number.parseFloat(r.confidence) : 0.7,
-          label: "learned",
-        })),
+        learned: learnedRules
+          .filter((r) => {
+            const c = r.confidence ? Number.parseFloat(r.confidence) : 0.7;
+            return c >= CONFIDENCE_FLOOR;
+          })
+          .map((r) => ({
+            pattern: new RegExp(r.counterpartyPattern, "i"),
+            scopes: [r.scope as Scope],
+            section: r.targetSection as Section,
+            naturalKey: r.targetNaturalKey,
+            minAbsCents: r.minCents ?? undefined,
+            maxAbsCents: r.maxCents ?? undefined,
+            confidence: r.confidence ? Number.parseFloat(r.confidence) : 0.7,
+            label: `learned:${r.id}`,
+          })),
         owner,
         text,
         absCents,
