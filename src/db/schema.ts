@@ -139,6 +139,34 @@ export const savingsBucket = pgTable("savings_bucket", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+/* -------------------------------------------------------------------------- */
+/* Savings accounts — the "Oranje Spaarrekening V12602730" type entities the  */
+/* user can declare. Each owns a checking account (joint or personal) and a   */
+/* unique ref pattern that appears in transfer descriptions.                  */
+/* -------------------------------------------------------------------------- */
+
+export const savingsAccount = pgTable(
+  "savings_account",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    owner: accountOwner("owner").notNull(),
+    /** Unique ref appearing in CSV descriptions, e.g. "V12602730" or
+     * "N14631597". Matched case-insensitive substring against the
+     * transaction description. */
+    ref: text("ref").notNull(),
+    nickname: text("nickname").notNull(),
+    /** Optional link to a SAZONAIS budget item that gets auto-matched when
+     * a transfer to this savings account is detected. */
+    defaultBudgetItemNaturalKey: text("default_budget_item_natural_key"),
+    notes: text("notes"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("savings_account_ref_uniq").on(t.ref),
+    index("savings_account_owner_idx").on(t.owner),
+  ],
+);
+
 export const month = pgTable(
   "month",
   {

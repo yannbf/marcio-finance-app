@@ -1,17 +1,18 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import { db } from "@/db/index.ts";
 import {
   bankAccount,
   budgetItem,
   matchRule,
   month,
+  savingsAccount,
   transaction,
   txMatch,
 } from "@/db/schema.ts";
 import { paydayMonthFor } from "../payday.ts";
 import { getHouseholdSettings } from "../settings.ts";
 import { SEED_RULES, type SeedRule } from "./seed-rules.ts";
-import type { Scope } from "../import/types.ts";
+import type { Scope, Section } from "../import/types.ts";
 
 export type MatchOutcome = {
   matched: number;
@@ -67,6 +68,13 @@ export async function runMatchingForAccount(
     .from(matchRule)
     .where(eq(matchRule.scope, owner));
 
+  // Pre-load savings accounts the user can see — used to recognize transfers
+  // to/from declared savings refs (e.g. "Oranje Spaarrekening V12602730").
+  const savings = await db
+    .select()
+    .from(savingsAccount)
+    .where(inArray(savingsAccount.owner, ["joint", owner]));
+
   // Cache: anchor "YYYY-MM" → monthId, so we don't re-query for every txn.
   const monthIdCache = new Map<string, string>();
   // Cache: monthId+scope+section+key → budgetItemId
@@ -79,22 +87,44 @@ export async function runMatchingForAccount(
     const text = `${t.counterparty ?? ""} ${t.description ?? ""}`.toLowerCase();
     const absCents = Math.abs(t.amountCents);
 
-    const ruleHit = bestRuleHit({
-      seed: SEED_RULES,
-      learned: learnedRules.map((r) => ({
-        pattern: new RegExp(r.counterpartyPattern, "i"),
-        scopes: [r.scope as Scope],
-        section: r.targetSection as SeedRule["section"],
-        naturalKey: r.targetNaturalKey,
-        minAbsCents: r.minCents ?? undefined,
-        maxAbsCents: r.maxCents ?? undefined,
-        confidence: r.confidence ? Number.parseFloat(r.confidence) : 0.7,
-        label: "learned",
-      })),
-      owner,
-      text,
-      absCents,
-    });
+    // First pass: savings-account refs win over generic rules. They run
+    // when the counterparty mentions "spaarrekening" or "savings" and the
+    // description carries a known ref.
+    let ruleHit: SeedRule | null = null;
+    if (/spaarrekening|savings/i.test(text)) {
+      const sa = savings.find(
+        (s) => s.defaultBudgetItemNaturalKey != null && text.includes(s.ref.toLowerCase()),
+      );
+      if (sa && sa.defaultBudgetItemNaturalKey) {
+        ruleHit = {
+          pattern: /./,
+          scopes: [sa.owner as Scope],
+          section: "SAZONAIS",
+          naturalKey: sa.defaultBudgetItemNaturalKey,
+          confidence: 0.95,
+          label: `savings:${sa.ref}`,
+        };
+      }
+    }
+
+    if (!ruleHit) {
+      ruleHit = bestRuleHit({
+        seed: SEED_RULES,
+        learned: learnedRules.map((r) => ({
+          pattern: new RegExp(r.counterpartyPattern, "i"),
+          scopes: [r.scope as Scope],
+          section: r.targetSection as Section,
+          naturalKey: r.targetNaturalKey,
+          minAbsCents: r.minCents ?? undefined,
+          maxAbsCents: r.maxCents ?? undefined,
+          confidence: r.confidence ? Number.parseFloat(r.confidence) : 0.7,
+          label: "learned",
+        })),
+        owner,
+        text,
+        absCents,
+      });
+    }
 
     if (!ruleHit) continue;
 
