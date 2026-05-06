@@ -23,7 +23,14 @@
     "allCaughtUp": "Tudo em dia",
     "allCaughtUpHint": "Nenhuma transação precisa da sua atenção agora.",
     "inboxTitle": "Por categorizar",
-    "inboxCount": "{n, plural, one {# transação} other {# transações}}"
+    "inboxCount": "{n, plural, one {# transação} other {# transações}}",
+    "upcomingTitle": "A pagar ainda",
+    "upcomingCount": "{n, plural, one {# item} other {# itens}}",
+    "forecastDue": "data fixa",
+    "forecastHistory": "histórico",
+    "forecastMonthEnd": "fim do mês",
+    "insightsTitle": "Análises",
+    "insightsHint": "Para onde vai o dinheiro este mês"
   },
   "Sections": {
     "entradas": "Entradas",
@@ -70,6 +77,18 @@
     "empty": "Nenhuma transação encontrada.",
     "limited": "Mostrando as {n} mais recentes."
   },
+  "ItemDetail": {
+    "back": "Voltar",
+    "spent": "Gasto",
+    "received": "Recebido",
+    "ofPlanned": "de {planned} planejado",
+    "remaining": "Restante",
+    "dueDay": "Vence dia {day}",
+    "matchedTitle": "{n, plural, =0 {Sem transações vinculadas} one {# transação vinculada} other {# transações vinculadas}}",
+    "none": "Nenhuma transação ainda.",
+    "auto": "auto",
+    "learned": "regra"
+  },
   "Account": {
     "back": "Voltar",
     "empty": "Nenhuma transação ainda — suba um CSV.",
@@ -87,6 +106,20 @@
     "noBudgetItems": "Nenhum item do orçamento — importe a planilha primeiro.",
     "remember": "Lembrar para próximas vezes",
     "back": "Voltar"
+  },
+  "Buckets": {
+    "title": "Cofres",
+    "heading": "Contribuições do mês",
+    "monthlySummary": "Total contribuído",
+    "monthlyHint": "{count, plural, one {# cofre} other {# cofres}} para acompanhar.",
+    "obrigatorio": "Obrigatórios",
+    "obrigatorioHint": "Impostos e custos anuais — não dá pra pular.",
+    "lazer": "Lazer",
+    "lazerHint": "Viagens e gastos planejados.",
+    "untagged": "Outros",
+    "yearEstimate": "ano:",
+    "missed": "Faltando",
+    "empty": "Nenhum cofre ainda — importe a planilha primeiro."
   },
   "Insights": {
     "title": "Análises",

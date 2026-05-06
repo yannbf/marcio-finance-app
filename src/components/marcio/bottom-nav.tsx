@@ -1,6 +1,6 @@
 "use client";
 
-import { Home, ListChecks, Inbox, PieChart, Plug } from "lucide-react";
+import { Home, ListChecks, Inbox, PiggyBank, Plug } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation.ts";
 
@@ -8,7 +8,7 @@ const TABS = [
   { href: "/", icon: Home, key: "today" },
   { href: "/mes", icon: ListChecks, key: "month" },
   { href: "/inbox", icon: Inbox, key: "inbox" },
-  { href: "/insights", icon: PieChart, key: "insights" },
+  { href: "/buckets", icon: PiggyBank, key: "buckets" },
   { href: "/connections", icon: Plug, key: "connections" },
 ] as const;
 

@@ -23,7 +23,14 @@
     "allCaughtUp": "All caught up",
     "allCaughtUpHint": "No transactions need your attention right now.",
     "inboxTitle": "Needs categorizing",
-    "inboxCount": "{n, plural, one {# transaction} other {# transactions}}"
+    "inboxCount": "{n, plural, one {# transaction} other {# transactions}}",
+    "upcomingTitle": "Still to pay",
+    "upcomingCount": "{n, plural, one {# item} other {# items}}",
+    "forecastDue": "fixed date",
+    "forecastHistory": "from history",
+    "forecastMonthEnd": "month-end",
+    "insightsTitle": "Insights",
+    "insightsHint": "Where the money went this month"
   },
   "Sections": {
     "entradas": "Income",
@@ -70,6 +77,18 @@
     "empty": "No transactions found.",
     "limited": "Showing the {n} most recent."
   },
+  "ItemDetail": {
+    "back": "Back",
+    "spent": "Spent",
+    "received": "Received",
+    "ofPlanned": "of {planned} planned",
+    "remaining": "Remaining",
+    "dueDay": "Due on day {day}",
+    "matchedTitle": "{n, plural, =0 {No matched transactions} one {# matched transaction} other {# matched transactions}}",
+    "none": "No transactions yet.",
+    "auto": "auto",
+    "learned": "rule"
+  },
   "Account": {
     "back": "Back",
     "empty": "No transactions yet — upload a CSV.",
@@ -87,6 +106,20 @@
     "noBudgetItems": "No budget items yet — import the sheet first.",
     "remember": "Remember for next time",
     "back": "Back"
+  },
+  "Buckets": {
+    "title": "Buckets",
+    "heading": "Monthly contributions",
+    "monthlySummary": "Total contributed",
+    "monthlyHint": "{count, plural, one {# bucket} other {# buckets}} to track.",
+    "obrigatorio": "Mandatory",
+    "obrigatorioHint": "Taxes and annual fees — can't skip.",
+    "lazer": "Leisure",
+    "lazerHint": "Travel and planned spend.",
+    "untagged": "Others",
+    "yearEstimate": "year:",
+    "missed": "Missing",
+    "empty": "No buckets yet — import the sheet first."
   },
   "Insights": {
     "title": "Insights",
