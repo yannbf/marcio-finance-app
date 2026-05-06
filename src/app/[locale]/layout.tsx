@@ -7,6 +7,7 @@ import { hasLocale } from "next-intl";
 import { routing } from "@/i18n/routing.ts";
 import { BottomNav } from "@/components/marcio/bottom-nav.tsx";
 import { IosInstallHint } from "@/components/marcio/ios-install-hint.tsx";
+import { ThemeApplier } from "@/components/marcio/theme-applier.tsx";
 import { TrpcProvider } from "@/lib/trpc/provider.tsx";
 import "../globals.css";
 
@@ -72,17 +73,15 @@ export default async function LocaleLayout({
       suppressHydrationWarning
     >
       <head>
-        <script
-          // Apply the saved theme synchronously before paint to avoid FOUC.
-          // Reads marcio-theme = "dark" | "light" | "system"; defaults to dark.
-          dangerouslySetInnerHTML={{
-            __html: `(()=>{try{var t=localStorage.getItem('marcio-theme')||'dark';var d=t==='dark'||(t==='system'&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.classList.toggle('dark',d);document.documentElement.style.colorScheme=d?'dark':'light';}catch(e){document.documentElement.classList.add('dark');}})();`,
-          }}
-        />
+        {/* Pre-paint theme bootstrap. External script avoids the
+            "<script> in JSX" hydration warning, runs synchronously,
+            and ThemeApplier keeps the class in sync after navigation. */}
+        <script src="/theme-init.js" />
       </head>
       <body className="min-h-full bg-background text-foreground">
         <NextIntlClientProvider messages={messages} locale={locale}>
           <TrpcProvider>
+            <ThemeApplier />
             <div
               className="pb-[calc(5rem+env(safe-area-inset-bottom))]"
               style={{ viewTransitionName: "page" }}
