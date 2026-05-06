@@ -84,7 +84,10 @@ export function TodayScreen({
               planned: formatEUR(plannedOutflowCents / 100, locale),
             })
           ) : (
-            <Skeleton className="inline-block h-3 w-32 align-middle" />
+            <Skeleton
+              as="span"
+              className="inline-block h-3 w-32 align-middle"
+            />
           )}
         </p>
 

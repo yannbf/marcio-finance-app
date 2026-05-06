@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db/index.ts";
 import { user as userTable } from "@/db/schema.ts";
 import { auth } from "./index.ts";
+import { roleFor } from "./config.ts";
 
 export type CurrentUser = {
   id: string;
@@ -40,12 +41,39 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     name?: string | null;
     role?: "camila" | "yann";
   };
-  if (u.role !== "camila" && u.role !== "yann") return null;
+  // Happy path — Better Auth's additionalFields put role on the session.
+  if (u.role === "camila" || u.role === "yann") {
+    return {
+      id: u.id,
+      email: u.email,
+      name: u.name ?? null,
+      role: u.role,
+    };
+  }
+
+  // Fallback for user rows created before additionalFields was declared.
+  // Look up role from the DB (using the user id), or, last resort, derive
+  // it from the email + the env allow-list and backfill the row.
+  const [row] = await db
+    .select({ role: userTable.role })
+    .from(userTable)
+    .where(eq(userTable.id, u.id));
+  let role = row?.role as "camila" | "yann" | undefined;
+  if (role !== "camila" && role !== "yann") {
+    role = roleFor(u.email) ?? undefined;
+    if (role) {
+      await db
+        .update(userTable)
+        .set({ role })
+        .where(eq(userTable.id, u.id));
+    }
+  }
+  if (role !== "camila" && role !== "yann") return null;
   return {
     id: u.id,
     email: u.email,
     name: u.name ?? null,
-    role: u.role,
+    role,
   };
 }
 

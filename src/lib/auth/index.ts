@@ -27,6 +27,15 @@ export const auth = betterAuth({
   trustedOrigins: process.env.MARCIO_TRUSTED_ORIGINS?.split(",") ?? [],
   secret: process.env.BETTER_AUTH_SECRET,
   emailAndPassword: { enabled: false },
+  user: {
+    // Tell Better Auth about our extra column so it gets persisted on
+    // user creation AND included on every session payload. Without
+    // this, session.user.role is undefined even when the column exists
+    // in the DB, and getCurrentUser falls back to "no signed-in user".
+    additionalFields: {
+      role: { type: "string", required: true },
+    },
+  },
   session: {
     // 60 days. Visit at least once every two months and you stay
     // signed in indefinitely; each visit refreshes the cookie's expiry
