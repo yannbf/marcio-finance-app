@@ -1,5 +1,8 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join, dirname } from "node:path";
+// sharp is hoisted from a transitive dep — runtime resolves fine, but the
+// types aren't directly exposed under node_modules/sharp.
+// @ts-expect-error — see comment above
 import sharp from "sharp";
 
 /**
