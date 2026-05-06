@@ -27,6 +27,21 @@ export const auth = betterAuth({
   trustedOrigins: process.env.MARCIO_TRUSTED_ORIGINS?.split(",") ?? [],
   secret: process.env.BETTER_AUTH_SECRET,
   emailAndPassword: { enabled: false },
+  session: {
+    // 60 days. Visit at least once every two months and you stay
+    // signed in indefinitely; each visit refreshes the cookie's expiry
+    // back to "now + 60 days".
+    expiresIn: 60 * 60 * 24 * 60,
+    // Throttle the refresh-on-use to once per day so we don't hammer
+    // the DB on every request — but still keep the cookie fresh.
+    updateAge: 60 * 60 * 24,
+    cookieCache: {
+      // Cache the session in a signed cookie so getCurrentUser doesn't
+      // have to hit Postgres on every request inside the 5-min window.
+      enabled: true,
+      maxAge: 60 * 5,
+    },
+  },
   socialProviders: {
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID ?? "",
