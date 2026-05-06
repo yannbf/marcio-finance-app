@@ -165,27 +165,16 @@
         "notesLabel": "Notes",
         "notesPlaceholder": "e.g. monthly deposits for annual taxes",
         "optional": "optional"
-      },
-      "month": {
-        "title": "Month boundary",
-        "hint": "When the month starts for you",
-        "crumb": "Month boundary",
-        "about": "Marcio groups transactions by payday cycle, not the calendar. Change the day if your salary date moves."
-      },
-      "language": {
-        "title": "Language",
-        "hint": "English or Português (Brasil)",
-        "crumb": "Language",
-        "current": "Current",
-        "hint": "The switch applies immediately across the app."
-      },
-      "theme": {
-        "title": "Theme",
-        "hint": "Dark (light coming later)",
-        "crumb": "Theme",
-        "darkLocked": "Dark theme",
-        "hint": "Light theme is coming in a future version. For now, dark is the only option."
       }
+    },
+    "inline": {
+      "paydayTitle": "Month rollover",
+      "paydayHint": "Today on day {day} (1–28).",
+      "languageTitle": "Language",
+      "languageHint": "Applies across the app.",
+      "themeTitle": "Theme",
+      "themeHint": "Light coming soon.",
+      "themeDark": "Dark"
     },
     "paydayTitle": "Month rollover day",
     "paydayHelp": "Today the rollover is on day {day}. Change it if your payday moves.",

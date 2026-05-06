@@ -165,27 +165,16 @@
         "notesLabel": "Notas",
         "notesPlaceholder": "ex: depósitos mensais para impostos anuais",
         "optional": "opcional"
-      },
-      "month": {
-        "title": "Dia do mês",
-        "hint": "Quando o mês começa para vocês",
-        "crumb": "Dia do mês",
-        "about": "O Marcio agrupa transações pelo ciclo do pagamento, não pelo calendário civil. Mude o dia se a empresa pagar em outra data."
-      },
-      "language": {
-        "title": "Idioma",
-        "hint": "Português (Brasil) ou English",
-        "crumb": "Idioma",
-        "current": "Atual",
-        "hint": "A troca aplica imediatamente em todas as telas."
-      },
-      "theme": {
-        "title": "Tema",
-        "hint": "Escuro (em breve: claro)",
-        "crumb": "Tema",
-        "darkLocked": "Tema escuro",
-        "hint": "O tema claro entra numa próxima versão. Por enquanto, escuro é a única opção."
       }
+    },
+    "inline": {
+      "paydayTitle": "Virada do mês",
+      "paydayHint": "Hoje no dia {day} (1–28).",
+      "languageTitle": "Idioma",
+      "languageHint": "Aplica em todas as telas.",
+      "themeTitle": "Tema",
+      "themeHint": "Claro chega em breve.",
+      "themeDark": "Escuro"
     },
     "paydayTitle": "Dia da virada do mês",
     "paydayHelp": "Hoje a virada acontece no dia {day}. Mude se o pagamento mudar de dia.",
