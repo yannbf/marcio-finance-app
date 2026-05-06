@@ -265,6 +265,15 @@
     "tryAgain": "Try again",
     "signOut": "Sign out"
   },
+  "Tikkie": {
+    "title": "Tikkie",
+    "heading": "By person",
+    "hint": "Splits and reimbursements via Tikkie this month, grouped by who's on the other side.",
+    "paid": "Paid out",
+    "received": "Received",
+    "txCount": "{n, plural, one {# split} other {# splits}}",
+    "empty": "No Tikkie movements this month."
+  },
   "Theme": {
     "title": "Theme",
     "dark": "Dark",

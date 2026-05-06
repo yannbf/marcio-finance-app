@@ -8,6 +8,7 @@ import {
   txMatch,
 } from "@/db/schema.ts";
 import { Card } from "@/components/ui/card.tsx";
+import { Link } from "@/i18n/navigation.ts";
 import { CounterpartyAvatar } from "@/components/marcio/counterparty-avatar.tsx";
 import { getCurrentUser } from "@/lib/auth/current-user.ts";
 import { getHouseholdSettings } from "@/lib/settings.ts";
@@ -32,6 +33,7 @@ export default async function InsightsPage({
   setRequestLocale(locale);
   const t = await getTranslations("Insights");
   const tSections = await getTranslations("Sections");
+  const tTikkie = await getTranslations("Tikkie");
 
   const settings = await getHouseholdSettings();
   const me = await getCurrentUser();
@@ -211,6 +213,13 @@ export default async function InsightsPage({
           </ul>
         )}
       </Card>
+
+      <Link
+        href="/tikkie"
+        className="text-center text-xs text-primary underline-offset-2 hover:underline"
+      >
+        {tTikkie("heading")} →
+      </Link>
     </main>
   );
 }

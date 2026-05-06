@@ -265,6 +265,15 @@
     "tryAgain": "Tentar de novo",
     "signOut": "Sair"
   },
+  "Tikkie": {
+    "title": "Tikkie",
+    "heading": "Por pessoa",
+    "hint": "Rachas e reembolsos via Tikkie deste mês, agrupados por quem está do outro lado.",
+    "paid": "Pago",
+    "received": "Recebido",
+    "txCount": "{n, plural, one {# racha} other {# rachas}}",
+    "empty": "Nenhum movimento de Tikkie neste mês."
+  },
   "Theme": {
     "title": "Tema",
     "dark": "Escuro",
