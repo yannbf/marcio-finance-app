@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 import { TransactionRow } from "./transaction-row.tsx";
 import { BudgetItemPicker } from "./budget-item-picker.tsx";
-import { assignTransactionAction } from "@/app/[locale]/inbox/actions.ts";
+import { trpc } from "@/lib/trpc/client.ts";
 import type { BudgetItemOption } from "./inbox-row.tsx";
 import type { Section } from "@/lib/import/types.ts";
 
@@ -24,6 +24,18 @@ type Props = {
 
 export function ActivityRow({ tx, options, locale, sectionLabels }: Props) {
   const t = useTranslations("Inbox");
+  const utils = trpc.useUtils();
+  const assign = trpc.inbox.assign.useMutation({
+    onSuccess: () => {
+      utils.inbox.list.invalidate();
+      utils.activity.get.invalidate();
+      utils.today.get.invalidate();
+      utils.transactions.list.invalidate();
+      utils.month.get.invalidate();
+      utils.insights.get.invalidate();
+      utils.buckets.get.invalidate();
+    },
+  });
   return (
     <BudgetItemPicker
       trigger={
@@ -44,7 +56,7 @@ export function ActivityRow({ tx, options, locale, sectionLabels }: Props) {
       title={t("assignTo")}
       subtitle={tx.counterparty || tx.description || ""}
       onPick={async (budgetItemId, remember) => {
-        await assignTransactionAction({
+        await assign.mutateAsync({
           transactionId: tx.id,
           budgetItemId,
           rememberRule: remember,

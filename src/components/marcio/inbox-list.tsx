@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { InboxRow, type BudgetItemOption, type InboxItem } from "./inbox-row.tsx";
 import { BudgetItemPicker } from "./budget-item-picker.tsx";
-import { assignManyTransactionsAction } from "@/app/[locale]/inbox/actions.ts";
+import { trpc } from "@/lib/trpc/client.ts";
 import type { Section } from "@/lib/import/types.ts";
 
 type Owner = "joint" | "camila" | "yann";
@@ -28,6 +28,18 @@ export function InboxList({
 }: Props) {
   const t = useTranslations("Inbox");
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const utils = trpc.useUtils();
+  const bulk = trpc.inbox.assignMany.useMutation({
+    onSuccess: () => {
+      utils.inbox.list.invalidate();
+      utils.activity.get.invalidate();
+      utils.today.get.invalidate();
+      utils.transactions.list.invalidate();
+      utils.month.get.invalidate();
+      utils.insights.get.invalidate();
+      utils.buckets.get.invalidate();
+    },
+  });
 
   const selectedItems = useMemo(
     () => items.filter((it) => selected.has(it.id)),
@@ -62,7 +74,7 @@ export function InboxList({
 
   async function bulkPick(budgetItemId: string, remember: boolean) {
     const ids = [...selected];
-    const r = await assignManyTransactionsAction({
+    const r = await bulk.mutateAsync({
       transactionIds: ids,
       budgetItemId,
       rememberRule: remember,
