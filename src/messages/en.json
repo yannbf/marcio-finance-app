@@ -120,7 +120,12 @@
     "assignTo": "Assign to",
     "noBudgetItems": "No budget items yet — import the sheet first.",
     "remember": "Remember for next time",
-    "back": "Back"
+    "back": "Back",
+    "selectAll": "Select all",
+    "selected": "{n, plural, one {# selected} other {# selected}}",
+    "clearSelection": "Clear",
+    "assignSelected": "Assign {n}",
+    "bulkMixedScopes": "Bulk assign needs all selected items on the same account."
   },
   "Buckets": {
     "title": "Buckets",

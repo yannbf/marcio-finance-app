@@ -15,7 +15,8 @@ import { Card } from "@/components/ui/card.tsx";
 import { AFRONDING_PATTERN } from "@/lib/matching/seed-rules.ts";
 import { SECTION_ORDER, SECTION_TR_KEY } from "@/lib/import/sections.ts";
 import type { Section } from "@/lib/import/types.ts";
-import { InboxRow, type BudgetItemOption } from "@/components/marcio/inbox-row.tsx";
+import { type BudgetItemOption } from "@/components/marcio/inbox-row.tsx";
+import { InboxList } from "@/components/marcio/inbox-list.tsx";
 import type { Locale } from "@/i18n/routing.ts";
 
 export default async function InboxPage({
@@ -126,31 +127,19 @@ export default async function InboxPage({
           <p className="mt-1 text-xs">{t("emptyHint")}</p>
         </Card>
       ) : (
-        <Card className="border-border/40 bg-card/60 p-2">
-          <ul className="divide-y divide-border/40">
-            {visible.map((tx) => {
-              const optsForScope = optionsAll.filter(
-                (o) => o.scope === tx.owner,
-              );
-              return (
-                <li key={tx.id} className="px-2">
-                  <InboxRow
-                    tx={{
-                      id: tx.id,
-                      counterparty: tx.counterparty,
-                      description: tx.description,
-                      bookingDate: tx.bookingDate.toISOString(),
-                      amountCents: tx.amountCents,
-                    }}
-                    options={optsForScope}
-                    locale={locale}
-                    sectionLabels={sectionLabels}
-                  />
-                </li>
-              );
-            })}
-          </ul>
-        </Card>
+        <InboxList
+          items={visible.map((tx) => ({
+            id: tx.id,
+            counterparty: tx.counterparty,
+            description: tx.description,
+            bookingDate: tx.bookingDate.toISOString(),
+            amountCents: tx.amountCents,
+            owner: tx.owner as "joint" | "camila" | "yann",
+          }))}
+          optionsAll={optionsAll}
+          locale={locale}
+          sectionLabels={sectionLabels}
+        />
       )}
     </main>
   );
