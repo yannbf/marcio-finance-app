@@ -124,6 +124,79 @@ const JOINT: SeedRule[] = [
     confidence: 0.95,
     label: "Internet KPN",
   },
+  // Internet Ziggo (alternative ISP)
+  {
+    pattern: /ziggo/i,
+    scopes: ["joint"],
+    section: "FIXAS",
+    naturalKey: "internet-ziggo",
+    confidence: 0.95,
+    label: "Internet Ziggo",
+  },
+  // Energy — Eneco (alternative to Vattenfall)
+  {
+    pattern: /\beneco\b/i,
+    scopes: ["joint"],
+    section: "FIXAS",
+    naturalKey: "eletricidade-aquecimento",
+    confidence: 0.93,
+    label: "Eletricidade + Aquecimento (Eneco)",
+  },
+  // Public transport — GVB (Amsterdam transit operator)
+  {
+    pattern: /\bgvb\b/i,
+    scopes: ["joint"],
+    section: "VARIAVEIS",
+    naturalKey: "transporte",
+    confidence: 0.85,
+    label: "Transporte GVB",
+  },
+  // Food delivery (joint outings)
+  {
+    pattern: /takeaway|thuisbezorgd|deliveroo/i,
+    scopes: ["joint"],
+    section: "VARIAVEIS",
+    naturalKey: "saidas-casal",
+    confidence: 0.8,
+    label: "Takeaway / delivery",
+  },
+  // Drug stores beyond Kruidvat
+  {
+    pattern: /\betos\b/i,
+    scopes: ["joint"],
+    section: "VARIAVEIS",
+    naturalKey: "compras-geral",
+    confidence: 0.85,
+    label: "Etos",
+  },
+  // Discount retailer
+  {
+    pattern: /\baction\b/i,
+    scopes: ["joint"],
+    section: "VARIAVEIS",
+    naturalKey: "compras-geral",
+    confidence: 0.82,
+    label: "Action",
+  },
+  // Department / electronics — usually a higher-value treat purchase
+  {
+    pattern: /coolblue|bijenkorf|hema/i,
+    scopes: ["joint"],
+    section: "VARIAVEIS",
+    naturalKey: "compras-geral",
+    confidence: 0.78,
+    label: "Lojas (Coolblue/Bijenkorf/HEMA)",
+  },
+  // Tax authority — Belastingdienst direct lines (most often Reembolso Juros
+  // when it's a credit; for debits we tag it as a SAZONAIS tax line)
+  {
+    pattern: /belastingdienst/i,
+    scopes: ["joint"],
+    section: "ENTRADAS",
+    naturalKey: "reembolso-juros",
+    confidence: 0.85,
+    label: "Belastingdienst (refund)",
+  },
   // Water
   {
     pattern: /waternet|drinkwater/i,

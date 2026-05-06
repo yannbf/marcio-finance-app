@@ -1,10 +1,12 @@
 "use client";
 
 /**
- * Counterparty avatar — bundled SVG for known brands, deterministic letter
- * avatar otherwise. Images that fail to load (e.g. logo file not yet added)
- * fall back to the letter avatar at runtime, so the LOGO_MAP can grow over
- * time without crashing the UI.
+ * Counterparty avatar — bundled brand logos for known merchants, deterministic
+ * letter avatar otherwise. Each logo entry specifies its file (any extension)
+ * and the background tone the logo was designed for. NL retail logos rendered
+ * on a white chip read like the real app icons people recognize; Apple/Wise/
+ * Sumup come from brandfetch's "dark" theme so they sit on the app surface
+ * without a chip.
  */
 
 import { useState } from "react";
@@ -16,22 +18,49 @@ type Props = {
   className?: string;
 };
 
-const LOGO_MAP: { pattern: RegExp; src: string; alt: string }[] = [
-  { pattern: /albert\s*heijn|\bah\s+(to\s+go|amsterdam)/i, src: "/logos/ah.svg", alt: "Albert Heijn" },
-  { pattern: /kruidvat/i, src: "/logos/kruidvat.svg", alt: "Kruidvat" },
+type Logo = {
+  pattern: RegExp;
+  src: string;
+  alt: string;
+  /** "white" = render on a white chip with subtle padding (default for color
+   * logos). "dark" = render directly on the avatar surface. */
+  bg?: "white" | "dark";
+};
+
+const LOGO_MAP: Logo[] = [
+  // Groceries / supermarket
+  { pattern: /albert\s*heijn|\bah\s+(to\s+go|amsterdam)/i, src: "/logos/ah.png", alt: "Albert Heijn" },
+  // Drug stores
+  { pattern: /kruidvat/i, src: "/logos/kruidvat.png", alt: "Kruidvat" },
+  { pattern: /\betos\b/i, src: "/logos/etos.png", alt: "Etos" },
+  // General retail
   { pattern: /\bbol\.?com\b/i, src: "/logos/bol.svg", alt: "Bol.com" },
-  { pattern: /\btemu\b/i, src: "/logos/temu.svg", alt: "Temu" },
+  { pattern: /\bhema\b/i, src: "/logos/hema.png", alt: "HEMA" },
+  { pattern: /\baction\b/i, src: "/logos/action.png", alt: "Action" },
+  { pattern: /coolblue/i, src: "/logos/coolblue.png", alt: "Coolblue" },
+  { pattern: /bijenkorf/i, src: "/logos/bijenkorf.png", alt: "De Bijenkorf" },
+  // E-commerce
+  { pattern: /\btemu\b/i, src: "/logos/temu.svg", alt: "Temu", bg: "dark" },
+  // Energy
   { pattern: /vattenfall/i, src: "/logos/vattenfall.svg", alt: "Vattenfall" },
-  { pattern: /ing\s*hypotheken|^ing\b/i, src: "/logos/ing.svg", alt: "ING" },
+  { pattern: /\beneco\b/i, src: "/logos/eneco.png", alt: "Eneco" },
+  // Telecom
   { pattern: /\bkpn\b/i, src: "/logos/kpn.svg", alt: "KPN" },
-  { pattern: /\bvgz\b/i, src: "/logos/vgz.svg", alt: "VGZ" },
-  { pattern: /\bwise\b/i, src: "/logos/wise.svg", alt: "Wise" },
+  { pattern: /ziggo/i, src: "/logos/ziggo.svg", alt: "Ziggo" },
+  // Transport
   { pattern: /ovpay/i, src: "/logos/ovpay.svg", alt: "OV-pay" },
-  { pattern: /apple\.?com\/bill|apple\s*icloud/i, src: "/logos/apple.svg", alt: "Apple" },
-  { pattern: /\bhbo\b|max\.com/i, src: "/logos/hbomax.svg", alt: "HBO Max" },
-  { pattern: /\btikkie\b/i, src: "/logos/tikkie.svg", alt: "Tikkie" },
-  { pattern: /sumup/i, src: "/logos/sumup.svg", alt: "SumUp" },
+  { pattern: /\bgvb\b/i, src: "/logos/gvb.png", alt: "GVB" },
+  // Food delivery
+  { pattern: /\btakeaway\b|thuisbezorgd/i, src: "/logos/takeaway.svg", alt: "Takeaway" },
+  // Banking & gov
+  { pattern: /ing\s*hypotheken|^ing\b|ing\s*basic|ing\s*kosten/i, src: "/logos/ing.svg", alt: "ING" },
+  { pattern: /belastingdienst/i, src: "/logos/belastingdienst.svg", alt: "Belastingdienst" },
   { pattern: /gemeente\s*amsterdam|belastingen/i, src: "/logos/amsterdam.svg", alt: "Gemeente Amsterdam" },
+  { pattern: /\bideal\b|i?wero/i, src: "/logos/ideal.svg", alt: "iDEAL" },
+  // International / fintech
+  { pattern: /\bwise\b/i, src: "/logos/wise.png", alt: "Wise", bg: "dark" },
+  { pattern: /sumup/i, src: "/logos/sumup.jpg", alt: "SumUp", bg: "dark" },
+  { pattern: /apple\.?com\/bill|apple\s*icloud/i, src: "/logos/apple.png", alt: "Apple", bg: "dark" },
 ];
 
 const PALETTE = [
@@ -53,9 +82,12 @@ export function CounterpartyAvatar({ name, size = 36, className }: Props) {
 
   const hit = LOGO_MAP.find((l) => l.pattern.test(trimmed));
   if (hit && !errored) {
+    const isWhite = hit.bg !== "dark";
     return (
       <span
-        className={`relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-card ring-1 ring-border/40 ${className ?? ""}`}
+        className={`relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full ring-1 ring-border/40 ${
+          isWhite ? "bg-white" : "bg-card"
+        } ${className ?? ""}`}
         style={{ width: size, height: size }}
       >
         <Image
@@ -63,7 +95,7 @@ export function CounterpartyAvatar({ name, size = 36, className }: Props) {
           alt={hit.alt}
           width={size}
           height={size}
-          className="object-contain p-1"
+          className="object-contain p-1.5"
           onError={() => setErrored(true)}
           unoptimized
         />
