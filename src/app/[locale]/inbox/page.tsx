@@ -13,6 +13,8 @@ import { getHouseholdSettings } from "@/lib/settings.ts";
 import { getCurrentUser } from "@/lib/auth/current-user.ts";
 import { Card } from "@/components/ui/card.tsx";
 import { AFRONDING_PATTERN } from "@/lib/matching/seed-rules.ts";
+import { SECTION_ORDER, SECTION_TR_KEY } from "@/lib/import/sections.ts";
+import type { Section } from "@/lib/import/types.ts";
 import { InboxRow, type BudgetItemOption } from "@/components/marcio/inbox-row.tsx";
 import type { Locale } from "@/i18n/routing.ts";
 
@@ -24,6 +26,7 @@ export default async function InboxPage({
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations("Inbox");
+  const tSections = await getTranslations("Sections");
   const me = await getCurrentUser();
   const settings = await getHouseholdSettings();
 
@@ -89,9 +92,17 @@ export default async function InboxPage({
     .map((i) => ({
       id: i.id,
       name: i.name,
-      section: i.section,
+      section: i.section as Section,
       scope: i.scope as "joint" | "camila" | "yann",
     }));
+
+  const sectionLabels = SECTION_ORDER.reduce(
+    (acc, s) => {
+      acc[s] = tSections(SECTION_TR_KEY[s] as never);
+      return acc;
+    },
+    {} as Record<Section, string>,
+  );
 
   return (
     <main className="mx-auto flex w-full max-w-md flex-col gap-4 px-5 pb-8 pt-8">
@@ -133,6 +144,7 @@ export default async function InboxPage({
                     }}
                     options={optsForScope}
                     locale={locale}
+                    sectionLabels={sectionLabels}
                   />
                 </li>
               );
