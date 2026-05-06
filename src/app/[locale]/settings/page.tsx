@@ -1,12 +1,16 @@
 import { setRequestLocale, getTranslations } from "next-intl/server";
-import { Banknote, PiggyBank, ChevronRight } from "lucide-react";
+import { and, eq, inArray, notExists, sql } from "drizzle-orm";
+import { Banknote, PiggyBank, Inbox, ChevronRight } from "lucide-react";
 import { Card } from "@/components/ui/card.tsx";
 import { Link } from "@/i18n/navigation.ts";
+import { db } from "@/db/index.ts";
+import { bankAccount, transaction, txMatch } from "@/db/schema.ts";
 import { getCurrentUser } from "@/lib/auth/current-user.ts";
 import { getHouseholdSettings } from "@/lib/settings.ts";
 import { PaydayInline } from "@/components/marcio/payday-inline.tsx";
 import { LanguageSwitch } from "@/components/marcio/language-switch.tsx";
 import { ThemeIndicator } from "@/components/marcio/theme-indicator.tsx";
+import { AFRONDING_PATTERN } from "@/lib/matching/seed-rules.ts";
 import type { Locale } from "@/i18n/routing.ts";
 
 export default async function SettingsPage({
@@ -19,6 +23,29 @@ export default async function SettingsPage({
   const t = await getTranslations("Settings");
   const me = await getCurrentUser();
   const settings = await getHouseholdSettings();
+  const allowed: ("joint" | "camila" | "yann")[] = me
+    ? ["joint", me.role]
+    : ["joint"];
+
+  // Inbox count for the badge — same filter as the Inbox screen so the
+  // numbers don't disagree (Afronding round-ups excluded).
+  const [{ n }] = await db
+    .select({ n: sql<string>`COUNT(*)` })
+    .from(transaction)
+    .innerJoin(bankAccount, eq(bankAccount.id, transaction.bankAccountId))
+    .where(
+      and(
+        inArray(bankAccount.owner, allowed),
+        notExists(
+          db
+            .select({ one: sql`1` })
+            .from(txMatch)
+            .where(eq(txMatch.transactionId, transaction.id)),
+        ),
+        sql`NOT (${transaction.counterparty} ~* ${AFRONDING_PATTERN.source})`,
+      ),
+    );
+  const inboxCount = Number.parseInt(n, 10);
 
   return (
     <main className="mx-auto flex w-full max-w-md flex-col gap-5 px-5 pb-8 pt-8">
@@ -72,6 +99,30 @@ export default async function SettingsPage({
                   {t("sections.savings.hint")}
                 </p>
               </div>
+              <ChevronRight className="size-4 text-muted-foreground" />
+            </Link>
+          </li>
+          <li>
+            <Link
+              href="/inbox"
+              className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-card/40"
+            >
+              <div className="grid size-9 place-items-center rounded-full bg-secondary text-foreground/80">
+                <Inbox className="size-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium">
+                  {t("sections.inbox.title")}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {t("sections.inbox.hint")}
+                </p>
+              </div>
+              {inboxCount > 0 ? (
+                <span className="num grid h-5 min-w-5 place-items-center rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">
+                  {inboxCount}
+                </span>
+              ) : null}
               <ChevronRight className="size-4 text-muted-foreground" />
             </Link>
           </li>

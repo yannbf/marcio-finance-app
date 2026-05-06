@@ -1,13 +1,13 @@
 "use client";
 
-import { Home, ListChecks, Inbox, PiggyBank, Settings as Cog } from "lucide-react";
+import { Home, ListChecks, Activity, PiggyBank, Settings as Cog } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation.ts";
 
 const TABS = [
   { href: "/", icon: Home, key: "today" },
   { href: "/mes", icon: ListChecks, key: "month" },
-  { href: "/inbox", icon: Inbox, key: "inbox" },
+  { href: "/atividade", icon: Activity, key: "activity" },
   { href: "/buckets", icon: PiggyBank, key: "buckets" },
   { href: "/settings", icon: Cog, key: "settings" },
 ] as const;
