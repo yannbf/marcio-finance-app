@@ -108,7 +108,10 @@ export function BudgetItemPicker({
             </div>
           </header>
 
-          <div className="max-h-[60dvh] overflow-y-auto border-t border-border/60 py-1">
+          <div
+            data-sheet-scroll
+            className="max-h-[60dvh] overflow-y-auto border-t border-border/60 py-1"
+          >
             {grouped.length === 0 ? (
               <p className="px-4 py-6 text-center text-sm text-muted-foreground">
                 {t("noBudgetItems")}

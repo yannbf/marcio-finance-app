@@ -155,11 +155,17 @@ function BottomSheetDraggable({
     animate(y, 0, { type: "spring", stiffness: 420, damping: 36 })
   }
 
-  // The "drag zone" covers the handle + ~52px below it (typical sheet
-  // header area). That makes it easy to grab from anywhere near the top
-  // without stealing pointer events from the scrollable content below.
+  // Conditional drag start. We want to drag the sheet from anywhere
+  // (header, body, scrollable list at scrollTop=0). But if the user
+  // started the gesture inside an inner scroll container that's
+  // already scrolled, let that container scroll instead.
   const startDrag = React.useCallback(
-    (e: React.PointerEvent) => controls.start(e),
+    (e: React.PointerEvent) => {
+      const target = e.target as HTMLElement | null;
+      const scroller = target?.closest<HTMLElement>("[data-sheet-scroll]");
+      if (scroller && scroller.scrollTop > 0) return;
+      controls.start(e);
+    },
     [controls],
   )
 
@@ -174,30 +180,21 @@ function BottomSheetDraggable({
       onDragStart={() => setDragging(true)}
       onDragEnd={onDragEnd}
       transition={{ type: "spring", stiffness: 420, damping: 36 }}
-      className="relative flex flex-col gap-4"
+      onPointerDown={startDrag}
+      className={cn(
+        "relative flex flex-col gap-4",
+        dragging ? "cursor-grabbing" : "cursor-grab",
+      )}
     >
       <SheetPrimitive.Close
         ref={closeRef}
         className="hidden"
         aria-hidden
       />
-      {/* Drag-grab zone — overlays the top ~64px of the sheet so touches
-          on the handle, title, or near-header area all start a drag. */}
-      <div
-        onPointerDown={startDrag}
-        className={cn(
-          "absolute inset-x-0 top-0 z-10 h-16 touch-none select-none",
-          dragging ? "cursor-grabbing" : "cursor-grab",
-        )}
-        aria-hidden
-      />
       {showHandle ? (
         <div
-          onPointerDown={startDrag}
-          className={cn(
-            "flex w-full shrink-0 touch-none select-none items-center justify-center pt-3 pb-1.5",
-            dragging ? "cursor-grabbing" : "cursor-grab"
-          )}
+          className="flex w-full shrink-0 select-none items-center justify-center pt-3 pb-1.5"
+          aria-hidden
         >
           <span className="h-1 w-9 rounded-full bg-muted-foreground/40 transition-colors hover:bg-muted-foreground/60" />
         </div>
