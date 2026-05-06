@@ -26,6 +26,7 @@ import { formatEUR } from "@/lib/format.ts";
 import { getCurrentUser } from "@/lib/auth/current-user.ts";
 import { getHouseholdSettings } from "@/lib/settings.ts";
 import { paydayMonthFor } from "@/lib/payday.ts";
+import { monthlyContributionCents } from "@/lib/cadence.ts";
 import type { Locale } from "@/i18n/routing.ts";
 
 export default async function BucketsPage({
@@ -122,11 +123,17 @@ export default async function BucketsPage({
     }
   }
 
-  // Aggregate per account.
+  // Aggregate per account. SAZONAIS items hold yearly costs in the sheet,
+  // so what counts toward this month's contribution is amount/12. Actuals
+  // are already this-month numbers — no conversion needed.
   const groups = accounts.map((a) => {
     const list = itemsByAccount.get(a.id) ?? [];
     const planned = list.reduce(
-      (s, i) => s + Math.abs(i.plannedCents),
+      (s, i) =>
+        s +
+        Math.abs(
+          monthlyContributionCents(i.plannedCents, "SAZONAIS"),
+        ),
       0,
     );
     const actual = list.reduce(
@@ -197,6 +204,10 @@ export default async function BucketsPage({
               account={g.account}
               items={g.items.map((it) => ({
                 ...it,
+                plannedCents: monthlyContributionCents(
+                  it.plannedCents,
+                  "SAZONAIS",
+                ),
                 actualCents: Math.abs(sumByItem.get(it.id) ?? 0),
               }))}
               plannedCents={g.planned}
@@ -219,7 +230,9 @@ export default async function BucketsPage({
           <Card className="border-border/40 bg-card/40 p-1">
             <ul className="divide-y divide-border/40">
               {orphans.map((it) => {
-                const planned = Math.abs(it.plannedCents);
+                const planned = Math.abs(
+                  monthlyContributionCents(it.plannedCents, "SAZONAIS"),
+                );
                 const actual = Math.abs(sumByItem.get(it.id) ?? 0);
                 return (
                   <li key={it.id}>

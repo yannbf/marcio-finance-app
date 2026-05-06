@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge.tsx";
 import { TransactionRow } from "@/components/marcio/transaction-row.tsx";
 import { Link } from "@/i18n/navigation.ts";
 import { formatEUR } from "@/lib/format.ts";
+import { monthlyContributionCents } from "@/lib/cadence.ts";
 import { getCurrentUser } from "@/lib/auth/current-user.ts";
 import { SECTION_TR_KEY } from "@/lib/import/sections.ts";
 import type { Section } from "@/lib/import/types.ts";
@@ -61,10 +62,14 @@ export default async function BudgetItemDetailPage({
     .orderBy(asc(transaction.bookingDate));
 
   const actualCents = rows.reduce((s, r) => s + r.allocatedCents, 0);
-  const plannedCents = item.plannedCents;
-  const isOutflow = plannedCents < 0;
+  const plannedMonthly = monthlyContributionCents(
+    item.plannedCents,
+    item.section as Section,
+  );
+  const isOutflow = item.plannedCents < 0;
   const absActual = Math.abs(actualCents);
-  const absPlanned = Math.abs(plannedCents);
+  const absPlanned = Math.abs(plannedMonthly);
+  const isSazonal = item.section === "SAZONAIS";
   const ratio = absPlanned > 0 ? Math.min(1, absActual / absPlanned) : 0;
   const remaining = absPlanned - absActual;
 
@@ -105,6 +110,13 @@ export default async function BudgetItemDetailPage({
         <p className="num mt-1 text-sm text-muted-foreground">
           {t("ofPlanned", { planned: formatEUR(absPlanned / 100, locale) })}
         </p>
+        {isSazonal ? (
+          <p className="num mt-1 text-[11px] text-muted-foreground">
+            {t("yearlyHint", {
+              yearly: formatEUR(Math.abs(item.plannedCents) / 100, locale),
+            })}
+          </p>
+        ) : null}
 
         <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-muted">
           <div

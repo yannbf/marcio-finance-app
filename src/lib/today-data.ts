@@ -11,6 +11,7 @@ import { budgetItem, month, transaction, txMatch } from "@/db/schema.ts";
 import type { Scope, Section } from "./import/types.ts";
 import { paydayMonthFor } from "./payday.ts";
 import { getHouseholdSettings } from "./settings.ts";
+import { monthlyContributionCents } from "./cadence.ts";
 
 export type SectionItemRow = {
   id: string;
@@ -171,7 +172,7 @@ export async function getSectionsForToday(
     cur.push({
       id: it.id,
       name: it.name,
-      plannedCents: it.plannedCents,
+      plannedCents: monthlyContributionCents(it.plannedCents, sec),
       actualCents,
       status: isPaid ? "paid" : "expected",
       predictedDay,

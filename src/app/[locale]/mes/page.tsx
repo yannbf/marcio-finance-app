@@ -1,11 +1,13 @@
 import { setRequestLocale, getTranslations, getLocale } from "next-intl/server";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import { db } from "@/db/index.ts";
-import { budgetItem, month } from "@/db/schema.ts";
+import { budgetItem, month, transaction, txMatch } from "@/db/schema.ts";
 import { paydayMonthFor } from "@/lib/payday.ts";
 import { getHouseholdSettings } from "@/lib/settings.ts";
+import { monthlyContributionCents } from "@/lib/cadence.ts";
 import { SECTION_ORDER, SECTION_TR_KEY } from "@/lib/import/sections.ts";
 import type { Section } from "@/lib/import/types.ts";
+import { Check } from "lucide-react";
 import { Card } from "@/components/ui/card.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
 import { Link } from "@/i18n/navigation.ts";
@@ -48,7 +50,7 @@ export default async function MesPage({
       ),
     );
 
-  const items = monthRow
+  const rawItems = monthRow
     ? await db
         .select()
         .from(budgetItem)
@@ -60,6 +62,46 @@ export default async function MesPage({
         )
         .orderBy(asc(budgetItem.section), asc(budgetItem.name))
     : [];
+
+  // Match counts per item this payday-month — drives the paid/unpaid badge.
+  const matchCounts = rawItems.length
+    ? await db
+        .select({
+          itemId: txMatch.budgetItemId,
+          count: sql<string>`COUNT(*)`,
+        })
+        .from(txMatch)
+        .innerJoin(transaction, eq(transaction.id, txMatch.transactionId))
+        .where(
+          and(
+            inArray(
+              txMatch.budgetItemId,
+              rawItems.map((i) => i.id),
+            ),
+            gte(transaction.bookingDate, range.startsOn),
+            lte(transaction.bookingDate, range.endsOn),
+          ),
+        )
+        .groupBy(txMatch.budgetItemId)
+    : [];
+
+  const matchByItem = new Map<string, number>(
+    matchCounts.map((r) => [r.itemId, Number.parseInt(r.count, 10)]),
+  );
+
+  // Apply monthly conversion to plannedCents (SAZONAIS yearly → monthly).
+  const items: ItemRow[] = rawItems.map((it) => ({
+    id: it.id,
+    name: it.name,
+    section: it.section as Section,
+    plannedCents: monthlyContributionCents(
+      it.plannedCents,
+      it.section as Section,
+    ),
+    dueDay: it.dueDay,
+    sazonalKind: it.sazonalKind as "O" | "L" | null,
+    matchCount: matchByItem.get(it.id) ?? 0,
+  }));
 
   const grouped = groupBySection(items);
   const totals = computeTotals(items);
@@ -229,9 +271,21 @@ function SectionCard({
           <li key={item.id}>
             <Link
               href={`/mes/${item.id}` as `/mes/${string}`}
-              className="-mx-2 flex items-baseline justify-between gap-3 rounded px-2 py-2 text-sm transition-colors hover:bg-card/40"
+              className="-mx-2 flex items-center justify-between gap-3 rounded px-2 py-2 text-sm transition-colors hover:bg-card/40"
             >
-              <span className="flex items-baseline gap-2 truncate">
+              <span
+                className={`grid size-5 shrink-0 place-items-center rounded-full ${
+                  item.matchCount > 0
+                    ? "bg-primary/15 text-primary"
+                    : "border border-dashed border-border/60"
+                }`}
+                aria-label={item.matchCount > 0 ? "paid" : "not paid"}
+              >
+                {item.matchCount > 0 ? (
+                  <Check className="size-3" strokeWidth={3} />
+                ) : null}
+              </span>
+              <span className="flex flex-1 items-baseline gap-2 truncate">
                 <span className="truncate">{item.name}</span>
                 {item.dueDay ? (
                   <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">
@@ -267,6 +321,7 @@ type ItemRow = {
   plannedCents: number;
   dueDay: number | null;
   sazonalKind: "O" | "L" | null;
+  matchCount: number;
 };
 
 function groupBySection(rows: ItemRow[]): Partial<Record<Section, ItemRow[]>> {

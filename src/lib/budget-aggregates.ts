@@ -12,6 +12,7 @@ import { budgetItem, month, txMatch } from "@/db/schema.ts";
 import type { Scope, Section } from "./import/types.ts";
 import { paydayMonthFor } from "./payday.ts";
 import { getHouseholdSettings } from "./settings.ts";
+import { monthlyContributionCents } from "./cadence.ts";
 
 export type SectionTotals = Partial<Record<Section, number>>;
 
@@ -54,10 +55,19 @@ export async function getMonthlyAggregates(
     };
   }
 
+  // Sum of planned amounts per section. SAZONAIS items are stored yearly
+  // in the sheet; divide them by 12 in SQL so the monthly screens get
+  // the right contribution-per-month figure.
   const plannedRows = await db
     .select({
       section: budgetItem.section,
-      sum: sql<string>`COALESCE(SUM(${budgetItem.plannedCents}), 0)`,
+      sum: sql<string>`COALESCE(SUM(
+        CASE
+          WHEN ${budgetItem.section} = 'SAZONAIS'
+            THEN ROUND(${budgetItem.plannedCents}::numeric / 12)
+          ELSE ${budgetItem.plannedCents}
+        END
+      ), 0)`,
     })
     .from(budgetItem)
     .where(
@@ -108,6 +118,8 @@ export const OUTFLOW_SECTIONS: Section[] = [
   "SAZONAIS",
   "DIVIDAS",
 ];
+
+export { monthlyContributionCents };
 
 export function totalOutflow(t: SectionTotals): number {
   let sum = 0;
