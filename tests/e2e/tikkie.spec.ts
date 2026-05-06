@@ -27,7 +27,7 @@ test.describe("Tikkie page", () => {
       page.getByRole("button", { name: "Previous month" }),
     ).toBeVisible();
     await expect(
-      page.getByRole("combobox").filter({ hasText: "Joint" }),
+      page.getByRole("radio", { name: "Joint" }),
     ).toBeVisible();
   });
 });

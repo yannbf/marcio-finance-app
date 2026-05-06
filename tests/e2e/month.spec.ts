@@ -9,14 +9,13 @@ test.describe("Month screen", () => {
     await expect(page.getByText("Income").first()).toBeVisible();
   });
 
-  test("scope dropdown persists in a cookie across reloads", async ({
+  test("scope toggle persists in a cookie across reloads", async ({
     page,
     context,
   }) => {
     await page.goto("/en/month");
-    // Open the Joint/Me Select and pick Me.
-    await page.getByRole("combobox", { name: /Joint/ }).click();
-    await page.getByRole("option", { name: "Me" }).click();
+    // Click the Me radio pill.
+    await page.getByRole("radio", { name: "Me" }).click();
     await expect
       .poll(async () => {
         const cookies = await context.cookies();
@@ -25,10 +24,9 @@ test.describe("Month screen", () => {
       .toMatch(/^(yann|camila)$/);
 
     await page.goto("/en/month");
-    // The trigger now reads "Me" — no aria-current; just label match.
     await expect(
-      page.getByRole("combobox").filter({ hasText: "Me" }),
-    ).toBeVisible();
+      page.getByRole("radio", { name: "Me" }),
+    ).toHaveAttribute("aria-checked", "true");
   });
 
   test("month picker walks back and forward", async ({ page }) => {

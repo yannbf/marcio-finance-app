@@ -18,7 +18,7 @@ the deferred-work backlog, then this file for orientation.
 - Stack: **Next.js 16.2 (App Router), Tailwind v4, base-ui via shadcn, Drizzle, Postgres (Neon), Better Auth + Google OAuth, next-intl 4 (pt-BR default + en), Motion 12, tRPC 11 + TanStack Query 5**.
 - Two users only (Yann + Camila), declared by allow-list (Better Auth `databaseHooks.user.create.before`).
 - Months are **payday-anchored** (default day 25). Don't think calendar months — think `paydayMonthFor(date, paydayDay)` and `paydayMonthForAnchor(year, month, paydayDay)` everywhere.
-- **Scope** is `joint | yann | camila`. Privacy guards on every server boundary: a personal item / account / savings is only visible to its owner; joint is visible to both. The `scope` URL param + `MonthScopeBar` (a `Joint / Me` Select dropdown) lets the user filter on every page that supports it. The cookie `marcio-month-scope` carries the last-chosen scope across pages.
+- **Scope** is `joint | yann | camila`. Privacy guards on every server boundary: a personal item / account / savings is only visible to its owner; joint is visible to both. The `scope` URL param + `MonthScopeBar` (a compact `Joint / Me` two-pill toggle with icons) lets the user filter on every page that supports it. The cookie `marcio-month-scope` carries the last-chosen scope across pages.
 - **Inner pages are client-rendered** from a tRPC API at `/api/rpc/*` cached by TanStack Query (with sessionStorage persistence). The page boundary is a thin server component that resolves the locale + the default month anchor and mounts a `<…Screen>` client component. The screen reads URL state (`?anchor=YYYY-MM&scope=…`) and calls `trpc.<router>.<proc>.useQuery({ anchor, scope })`. Sign-in and the import flow stay server-rendered.
 - Matching engine: hand-tuned **seed rules** in `src/lib/matching/seed-rules.ts` + learned rules in `match_rule` table. Confidence is updated by a Bayesian-ish formula (`lib/matching/rule-confidence.ts`); rules below 0.4 are dropped from the candidate pool. Counterparty fingerprints are normalized via `lib/matching/fingerprint.ts` (city tails, terminal IDs, trailing digits stripped) before learning.
 - **Postgres regex gotcha**: `~*` runs POSIX regex, which treats JS-style `\b` as backspace and `\s` as the literal "s". Hardcoded patterns that get shipped to SQL live as separate constants (e.g. `TIKKIE_PG_PATTERN`, `AFRONDING_PG_PATTERN`).
@@ -54,7 +54,7 @@ src/
     ui/                           shadcn primitives (button, card, input, select, popover, sheet…)
     marcio/                       App-specific components, including:
                                     - …-screen.tsx files: client components for each route
-                                    - month-scope-bar.tsx: ← month → + Joint/Me dropdown
+                                    - month-scope-bar.tsx: ← month → + Joint/Me pill toggle
                                     - budget-item-picker.tsx: hierarchical bottom-sheet
                                     - theme-applier.tsx: keeps html.dark in sync
                                                          across locale switches
@@ -259,8 +259,9 @@ The theme has two parts:
   `<Link locale={…} />` would have React's reconciler wipe the `.dark`
   class back to the static server value during a soft navigation.
 
-Theme + scope are now both `<Select>` dropdowns rather than radio
-segments — saves horizontal space on the mobile-first layout.
+Theme is a compact `<Select>` dropdown; scope (Joint / Me) is a
+two-pill radiogroup with `Users` / `User` icons — keeps the toggle
+one tap away while staying narrow.
 
 ## Conventions
 

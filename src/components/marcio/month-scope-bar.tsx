@@ -1,16 +1,11 @@
 "use client";
 
-import { useMemo } from "react";
+import { useId, useMemo } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { ChevronLeft, ChevronRight, Users, User } from "lucide-react";
 import { useTranslations } from "next-intl";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select.tsx";
+import { motion } from "motion/react";
+import { cn } from "@/lib/utils.ts";
 import { shiftAnchor } from "@/lib/payday.ts";
 import { trpc } from "@/lib/trpc/client.ts";
 
@@ -58,6 +53,10 @@ export function MonthScopeBar({
   }
 
   const meScope: Scope | undefined = me.data?.role;
+  // A unique layoutId per MonthScopeBar instance so multiple bars on the
+  // same page (shouldn't happen, but cheap insurance) don't fight over
+  // the shared "active pill" thumb animation.
+  const thumbId = useId();
   const localized = anchorLabel(anchor.year, anchor.month, "en");
 
   return (
@@ -85,41 +84,78 @@ export function MonthScopeBar({
       </div>
 
       {showScope ? (
-        <Select
-          value={scope}
-          onValueChange={(v) =>
-            navigate({ ...anchor, scope: v as Scope })
-          }
+        <div
+          className="relative flex items-center gap-0.5 rounded-full border border-border/60 bg-card/50 p-0.5 text-xs"
+          role="radiogroup"
+          aria-label={t("Scope.joint")}
         >
-          <SelectTrigger size="sm" aria-label={t("Scope.joint")}>
-            <SelectValue>
-              <span className="flex items-center gap-1.5">
-                {scope === "joint" ? (
-                  <Users className="size-3.5" />
-                ) : (
-                  <User className="size-3.5" />
-                )}
-                {scope === "joint"
-                  ? t("Scope.joint")
-                  : t("Scope.me")}
-              </span>
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="joint">
-              <Users className="size-3.5" />
-              {t("Scope.joint")}
-            </SelectItem>
-            {meScope ? (
-              <SelectItem value={meScope}>
-                <User className="size-3.5" />
-                {t("Scope.me")}
-              </SelectItem>
-            ) : null}
-          </SelectContent>
-        </Select>
+          <ScopePill
+            active={scope === "joint"}
+            label={t("Scope.joint")}
+            onClick={() => navigate({ ...anchor, scope: "joint" })}
+            icon={<Users className="size-3.5" />}
+            thumbId={thumbId}
+          />
+          {meScope ? (
+            <ScopePill
+              active={scope === meScope}
+              label={t("Scope.me")}
+              onClick={() => navigate({ ...anchor, scope: meScope })}
+              icon={<User className="size-3.5" />}
+              thumbId={thumbId}
+            />
+          ) : null}
+        </div>
       ) : null}
     </div>
+  );
+}
+
+function ScopePill({
+  active,
+  label,
+  onClick,
+  icon,
+  thumbId,
+}: {
+  active: boolean;
+  label: string;
+  onClick: () => void;
+  icon: React.ReactNode;
+  thumbId: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={active}
+      aria-current={active ? "true" : undefined}
+      onClick={onClick}
+      className="relative flex h-7 items-center gap-1 rounded-full px-2.5"
+      title={label}
+    >
+      {/* Sliding background — Motion's layoutId animates the same DOM
+          node between pills so the highlight glides instead of popping. */}
+      {active ? (
+        <motion.span
+          layoutId={`scope-thumb-${thumbId}`}
+          className="absolute inset-0 -z-0 rounded-full bg-primary"
+          transition={{ type: "spring", stiffness: 500, damping: 38 }}
+          aria-hidden
+        />
+      ) : null}
+      <span
+        className={cn(
+          "relative z-10 flex items-center gap-1 transition-colors duration-150",
+          active
+            ? "text-primary-foreground"
+            : "text-muted-foreground hover:text-foreground",
+        )}
+      >
+        {icon}
+        <span className="uppercase tracking-[0.14em]">{label}</span>
+      </span>
+    </button>
   );
 }
 

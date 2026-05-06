@@ -14,9 +14,9 @@ test.describe("MonthScopeBar coverage", () => {
       await expect(
         page.getByRole("button", { name: "Next month" }),
       ).toBeVisible();
-      // Scope is a dropdown — its trigger has the current label "Joint".
+      // Scope is a two-pill radiogroup with Joint / Me icons.
       await expect(
-        page.getByRole("combobox").filter({ hasText: "Joint" }),
+        page.getByRole("radio", { name: "Joint" }),
       ).toBeVisible();
     });
   }
