@@ -130,7 +130,6 @@ async function run() {
         0,
         180,
       ),
-      currency: "EUR",
     });
   }
   console.log(
