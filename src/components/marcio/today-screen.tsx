@@ -1,26 +1,48 @@
 import { getLocale, getTranslations } from "next-intl/server";
 import { Card } from "@/components/ui/card.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
-import { ArrowRight, Calendar, Sparkles } from "lucide-react";
+import { Calendar, Inbox, Sparkles } from "lucide-react";
+import { sql, and, eq, inArray, notExists } from "drizzle-orm";
+import { db } from "@/db/index.ts";
+import { bankAccount, transaction, txMatch } from "@/db/schema.ts";
 import { AnimatedNumber } from "./animated-number.tsx";
 import { formatEUR, formatPercent } from "@/lib/format.ts";
 import { daysUntilNextPayday } from "@/lib/payday.ts";
 import { getHouseholdSettings } from "@/lib/settings.ts";
+import { getCurrentUser } from "@/lib/auth/current-user.ts";
+import {
+  getMonthlyAggregates,
+  totalIncome,
+  totalOutflow,
+} from "@/lib/budget-aggregates.ts";
+import { Link } from "@/i18n/navigation.ts";
+import type { Scope } from "@/lib/import/types.ts";
 
-/**
- * v1 demo Today screen. Real data hooks come in Phase 2 (CSV ingest) and
- * Phase 4 (forecast). Numbers below are deliberately fabricated placeholders.
- */
 export async function TodayScreen() {
   const locale = await getLocale();
   const t = await getTranslations();
   const settings = await getHouseholdSettings();
+  const me = await getCurrentUser();
   const days = daysUntilNextPayday(new Date(), settings.paydayDay);
 
-  const planned = 5500;
-  const spent = 1820;
-  const remaining = planned - spent;
-  const progress = spent / planned;
+  const scopes: Scope[] = me ? ["joint", me.role] : ["joint"];
+  const agg = await getMonthlyAggregates(scopes);
+
+  // Both planned and actual outflow are negative cents — flip to positive
+  // for the "spent so far" UX so growth is visually positive.
+  const plannedOutflowCents = Math.abs(totalOutflow(agg.planned));
+  const spentOutflowCents = Math.abs(totalOutflow(agg.actual));
+  const incomeCents = totalIncome(agg.planned);
+  const marginCents = incomeCents + totalOutflow(agg.planned);
+
+  const progress =
+    plannedOutflowCents > 0 ? spentOutflowCents / plannedOutflowCents : 0;
+  const remainingCents = Math.max(
+    0,
+    plannedOutflowCents - spentOutflowCents,
+  );
+
+  const inboxCount = await unmatchedCount(scopes);
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col gap-6 px-5 pb-32 pt-8">
@@ -45,67 +67,92 @@ export async function TodayScreen() {
         </p>
         <div className="mt-1 flex items-baseline gap-2">
           <AnimatedNumber
-            value={spent}
+            value={spentOutflowCents / 100}
             locale={locale}
             currency="EUR"
             className="text-5xl font-semibold tracking-tight"
+            cacheKey={`today-spent-${scopes.join("-")}`}
           />
         </div>
         <p className="mt-1 text-sm text-muted-foreground num">
-          {t("Today.ofPlanned", { planned: formatEUR(planned, locale) })}
+          {t("Today.ofPlanned", {
+            planned: formatEUR(plannedOutflowCents / 100, locale),
+          })}
         </p>
 
         <div className="mt-6 h-1.5 w-full overflow-hidden rounded-full bg-muted">
           <div
             className="h-full rounded-full bg-primary transition-[width] duration-700 ease-out"
-            style={{ width: `${Math.min(100, progress * 100).toFixed(2)}%` }}
+            style={{
+              width: `${Math.min(100, progress * 100).toFixed(2)}%`,
+            }}
           />
         </div>
         <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground num">
           <span>{formatPercent(progress, locale)}</span>
           <span>
-            {t("Today.remaining")}: {formatEUR(remaining, locale)}
+            {t("Today.remaining")}: {formatEUR(remainingCents / 100, locale)}
           </span>
         </div>
       </Card>
 
       <div className="grid grid-cols-2 gap-3">
-        <MiniStat
+        <SectionStat
           label={t("Sections.fixas")}
-          value={966}
+          plannedCents={Math.abs(agg.planned["FIXAS"] ?? 0)}
+          actualCents={Math.abs(agg.actual["FIXAS"] ?? 0)}
           locale={locale}
           accent
         />
-        <MiniStat
+        <SectionStat
           label={t("Sections.variaveis")}
-          value={770}
+          plannedCents={Math.abs(agg.planned["VARIAVEIS"] ?? 0)}
+          actualCents={Math.abs(agg.actual["VARIAVEIS"] ?? 0)}
           locale={locale}
         />
-        <MiniStat
+        <SectionStat
           label={t("Sections.sazonais")}
-          value={580}
+          plannedCents={Math.abs(agg.planned["SAZONAIS"] ?? 0)}
+          actualCents={Math.abs(agg.actual["SAZONAIS"] ?? 0)}
           locale={locale}
         />
-        <MiniStat
+        <SectionStat
           label={t("Sections.margem")}
-          value={-232}
+          plannedCents={marginCents}
+          actualCents={null}
           locale={locale}
-          tone={-232 < 0 ? "negative" : "neutral"}
+          tone={marginCents < 0 ? "negative" : "neutral"}
+          signed
         />
       </div>
 
-      <Card className="flex items-center gap-3 border-border/40 bg-card/60 p-5">
-        <div className="grid size-9 place-items-center rounded-full bg-primary/15 text-primary">
-          <Sparkles className="size-4" />
-        </div>
-        <div className="flex-1">
-          <p className="text-sm font-medium">{t("Today.allCaughtUp")}</p>
-          <p className="text-xs text-muted-foreground">
-            {t("Today.allCaughtUpHint")}
-          </p>
-        </div>
-        <ArrowRight className="size-4 text-muted-foreground" />
-      </Card>
+      {inboxCount > 0 ? (
+        <Link href="/inbox" className="block">
+          <Card className="flex items-center gap-3 border-border/40 bg-card/60 p-5 transition-colors hover:bg-card/80">
+            <div className="grid size-9 place-items-center rounded-full bg-primary/15 text-primary">
+              <Inbox className="size-4" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium">{t("Today.inboxTitle")}</p>
+              <p className="text-xs text-muted-foreground num">
+                {t("Today.inboxCount", { n: inboxCount })}
+              </p>
+            </div>
+          </Card>
+        </Link>
+      ) : (
+        <Card className="flex items-center gap-3 border-border/40 bg-card/60 p-5">
+          <div className="grid size-9 place-items-center rounded-full bg-primary/15 text-primary">
+            <Sparkles className="size-4" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-medium">{t("Today.allCaughtUp")}</p>
+            <p className="text-xs text-muted-foreground">
+              {t("Today.allCaughtUpHint")}
+            </p>
+          </div>
+        </Card>
+      )}
 
       <p className="text-center text-xs text-muted-foreground">
         {t("Today.monthAnchor")}
@@ -114,31 +161,79 @@ export async function TodayScreen() {
   );
 }
 
-function MiniStat({
+/* -------------------------------------------------------------------------- */
+
+function SectionStat({
   label,
-  value,
+  plannedCents,
+  actualCents,
   locale,
-  tone = "neutral",
   accent = false,
+  tone = "neutral",
+  signed = false,
 }: {
   label: string;
-  value: number;
+  plannedCents: number;
+  actualCents: number | null;
   locale: string;
-  tone?: "neutral" | "negative";
   accent?: boolean;
+  tone?: "neutral" | "negative";
+  signed?: boolean;
 }) {
+  const showActual = actualCents !== null;
+  const big = showActual ? actualCents : plannedCents;
+  const ratio =
+    showActual && plannedCents > 0
+      ? Math.min(1, actualCents / plannedCents)
+      : 0;
   return (
     <Card
-      className={`border-border/40 bg-card/60 p-4 ${accent ? "ring-1 ring-primary/30" : ""}`}
+      className={`relative overflow-hidden border-border/40 bg-card/60 p-4 ${
+        accent ? "ring-1 ring-primary/30" : ""
+      }`}
     >
       <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
         {label}
       </p>
       <p
-        className={`num mt-1 text-xl font-semibold tracking-tight ${tone === "negative" ? "text-destructive" : ""}`}
+        className={`num mt-1 text-xl font-semibold tracking-tight ${
+          tone === "negative" ? "text-destructive" : ""
+        }`}
       >
-        {formatEUR(value, locale)}
+        {formatEUR((signed ? big : big) / 100, locale)}
       </p>
+      {showActual ? (
+        <p className="num mt-0.5 text-[11px] text-muted-foreground">
+          / {formatEUR(plannedCents / 100, locale)}
+        </p>
+      ) : null}
+      {showActual && plannedCents > 0 ? (
+        <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-muted">
+          <div
+            className="h-full rounded-full bg-primary"
+            style={{ width: `${(ratio * 100).toFixed(2)}%` }}
+          />
+        </div>
+      ) : null}
     </Card>
   );
+}
+
+async function unmatchedCount(scopes: Scope[]): Promise<number> {
+  const [{ n }] = await db
+    .select({ n: sql<string>`COUNT(*)` })
+    .from(transaction)
+    .innerJoin(bankAccount, eq(bankAccount.id, transaction.bankAccountId))
+    .where(
+      and(
+        inArray(bankAccount.owner, scopes),
+        notExists(
+          db
+            .select({ one: sql`1` })
+            .from(txMatch)
+            .where(eq(txMatch.transactionId, transaction.id)),
+        ),
+      ),
+    );
+  return Number.parseInt(n, 10);
 }
