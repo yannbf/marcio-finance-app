@@ -9,7 +9,8 @@
     "inbox": "Inbox",
     "buckets": "Buckets",
     "insights": "Insights",
-    "connections": "Connections"
+    "connections": "Connections",
+    "settings": "Settings"
   },
   "Today": {
     "untilPayday": "{days, plural, one {# day} other {# days}} until payday",
@@ -30,7 +31,11 @@
     "forecastHistory": "from history",
     "forecastMonthEnd": "month-end",
     "insightsTitle": "Insights",
-    "insightsHint": "Where the money went this month"
+    "insightsHint": "Where the money went this month",
+    "paidThisMonth": "Paid this month",
+    "expectedThisMonth": "Expected",
+    "sectionEmpty": "Nothing planned in this section.",
+    "dayPrefix": "day"
   },
   "Sections": {
     "entradas": "Income",
@@ -133,6 +138,55 @@
     "hits": "{n, plural, one {# transaction} other {# transactions}}"
   },
   "Settings": {
+    "title": "Settings",
+    "heading": "Configuration",
+    "sections": {
+      "banks": {
+        "title": "Banks & accounts",
+        "hint": "Upload CSV, see connected accounts",
+        "crumb": "Banks"
+      },
+      "savings": {
+        "title": "Savings accounts",
+        "hint": "Define which savings accounts you use",
+        "crumb": "Savings",
+        "about": "Register each savings account you use (e.g. Oranje Spaarrekening V12602730). Marcio recognizes transfers when the ID shows up in the description.",
+        "empty": "No savings accounts yet.",
+        "addNew": "Add savings account",
+        "save": "Save",
+        "cancel": "Cancel",
+        "refLabel": "Reference",
+        "refPlaceholder": "e.g. V12602730",
+        "refHint": "Unique text that appears in the transfer description (e.g. 'Oranje spaarrekening V12602730 Taxes').",
+        "nicknameLabel": "Nickname",
+        "nicknamePlaceholder": "e.g. Tax pot",
+        "ownerLabel": "Owning account",
+        "linkedItemLabel": "Linked budget item",
+        "notesLabel": "Notes",
+        "notesPlaceholder": "e.g. monthly deposits for annual taxes",
+        "optional": "optional"
+      },
+      "month": {
+        "title": "Month boundary",
+        "hint": "When the month starts for you",
+        "crumb": "Month boundary",
+        "about": "Marcio groups transactions by payday cycle, not the calendar. Change the day if your salary date moves."
+      },
+      "language": {
+        "title": "Language",
+        "hint": "English or Português (Brasil)",
+        "crumb": "Language",
+        "current": "Current",
+        "hint": "The switch applies immediately across the app."
+      },
+      "theme": {
+        "title": "Theme",
+        "hint": "Dark (light coming later)",
+        "crumb": "Theme",
+        "darkLocked": "Dark theme",
+        "hint": "Light theme is coming in a future version. For now, dark is the only option."
+      }
+    },
     "paydayTitle": "Month rollover day",
     "paydayHelp": "Today the rollover is on day {day}. Change it if your payday moves.",
     "paydayLabel": "Day (1–28)",

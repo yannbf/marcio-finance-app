@@ -9,7 +9,8 @@
     "inbox": "Caixa",
     "buckets": "Cofres",
     "insights": "Análises",
-    "connections": "Conexões"
+    "connections": "Conexões",
+    "settings": "Ajustes"
   },
   "Today": {
     "untilPayday": "{days, plural, one {# dia} other {# dias}} até o pagamento",
@@ -30,7 +31,11 @@
     "forecastHistory": "histórico",
     "forecastMonthEnd": "fim do mês",
     "insightsTitle": "Análises",
-    "insightsHint": "Para onde vai o dinheiro este mês"
+    "insightsHint": "Para onde vai o dinheiro este mês",
+    "paidThisMonth": "Pagos neste mês",
+    "expectedThisMonth": "Esperados",
+    "sectionEmpty": "Nada planejado nesta seção.",
+    "dayPrefix": "dia"
   },
   "Sections": {
     "entradas": "Entradas",
@@ -133,6 +138,55 @@
     "hits": "{n, plural, one {# transação} other {# transações}}"
   },
   "Settings": {
+    "title": "Ajustes",
+    "heading": "Configurações",
+    "sections": {
+      "banks": {
+        "title": "Bancos e contas",
+        "hint": "Subir CSV, ver contas conectadas",
+        "crumb": "Bancos"
+      },
+      "savings": {
+        "title": "Cofres / Poupanças",
+        "hint": "Definir contas de poupança e referências",
+        "crumb": "Poupanças",
+        "about": "Cadastre cada conta de poupança que vocês usam (ex: Oranje Spaarrekening V12602730). O Marcio reconhece transferências quando o ID aparece na descrição.",
+        "empty": "Nenhuma conta de poupança ainda.",
+        "addNew": "Adicionar conta de poupança",
+        "save": "Salvar",
+        "cancel": "Cancelar",
+        "refLabel": "Referência",
+        "refPlaceholder": "ex: V12602730",
+        "refHint": "Trecho único que aparece na descrição da transferência (ex: 'Oranje spaarrekening V12602730 Impostos').",
+        "nicknameLabel": "Apelido",
+        "nicknamePlaceholder": "ex: Cofre Impostos",
+        "ownerLabel": "Conta dona",
+        "linkedItemLabel": "Item de orçamento ligado",
+        "notesLabel": "Notas",
+        "notesPlaceholder": "ex: depósitos mensais para impostos anuais",
+        "optional": "opcional"
+      },
+      "month": {
+        "title": "Dia do mês",
+        "hint": "Quando o mês começa para vocês",
+        "crumb": "Dia do mês",
+        "about": "O Marcio agrupa transações pelo ciclo do pagamento, não pelo calendário civil. Mude o dia se a empresa pagar em outra data."
+      },
+      "language": {
+        "title": "Idioma",
+        "hint": "Português (Brasil) ou English",
+        "crumb": "Idioma",
+        "current": "Atual",
+        "hint": "A troca aplica imediatamente em todas as telas."
+      },
+      "theme": {
+        "title": "Tema",
+        "hint": "Escuro (em breve: claro)",
+        "crumb": "Tema",
+        "darkLocked": "Tema escuro",
+        "hint": "O tema claro entra numa próxima versão. Por enquanto, escuro é a única opção."
+      }
+    },
     "paydayTitle": "Dia da virada do mês",
     "paydayHelp": "Hoje a virada acontece no dia {day}. Mude se o pagamento mudar de dia.",
     "paydayLabel": "Dia (1–28)",

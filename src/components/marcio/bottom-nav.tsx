@@ -1,6 +1,6 @@
 "use client";
 
-import { Home, ListChecks, Inbox, PiggyBank, Plug } from "lucide-react";
+import { Home, ListChecks, Inbox, PiggyBank, Settings as Cog } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation.ts";
 
@@ -9,12 +9,16 @@ const TABS = [
   { href: "/mes", icon: ListChecks, key: "month" },
   { href: "/inbox", icon: Inbox, key: "inbox" },
   { href: "/buckets", icon: PiggyBank, key: "buckets" },
-  { href: "/connections", icon: Plug, key: "connections" },
+  { href: "/settings", icon: Cog, key: "settings" },
 ] as const;
 
 export function BottomNav() {
   const t = useTranslations("Nav");
   const pathname = usePathname();
+  const isActive = (href: string) =>
+    href === "/"
+      ? pathname === "/"
+      : pathname === href || pathname.startsWith(`${href}/`);
 
   return (
     <nav
@@ -23,7 +27,7 @@ export function BottomNav() {
     >
       <ul className="mx-auto grid max-w-md grid-cols-5 px-1">
         {TABS.map(({ href, icon: Icon, key }) => {
-          const active = pathname === href;
+          const active = isActive(href);
           return (
             <li key={key}>
               <Link

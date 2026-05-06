@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
 import { Card } from "@/components/ui/card.tsx";
-import { setPaydayDayAction } from "@/app/[locale]/connections/actions.ts";
+import { setPaydayDayAction } from "@/app/[locale]/settings/actions.ts";
 
 export function PaydaySetting({ initialDay }: { initialDay: number }) {
   const t = useTranslations("Settings");

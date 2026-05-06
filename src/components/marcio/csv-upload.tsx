@@ -16,7 +16,7 @@ import {
 import {
   uploadIngCsv,
   type CsvUploadResult,
-} from "@/app/[locale]/connections/actions.ts";
+} from "@/app/[locale]/settings/actions.ts";
 import { CsvHelp } from "./csv-help.tsx";
 
 type Props = {
