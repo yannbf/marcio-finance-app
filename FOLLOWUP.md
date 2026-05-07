@@ -141,3 +141,85 @@ Currently zero. Areas where tests would actually catch regressions:
   assert outputs.
 
 Ship as Vitest in `code/test/` with `pnpm test` script.
+
+## 10. Multi-month backlog (surfaced after 90-day Enable Banking sync)
+
+Until May 2026 the app held ~30 days of CSV data, so several screens were
+implicitly built around a single payday-month. The Enable Banking
+integration now backfills ~90 days on first connect, exposing assumptions
+that don't hold across multiple months.
+
+Items are ordered by impact, not by ease.
+
+### Critical — blocking value extraction from history
+
+- [ ] **Inbox: month-aware budget-item picker.** `inbox.list` loads picker
+  options from the current payday-month only. A February transaction can
+  only be assigned to a May category. Resolve each row's payday-month via
+  `paydayMonthFor(tx.bookingDate, paydayDay)` and fetch its month-specific
+  items; group the inbox list by month with collapsible headers. (`inbox.ts`,
+  `inbox-screen.tsx`, `BudgetItemPicker`.)
+- [ ] **"Re-run matching" button.** Auto-rules and learned rules only fire
+  on insert. After a user creates a learned rule, every old unmatched txn
+  for that merchant stays in inbox forever. Add a tRPC mutation that calls
+  `runMatchingForAccount` for every account; expose as a button on
+  `/settings/banks` next to the connection panel.
+- [ ] **Empty-month banner.** `/month?anchor=YYYY-MM` for a month with no
+  imported sheet returns an empty page with no hint. When `monthRow` is
+  null but transactions exist for the range, render a banner: "N
+  transactions waiting — import the sheet for `<MonthName YYYY>`".
+
+### Important — silent correctness issues
+
+- [ ] **Bulk assign across mixed payday-months.** The bulk picker uses the
+  same single-month options. Selecting Feb + May transactions and assigning
+  them all to one Item ID resolves to the wrong month for half of them.
+  Mirror the existing mixed-scope guard with a mixed-month one.
+- [ ] **Forecast source visibility.** `forecast.ts` now blends 3 months of
+  history. Surface `source` ("history-median over 3 months", "due-day from
+  sheet", "month-end fallback") on the forecast row so the user can override
+  one-offs misclassified as recurring.
+- [ ] **Auto-rule confidence on quiet success.** `match_rule.confirmedHits`
+  only bumps when the user explicitly confirms. Auto-matches the user
+  silently accepts stay at 0.7 forever. Daily job to bump `confirmedHits`
+  for any auto-rule match older than N days that wasn't reassigned.
+  *Opinionated — defer until the categorization mix has settled.*
+- [ ] **CSV/sync false-duplicate detection.** Dedupe is `iban + date + cents
+  + normalized(counterparty + description)`. Slight formatting differences
+  between CSV and Enable Banking would create two rows for the same
+  real-world transaction. Add a secondary looser fingerprint and surface
+  matches as "possible duplicate" in `/transactions`.
+
+### Multi-month features (now possible, weren't before)
+
+- [ ] **Tikkie multi-month rollup.** `/tikkie` is single-month. A "all
+  available months" tab toggle that aggregates by counterparty across the
+  full payday-month range we have data for.
+- [ ] **Insights vs last month.** `/insights` shows section breakdown for
+  the current month with no comparison. Add a "vs last month" delta chip
+  per section and the aggregate.
+- [ ] **Buckets YTD progress.** `/buckets` shows monthly contribution but
+  not cumulative-vs-yearly-target. Sum allocations across all imported
+  payday-months in the current calendar year per `savings_account_id`,
+  render alongside `yearlyTarget`.
+
+### UI polish
+
+- [ ] **Date-range filter on `/transactions`.** Pill row at the top: Last
+  7 / 30 / 90 days / custom. Currently only text + show + scope.
+- [ ] **Inline rename for synced bank accounts.** Synced accounts inherit
+  whatever Enable Banking returns from `/accounts/<uid>/details`. Add an
+  edit field on `/settings/banks/<id>` so the user can override.
+- [ ] **Dim navless months in MonthScopeBar.** Going forward is capped at
+  `defaultAnchor + 1`. Going back is unbounded; pre-data months render
+  empty. Dim months with zero transactions AND zero budget items.
+
+### Hygiene (defer until they actually bite)
+
+- [ ] **Payday-boundary override.** A transaction posted at 00:00:01 on
+  payday-day-itself goes into the next month. Rare; no UI to override.
+- [ ] **Old `marcio-query-cache-v1` cleanup.** Pre-fix users have stale v1
+  data sitting in sessionStorage. One-line cleanup on app boot.
+- [ ] **Drop `revoked` enum value.** `bank_connection.status` still has
+  `revoked` even though disconnect now hard-deletes. Cosmetic; needs a
+  migration.
