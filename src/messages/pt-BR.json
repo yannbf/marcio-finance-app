@@ -269,7 +269,9 @@
     "connectLinked": "Banco conectado. Primeira sincronização em andamento.",
     "connectPending": "Você pode terminar o consentimento depois pelo mesmo botão Conectar.",
     "connectExpired": "O consentimento expirou. Reconecte para retomar a sincronização diária.",
-    "connectError": "Não foi possível conectar. Veja o erro na linha da conexão e tente de novo."
+    "connectError": "Não foi possível conectar. Veja o erro na linha da conexão e tente de novo.",
+    "syncResultNew": "Sincronizou {inserted, plural, one {# transação nova} other {# transações novas}} · {matched} categorizadas",
+    "syncResultUpToDate": "Tudo em dia — nada novo do ING."
   },
   "UpdatePrompt": {
     "title": "Atualização disponível",

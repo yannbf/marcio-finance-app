@@ -269,7 +269,9 @@
     "connectLinked": "Bank linked. First sync running.",
     "connectPending": "You can finish the consent later from the same Connect button.",
     "connectExpired": "Consent has expired. Reconnect to resume daily sync.",
-    "connectError": "Could not connect. Check the error on the connection row and try again."
+    "connectError": "Could not connect. Check the error on the connection row and try again.",
+    "syncResultNew": "Synced {inserted, plural, one {# new transaction} other {# new transactions}} · {matched} matched",
+    "syncResultUpToDate": "Already up to date — nothing new from ING."
   },
   "UpdatePrompt": {
     "title": "Update available",

@@ -10,7 +10,6 @@ import {
   syncConnection,
   revokeSessionForConnection,
 } from '@/lib/enable_banking/sync.ts'
-import { EnableBankingError } from '@/lib/enable_banking/client.ts'
 
 export const settingsRouter = router({
   get: publicProcedure.query(async () => {
@@ -83,14 +82,19 @@ export const settingsRouter = router({
 
     /**
      * Disconnect — best-effort delete the session at Enable Banking, then
-     * mark our row revoked. Bank accounts + their transactions stay; only
-     * the FK to the connection is cleared so future syncs don't run.
+     * remove the connection row from our DB.
+     *
+     * Bank accounts and their transactions are preserved (we null the FK
+     * first), but the connection itself is hard-deleted so it disappears
+     * from the UI list. Errors talking to Enable Banking are swallowed
+     * silently — the user's intent is "make this row go away," and a stale
+     * remote session expires harmlessly on its own.
      */
     disconnect: protectedProcedure
       .input(z.object({ connectionId: z.string().uuid() }))
       .mutation(async ({ ctx, input }) => {
         const [conn] = await db
-          .select()
+          .select({ id: bankConnection.id })
           .from(bankConnection)
           .where(
             and(
@@ -103,19 +107,10 @@ export const settingsRouter = router({
         try {
           await revokeSessionForConnection(conn.id)
         } catch (err) {
-          if (!(err instanceof EnableBankingError) || err.status !== 404) {
-            // Non-404 failures are logged on the row but we still revoke
-            // locally so the user isn't stuck with a zombie connection.
-            await db
-              .update(bankConnection)
-              .set({
-                lastError:
-                  err instanceof Error
-                    ? err.message.slice(0, 500)
-                    : String(err),
-              })
-              .where(eq(bankConnection.id, conn.id))
-          }
+          // Best-effort: 404 (already gone) and any other failure are both
+          // fine — we're deleting the local row regardless. A stale remote
+          // session would expire on its own anyway.
+          void err
         }
 
         await db
@@ -123,10 +118,7 @@ export const settingsRouter = router({
           .set({ connectionId: null })
           .where(eq(bankAccount.connectionId, conn.id))
 
-        await db
-          .update(bankConnection)
-          .set({ status: 'revoked' })
-          .where(eq(bankConnection.id, conn.id))
+        await db.delete(bankConnection).where(eq(bankConnection.id, conn.id))
 
         return { ok: true as const }
       }),

@@ -22,7 +22,22 @@ export function BankConnections() {
   const list = trpc.settings.connections.list.useQuery();
   const utils = trpc.useUtils();
 
+  /** Last result of a manual refresh, keyed by connection id. */
+  const [lastResult, setLastResult] = useState<
+    Record<string, { inserted: number; matched: number; accountsSynced: number }>
+  >({});
+
   const refresh = trpc.settings.connections.refresh.useMutation({
+    onSuccess: (data) => {
+      setLastResult((prev) => ({
+        ...prev,
+        [data.connectionId]: {
+          inserted: data.inserted,
+          matched: data.matched,
+          accountsSynced: data.accountsSynced,
+        },
+      }));
+    },
     onSettled: async () => {
       setRefreshingId(null);
       await utils.settings.connections.list.invalidate();
@@ -172,6 +187,17 @@ export function BankConnections() {
                   <p className="mt-2 flex items-start gap-1.5 text-[11px] text-destructive">
                     <AlertTriangle className="mt-0.5 size-3 shrink-0" />
                     <span className="break-words">{c.lastError}</span>
+                  </p>
+                ) : null}
+
+                {lastResult[c.id] ? (
+                  <p className="mt-2 text-[11px] text-muted-foreground">
+                    {lastResult[c.id].inserted > 0
+                      ? t("syncResultNew", {
+                          inserted: lastResult[c.id].inserted,
+                          matched: lastResult[c.id].matched,
+                        })
+                      : t("syncResultUpToDate")}
                   </p>
                 ) : null}
 
