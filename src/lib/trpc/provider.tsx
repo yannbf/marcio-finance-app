@@ -40,6 +40,13 @@ export function TrpcProvider({ children }: { children: ReactNode }) {
   const [persister] = useState<Persister | null>(() => {
     if (typeof window === "undefined") return null;
     try {
+      // One-time cleanup of the pre-superjson cache key so it doesn't sit
+      // in sessionStorage forever. Cheap, idempotent, no-op once it's gone.
+      try {
+        window.sessionStorage.removeItem("marcio-query-cache-v1");
+      } catch {
+        // sessionStorage might be disabled (private mode, quota) — ignore.
+      }
       return createAsyncStoragePersister({
         // sessionStorage is sync, but the async persister accepts it — the
         // get/set methods are awaited regardless and `Promise.resolve` of a
