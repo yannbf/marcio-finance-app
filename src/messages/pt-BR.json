@@ -80,6 +80,7 @@
     "outflow": "Saídas",
     "margin": "Margem",
     "noData": "Sem dados para este mês ainda — rode uma importação.",
+    "orphanTxsWaiting": "{n, plural, one {# transação parada} other {# transações paradas}} neste mês sem planilha importada. Importe a aba correspondente para categorizar.",
     "items": "Itens"
   },
   "Transactions": {

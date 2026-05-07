@@ -80,6 +80,7 @@
     "outflow": "Outflow",
     "margin": "Margin",
     "noData": "No data for this month yet — run an import.",
+    "orphanTxsWaiting": "{n, plural, one {# transaction} other {# transactions}} sitting in this month with no sheet imported. Import the matching tab to categorize them.",
     "items": "Items"
   },
   "Transactions": {

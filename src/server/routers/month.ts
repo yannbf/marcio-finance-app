@@ -1,7 +1,13 @@
 import { z } from "zod";
 import { and, asc, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import { db } from "@/db/index.ts";
-import { budgetItem, month, transaction, txMatch } from "@/db/schema.ts";
+import {
+  bankAccount,
+  budgetItem,
+  month,
+  transaction,
+  txMatch,
+} from "@/db/schema.ts";
 import { publicProcedure, router } from "../trpc.ts";
 import { AnchorInput } from "../inputs.ts";
 import { getHouseholdSettings } from "@/lib/settings.ts";
@@ -43,10 +49,31 @@ export const monthRouter = router({
         );
 
       if (!monthRow) {
+        // No sheet imported for this anchor. If transactions DO exist for
+        // the date range though, surface the count so the UI can prompt
+        // for an import — silent empty state was wasteful with 90 days
+        // of synced history sitting around uncategorized.
+        const [{ n }] = await db
+          .select({ n: sql<string>`COUNT(*)` })
+          .from(transaction)
+          .innerJoin(
+            bankAccount,
+            eq(bankAccount.id, transaction.bankAccountId),
+          )
+          .where(
+            and(
+              gte(transaction.bookingDate, range.startsOn),
+              lte(transaction.bookingDate, range.endsOn),
+              eq(bankAccount.owner, input.scope),
+            ),
+          );
+        const orphanTxCount = Number.parseInt(n, 10);
         return {
           items: [],
           totals: zeroTotals(),
           anchor: { year: range.anchorYear, month: range.anchorMonth },
+          needsImport: true as const,
+          orphanTxCount,
         };
       }
 
@@ -111,6 +138,8 @@ export const monthRouter = router({
         items,
         totals: { income, outflow, margin: income + outflow },
         anchor: { year: range.anchorYear, month: range.anchorMonth },
+        needsImport: false as const,
+        orphanTxCount: 0,
       };
     }),
 });

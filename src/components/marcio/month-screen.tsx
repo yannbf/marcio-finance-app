@@ -95,7 +95,13 @@ export function MonthScreen({
         </Card>
       ) : !data || data.items.length === 0 ? (
         <Card className="border-border/40 bg-card/60 p-6 text-center text-sm text-muted-foreground">
-          <p>{t("Month.noData")}</p>
+          {data?.needsImport && data.orphanTxCount > 0 ? (
+            <p>
+              {t("Month.orphanTxsWaiting", { n: data.orphanTxCount })}
+            </p>
+          ) : (
+            <p>{t("Month.noData")}</p>
+          )}
           <Link
             href="/import"
             className="mt-3 inline-block text-primary underline-offset-2 hover:underline"
