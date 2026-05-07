@@ -24,6 +24,7 @@ export function ActivityScreen({
 }) {
   const t = useTranslations("Activity");
   const tSections = useTranslations("Sections");
+  const tToday = useTranslations("Today");
   const sp = useSearchParams();
   const { anchor, scope } = parseSearch(sp, defaultAnchor, defaultScope);
   const { data, isLoading } = trpc.activity.get.useQuery({ anchor, scope });
@@ -100,7 +101,12 @@ export function ActivityScreen({
                   <div className="num grid size-7 shrink-0 place-items-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">
                     {c.predictedDay ?? "—"}
                   </div>
-                  <span className="flex-1 truncate text-sm">{c.name}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm">{c.name}</p>
+                    <p className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground/70">
+                      {forecastSourceLabel(c.source, tToday)}
+                    </p>
+                  </div>
                   <span className="num text-sm">
                     {formatEUR(Math.abs(c.plannedCents) / 100, locale)}
                   </span>
@@ -187,3 +193,12 @@ function formatGroupDate(d: Date, locale: string): string {
   });
 }
 
+
+function forecastSourceLabel(
+  src: "due-day" | "history-median" | "month-end",
+  t: (k: string) => string,
+): string {
+  if (src === "due-day") return t("forecastDue");
+  if (src === "history-median") return t("forecastHistory");
+  return t("forecastMonthEnd");
+}
