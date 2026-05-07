@@ -90,6 +90,7 @@
     "filterAll": "Todas",
     "filterMatched": "Categorizadas",
     "filterUnmatched": "Por categorizar",
+    "filterDuplicates": "Duplicadas",
     "empty": "Nenhuma transação encontrada.",
     "limited": "Mostrando as {n} mais recentes.",
     "loadMore": "Carregar mais {n}",

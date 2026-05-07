@@ -20,7 +20,7 @@ import type { Section } from "@/lib/import/types.ts";
 
 const PAGE_SIZE = 100;
 
-const ShowFilter = z.enum(["all", "matched", "unmatched"]);
+const ShowFilter = z.enum(["all", "matched", "unmatched", "duplicates"]);
 
 export const transactionsRouter = router({
   // Text search lives entirely on the client — the screen filters the cached
@@ -49,6 +49,21 @@ export const transactionsRouter = router({
       } else if (show === "unmatched") {
         filters.push(
           sql`NOT EXISTS (SELECT 1 FROM ${txMatch} WHERE ${txMatch.transactionId} = ${transaction.id})`,
+        );
+      } else if (show === "duplicates") {
+        // Two rows with the same (account, date, amount) but different
+        // dedupe-keys are likely the same real-world transaction surfaced
+        // through CSV and Enable Banking with slightly different
+        // counterparty/description formatting. Surfacing them lets the user
+        // delete one half by hand.
+        filters.push(
+          sql`EXISTS (
+            SELECT 1 FROM ${transaction} AS t2
+            WHERE t2.bank_account_id = ${transaction.bankAccountId}
+              AND t2.booking_date = ${transaction.bookingDate}
+              AND t2.amount_cents = ${transaction.amountCents}
+              AND t2.id <> ${transaction.id}
+          )`,
         );
       }
 

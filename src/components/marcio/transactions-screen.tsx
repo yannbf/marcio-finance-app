@@ -31,9 +31,13 @@ export function TransactionsScreen({
   const pathname = usePathname();
   const q = (sp.get("q") ?? "").trim();
   const showRaw = sp.get("show") ?? "all";
-  const show = (showRaw === "matched" || showRaw === "unmatched"
-    ? showRaw
-    : "all") as "all" | "matched" | "unmatched";
+  const show = (
+    showRaw === "matched" ||
+    showRaw === "unmatched" ||
+    showRaw === "duplicates"
+      ? showRaw
+      : "all"
+  ) as "all" | "matched" | "unmatched" | "duplicates";
   const { scope } = parseSearch(sp, defaultAnchor, defaultScope);
 
   // Cache key is (show, scope) only — keystrokes never refetch. Pages
@@ -165,6 +169,12 @@ export function TransactionsScreen({
             active={show === "unmatched"}
           >
             {t("filterUnmatched")}
+          </FilterPill>
+          <FilterPill
+            href={makeHref(q, "duplicates")}
+            active={show === "duplicates"}
+          >
+            {t("filterDuplicates")}
           </FilterPill>
         </div>
       </div>
