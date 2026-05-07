@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { TransactionRow } from "./transaction-row.tsx";
 import { BudgetItemPicker } from "./budget-item-picker.tsx";
 import { trpc } from "@/lib/trpc/client.ts";
+import { formatEURPrecise } from "@/lib/format.ts";
 import type { BudgetItemOption } from "./inbox-row.tsx";
 import type { Section } from "@/lib/import/types.ts";
 
@@ -17,6 +18,7 @@ type Props = {
     matchedItemId?: string | null;
     matchedName: string | null;
     owner: "joint" | "camila" | "yann";
+    anomaly?: { meanCents: number; samples: number } | null;
   };
   options: BudgetItemOption[];
   locale: string;
@@ -25,6 +27,7 @@ type Props = {
 
 export function ActivityRow({ tx, options, locale, sectionLabels }: Props) {
   const t = useTranslations("Inbox");
+  const tActivity = useTranslations("Activity");
   const utils = trpc.useUtils();
   const assign = trpc.inbox.assign.useMutation({
     onSuccess: () => {
@@ -49,6 +52,14 @@ export function ActivityRow({ tx, options, locale, sectionLabels }: Props) {
             locale={locale}
             matchedLabel={tx.matchedName}
             unmatched={!tx.matchedName}
+            anomaly={tx.anomaly}
+            unusualLabel={
+              tx.anomaly
+                ? tActivity("unusuallyHigh", {
+                    mean: formatEURPrecise(tx.anomaly.meanCents / 100, locale),
+                  })
+                : undefined
+            }
           />
         </div>
       }

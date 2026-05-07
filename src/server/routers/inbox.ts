@@ -24,6 +24,7 @@ import { paydayMonthFor } from "@/lib/payday.ts";
 import { AFRONDING_PATTERN } from "@/lib/matching/seed-rules.ts";
 import { fingerprintCounterparty } from "@/lib/matching/fingerprint.ts";
 import { computeRuleConfidence } from "@/lib/matching/rule-confidence.ts";
+import { detectRecurringForUnmatched } from "@/lib/recurring.ts";
 import type { Section } from "@/lib/import/types.ts";
 
 export const inboxRouter = router({
@@ -76,9 +77,18 @@ export const inboxRouter = router({
         !AFRONDING_PATTERN.test(`${r.counterparty ?? ""} ${r.description ?? ""}`),
     );
 
-    // Tag each transaction with the payday-month it belongs to.
+    // Tag each transaction with the payday-month it belongs to. Also flag
+    // rows whose counterparty fingerprint shows up across multiple months
+    // — likely a subscription / recurring bill the user can categorize once
+    // and remember.
+    const recurringSignals = await detectRecurringForUnmatched(
+      visible.filter((r) => r.amountCents < 0).map((r) => r.id),
+      allowed,
+      settings.paydayDay,
+    );
     const txns = visible.map((r) => {
       const range = paydayMonthFor(r.bookingDate, settings.paydayDay);
+      const sig = recurringSignals.get(r.id);
       return {
         id: r.id,
         counterparty: r.counterparty,
@@ -88,6 +98,9 @@ export const inboxRouter = router({
         owner: r.owner as "joint" | "yann" | "camila",
         anchorYear: range.anchorYear,
         anchorMonth: range.anchorMonth,
+        recurring: sig
+          ? { months: sig.months, typicalAbsCents: sig.typicalAbsCents }
+          : null,
       };
     });
 

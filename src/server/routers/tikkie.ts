@@ -10,7 +10,11 @@ import {
 import { AnchorInput, ScopeViewInput } from "../inputs.ts";
 import { getHouseholdSettings } from "@/lib/settings.ts";
 import { paydayMonthFor, paydayMonthForAnchor } from "@/lib/payday.ts";
-import { TIKKIE_PG_PATTERN, parseTikkiePerson } from "@/lib/tikkie.ts";
+import {
+  TIKKIE_PG_PATTERN,
+  parseTikkiePerson,
+  parseTikkieTopic,
+} from "@/lib/tikkie.ts";
 
 export const tikkieRouter = router({
   get: publicProcedure
@@ -68,11 +72,19 @@ export const tikkieRouter = router({
       )
       .orderBy(desc(transaction.bookingDate));
 
+    type TxItem = {
+      id: string;
+      bookingDate: string;
+      amountCents: number;
+      topic: string | null;
+      counterparty: string | null;
+    };
     type Bucket = {
       name: string;
       paidCents: number;
       receivedCents: number;
       txCount: number;
+      txns: TxItem[];
     };
     const byPerson = new Map<string, Bucket>();
     for (const r of rows) {
@@ -82,10 +94,18 @@ export const tikkieRouter = router({
         paidCents: 0,
         receivedCents: 0,
         txCount: 0,
+        txns: [],
       };
       if (r.amountCents < 0) b.paidCents += -r.amountCents;
       else b.receivedCents += r.amountCents;
       b.txCount += 1;
+      b.txns.push({
+        id: r.id,
+        bookingDate: r.bookingDate.toISOString(),
+        amountCents: r.amountCents,
+        topic: parseTikkieTopic(r.description),
+        counterparty: r.counterparty,
+      });
       byPerson.set(name, b);
     }
     const sorted = [...byPerson.values()].sort(

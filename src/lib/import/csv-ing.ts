@@ -106,6 +106,11 @@ export function parseIngCsv(buf: Uint8Array): IngParseResult {
     const raw: Record<string, string> = {};
     header.forEach((h, j) => (raw[h] = cells[j] ?? ""));
 
+    // (iban, date, cents, counterparty) is enough to identify a transaction
+    // within an account. Description deliberately excluded — ING posts the
+    // same booking with NL labels ("Naam:", "Valutadatum:") on one channel
+    // and EN labels ("Name:", "Value date:") on another, which used to hash
+    // to different keys and produce a duplicate row per booking.
     const dedupe = createHash("sha1")
       .update(
         [
@@ -113,7 +118,6 @@ export function parseIngCsv(buf: Uint8Array): IngParseResult {
           formatYmd(date),
           String(cents),
           normalizeForHash(counterparty),
-          normalizeForHash(description),
         ].join("|"),
       )
       .digest("hex");

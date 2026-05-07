@@ -1,14 +1,16 @@
 "use client";
 
+import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { ChevronDown } from "lucide-react";
 import { Card } from "@/components/ui/card.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { CounterpartyAvatar } from "./counterparty-avatar.tsx";
 import { MonthScopeBar, parseSearch } from "./month-scope-bar.tsx";
 import { trpc } from "@/lib/trpc/client.ts";
 import { useMounted } from "@/lib/use-mounted.ts";
-import { formatEUR } from "@/lib/format.ts";
+import { formatEUR, formatEURPrecise } from "@/lib/format.ts";
 
 export function TikkieScreen({
   locale,
@@ -30,6 +32,14 @@ export function TikkieScreen({
   const query = trpc.tikkie.get.useQuery({ anchor, scope, window: windowMode });
   const data = mounted ? query.data : undefined;
   const isLoading = mounted ? query.isLoading : true;
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const toggle = (name: string) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
 
   return (
     <main className="mx-auto flex w-full max-w-md flex-col gap-5 px-5 pb-8 pt-8">
@@ -86,32 +96,79 @@ export function TikkieScreen({
       ) : (
         <Card className="border-border/40 bg-card/60 p-2">
           <ul className="divide-y divide-border/40">
-            {data.byPerson.map((b) => (
-              <li
-                key={b.name}
-                className="flex items-center gap-3 px-2 py-3"
-              >
-                <CounterpartyAvatar name={b.name} />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{b.name}</p>
-                  <p className="num text-xs text-muted-foreground">
-                    {t("txCount", { n: b.txCount })}
-                  </p>
-                </div>
-                <div className="text-right">
-                  {b.paidCents > 0 ? (
-                    <p className="num whitespace-nowrap text-sm font-semibold">
-                      −{formatEUR(b.paidCents / 100, locale)}
-                    </p>
+            {data.byPerson.map((b) => {
+              const isOpen = expanded.has(b.name);
+              return (
+                <li key={b.name} className="px-2">
+                  <button
+                    type="button"
+                    onClick={() => toggle(b.name)}
+                    aria-expanded={isOpen}
+                    className="-mx-2 flex w-[calc(100%+1rem)] items-center gap-3 rounded px-2 py-3 text-left transition-colors hover:bg-card/40"
+                  >
+                    <CounterpartyAvatar name={b.name} />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">{b.name}</p>
+                      <p className="num text-xs text-muted-foreground">
+                        {t("txCount", { n: b.txCount })}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      {b.paidCents > 0 ? (
+                        <p className="num whitespace-nowrap text-sm font-semibold">
+                          −{formatEURPrecise(b.paidCents / 100, locale)}
+                        </p>
+                      ) : null}
+                      {b.receivedCents > 0 ? (
+                        <p className="num whitespace-nowrap text-sm font-semibold text-primary">
+                          +{formatEURPrecise(b.receivedCents / 100, locale)}
+                        </p>
+                      ) : null}
+                    </div>
+                    <ChevronDown
+                      className={`size-4 shrink-0 text-muted-foreground transition-transform ${
+                        isOpen ? "rotate-180" : ""
+                      }`}
+                      aria-hidden
+                    />
+                  </button>
+                  {isOpen ? (
+                    <ul className="mb-2 ml-12 flex flex-col gap-1.5 border-l border-border/40 pl-3">
+                      {b.txns.map((tx) => {
+                        const credit = tx.amountCents > 0;
+                        return (
+                          <li
+                            key={tx.id}
+                            className="flex items-baseline gap-2 py-1 text-xs"
+                          >
+                            <span className="num shrink-0 text-muted-foreground">
+                              {new Date(tx.bookingDate).toLocaleDateString(
+                                locale,
+                                { day: "2-digit", month: "short" },
+                              )}
+                            </span>
+                            <span className="min-w-0 flex-1 truncate">
+                              {tx.topic ?? t("noTopic")}
+                            </span>
+                            <span
+                              className={`num shrink-0 font-medium ${
+                                credit ? "text-primary" : ""
+                              }`}
+                            >
+                              {credit ? "+" : "−"}
+                              {formatEURPrecise(
+                                Math.abs(tx.amountCents) / 100,
+                                locale,
+                              )}
+                            </span>
+                          </li>
+                        );
+                      })}
+                    </ul>
                   ) : null}
-                  {b.receivedCents > 0 ? (
-                    <p className="num whitespace-nowrap text-sm font-semibold text-primary">
-                      +{formatEUR(b.receivedCents / 100, locale)}
-                    </p>
-                  ) : null}
-                </div>
-              </li>
-            ))}
+                </li>
+              );
+            })}
           </ul>
         </Card>
       )}

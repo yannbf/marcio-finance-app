@@ -13,7 +13,7 @@ import { Card } from "@/components/ui/card.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
 import { TransactionRow } from "@/components/marcio/transaction-row.tsx";
 import { BackButton } from "@/components/marcio/back-button.tsx";
-import { formatEUR } from "@/lib/format.ts";
+import { formatEUR, formatEURPrecise } from "@/lib/format.ts";
 import { monthlyContributionCents } from "@/lib/cadence.ts";
 import { getCurrentUser } from "@/lib/auth/current-user.ts";
 import { SECTION_TR_KEY } from "@/lib/import/sections.ts";
@@ -98,15 +98,15 @@ export default async function BudgetItemDetailPage({
           {isOutflow ? t("spent") : t("received")}
         </p>
         <p className="num mt-1 text-3xl font-semibold tracking-tight">
-          {formatEUR(absActual / 100, locale)}
+          {formatEURPrecise(absActual / 100, locale)}
         </p>
         <p className="num mt-1 text-sm text-muted-foreground">
-          {t("ofPlanned", { planned: formatEUR(absPlanned / 100, locale) })}
+          {t("ofPlanned", { planned: formatEURPrecise(absPlanned / 100, locale) })}
         </p>
         {isSazonal ? (
           <p className="num mt-1 text-[11px] text-muted-foreground">
             {t("yearlyHint", {
-              yearly: formatEUR(Math.abs(item.plannedCents) / 100, locale),
+              yearly: formatEURPrecise(Math.abs(item.plannedCents) / 100, locale),
             })}
           </p>
         ) : null}

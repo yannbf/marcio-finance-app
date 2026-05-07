@@ -14,7 +14,7 @@ import {
 } from "./month-scope-bar.tsx";
 import { trpc } from "@/lib/trpc/client.ts";
 import { useMounted } from "@/lib/use-mounted.ts";
-import { formatEUR } from "@/lib/format.ts";
+import { formatEUR, formatEURPrecise } from "@/lib/format.ts";
 import { SECTION_ORDER, SECTION_TR_KEY } from "@/lib/import/sections.ts";
 import type { Section } from "@/lib/import/types.ts";
 
@@ -223,7 +223,7 @@ function SectionCard({
                 ) : null}
               </span>
               <span className="num text-foreground">
-                {formatEUR(item.plannedCents / 100, locale)}
+                {formatEURPrecise(item.plannedCents / 100, locale)}
               </span>
             </Link>
           </li>

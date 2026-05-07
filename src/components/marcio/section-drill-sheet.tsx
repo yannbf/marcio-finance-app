@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/sheet.tsx";
 import { Card } from "@/components/ui/card.tsx";
 import { Link } from "@/i18n/navigation.ts";
-import { formatEUR } from "@/lib/format.ts";
+import { formatEUR, formatEURPrecise } from "@/lib/format.ts";
 import type { SectionData, SectionItemRow } from "@/lib/today-data.ts";
 import type { Section } from "@/lib/import/types.ts";
 
@@ -176,10 +176,10 @@ function Group({
                   </div>
                   <div className="text-right">
                     <p className="num text-sm font-semibold">
-                      {formatEUR(Math.abs(it.actualCents) / 100, locale)}
+                      {formatEURPrecise(Math.abs(it.actualCents) / 100, locale)}
                     </p>
                     <p className="num text-[10px] text-muted-foreground">
-                      / {formatEUR(Math.abs(it.plannedCents) / 100, locale)}
+                      / {formatEURPrecise(Math.abs(it.plannedCents) / 100, locale)}
                     </p>
                   </div>
                 </Link>

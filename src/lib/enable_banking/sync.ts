@@ -110,7 +110,9 @@ export function normalizeEbTransaction(
     hashFallback(iban, bookingStr, amountCents, counterparty, description);
 
   // Same shape as the ING CSV pipeline so a CSV upload covering the same
-  // window dedupes against a sync-inserted row.
+  // window dedupes against a sync-inserted row. Description is intentionally
+  // excluded — same booking can arrive with NL and EN labels and we want
+  // those to collapse, not produce two rows.
   const csvShapeDedupe = createHash("sha1")
     .update(
       [
@@ -118,7 +120,6 @@ export function normalizeEbTransaction(
         bookingStr,
         String(amountCents),
         normalizeForHash(counterparty),
-        normalizeForHash(description),
       ].join("|"),
     )
     .digest("hex");

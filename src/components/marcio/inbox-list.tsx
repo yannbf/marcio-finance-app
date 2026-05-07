@@ -183,6 +183,7 @@ export function InboxList({
                             description: tx.description,
                             bookingDate: tx.bookingDate,
                             amountCents: tx.amountCents,
+                            recurring: tx.recurring,
                           }}
                           options={optsForScope}
                           locale={locale}

@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { Calendar, Inbox, Sparkles, ChevronRight, PieChart } from "lucide-react";
 import { AnimatedNumber } from "./animated-number.tsx";
 import { MonthScopeBar, parseSearch } from "./month-scope-bar.tsx";
-import { formatEUR, formatPercent } from "@/lib/format.ts";
+import { formatEUR, formatEURPrecise, formatPercent } from "@/lib/format.ts";
 import { trpc } from "@/lib/trpc/client.ts";
 import { useMounted } from "@/lib/use-mounted.ts";
 import { SectionDrillSheet } from "./section-drill-sheet.tsx";
@@ -200,7 +200,7 @@ export function TodayScreen({
                     </p>
                   </div>
                   <span className="num shrink-0 text-sm font-medium">
-                    {formatEUR(Math.abs(c.plannedCents) / 100, locale)}
+                    {formatEURPrecise(Math.abs(c.plannedCents) / 100, locale)}
                   </span>
                 </Link>
               </li>
@@ -272,11 +272,12 @@ export function TodayScreen({
 /* -------------------------------------------------------------------------- */
 
 function forecastSourceLabel(
-  src: "due-day" | "history-median" | "month-end",
+  src: "due-day" | "history-median" | "counterparty-history" | "month-end",
   t: (k: string) => string,
 ): string {
   if (src === "due-day") return t("Today.forecastDue");
   if (src === "history-median") return t("Today.forecastHistory");
+  if (src === "counterparty-history") return t("Today.forecastBankHistory");
   return t("Today.forecastMonthEnd");
 }
 

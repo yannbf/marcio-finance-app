@@ -20,7 +20,8 @@
     "txCount": "{n, plural, one {# transaction} other {# transactions}}",
     "upcomingTitle": "Still to pay",
     "empty": "No transactions this month yet — upload a CSV in Settings.",
-    "seeAllHistory": "See full history"
+    "seeAllHistory": "See full history",
+    "unusuallyHigh": "Unusual · usually {mean}"
   },
   "Today": {
     "untilPayday": "{days, plural, one {# day} other {# days}} until payday",
@@ -39,6 +40,7 @@
     "upcomingCount": "{n, plural, one {# item} other {# items}}",
     "forecastDue": "fixed date",
     "forecastHistory": "from history",
+    "forecastBankHistory": "from bank pattern",
     "forecastMonthEnd": "month-end",
     "insightsTitle": "Insights",
     "insightsHint": "Where the money went this month",
@@ -143,7 +145,8 @@
     "bulkMixedScopes": "Bulk assign needs all selected items on the same account.",
     "bulkMixedMonths": "Bulk assign needs all selected items in the same month.",
     "monthNeedsSheet": "No sheet imported for {month} yet — import it so these can be categorized.",
-    "newSinceLastSync": "{n} new"
+    "newSinceLastSync": "{n} new",
+    "looksRecurring": "Recurring · seen in {months} months"
   },
   "Buckets": {
     "title": "Buckets",
@@ -170,7 +173,9 @@
     "topMerchantsTitle": "Top merchants",
     "emptyHint": "Nothing yet — categorize a few transactions in Caixa.",
     "hits": "{n, plural, one {# transaction} other {# transactions}}",
-    "vsLastMonth": "vs last month"
+    "vsLastMonth": "vs last month",
+    "roundupTitle": "Round-up to savings",
+    "roundupHint": "{n, plural, one {# sweep} other {# sweeps}} to Oranje spaarrekening"
   },
   "Settings": {
     "title": "Settings",
@@ -318,7 +323,8 @@
     "txCount": "{n, plural, one {# split} other {# splits}}",
     "empty": "No Tikkie movements this month.",
     "windowMonth": "This month",
-    "windowAll": "All time"
+    "windowAll": "All time",
+    "noTopic": "No description"
   },
   "Theme": {
     "title": "Theme",

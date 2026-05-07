@@ -10,7 +10,7 @@ import { ActivityRow } from "./activity-row.tsx";
 import { MonthScopeBar, parseSearch } from "./month-scope-bar.tsx";
 import { trpc } from "@/lib/trpc/client.ts";
 import { useMounted } from "@/lib/use-mounted.ts";
-import { formatEUR } from "@/lib/format.ts";
+import { formatEUR, formatEURPrecise } from "@/lib/format.ts";
 import { SECTION_ORDER, SECTION_TR_KEY } from "@/lib/import/sections.ts";
 import type { Section } from "@/lib/import/types.ts";
 
@@ -114,7 +114,7 @@ export function ActivityScreen({
                     </p>
                   </div>
                   <span className="num text-sm">
-                    {formatEUR(Math.abs(c.plannedCents) / 100, locale)}
+                    {formatEURPrecise(Math.abs(c.plannedCents) / 100, locale)}
                   </span>
                 </Link>
               </li>
@@ -201,10 +201,11 @@ function formatGroupDate(d: Date, locale: string): string {
 
 
 function forecastSourceLabel(
-  src: "due-day" | "history-median" | "month-end",
+  src: "due-day" | "history-median" | "counterparty-history" | "month-end",
   t: (k: string) => string,
 ): string {
   if (src === "due-day") return t("forecastDue");
   if (src === "history-median") return t("forecastHistory");
+  if (src === "counterparty-history") return t("forecastBankHistory");
   return t("forecastMonthEnd");
 }

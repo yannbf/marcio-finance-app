@@ -12,6 +12,7 @@ export type InboxItem = {
   description: string | null;
   bookingDate: string;
   amountCents: number;
+  recurring?: { months: number; typicalAbsCents: number } | null;
 };
 
 export type BudgetItemOption = {
@@ -55,6 +56,11 @@ export function InboxRow({ tx, options, locale, sectionLabels }: Props) {
           amountCents={tx.amountCents}
           locale={locale}
           unmatched
+          recurringLabel={
+            tx.recurring
+              ? t("looksRecurring", { months: tx.recurring.months })
+              : null
+          }
         />
       }
       options={options}

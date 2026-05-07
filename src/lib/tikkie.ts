@@ -33,11 +33,30 @@ export function parseTikkiePerson(
   if (viaMatch) return cleanName(viaMatch[1]!);
 
   const desc = description ?? "";
-  // "Van Hr G Hengeveld," or "Van I RODRIGUES TEIXEIRA,"
-  const vanMatch = desc.match(/\bVan\s+([^,]+),/i);
+  // ING posts the sender as either "Van X," (NL) or "From X," (EN).
+  const vanMatch = desc.match(/\b(?:Van|From)\s+([^,]+),/i);
   if (vanMatch) return cleanName(vanMatch[1]!);
 
   return "—";
+}
+
+/**
+ * For "AAB INZ TIKKIE" rows, the description embeds the user-typed topic
+ * between the Tikkie ID and the sender:
+ *
+ *   "Tikkie ID 001186043116, Movies, Van A BYTSAI, NL48ABNA…"
+ *
+ * Returns the topic ("Movies") or null when nothing useful sits there.
+ */
+export function parseTikkieTopic(description: string | null): string | null {
+  const desc = description ?? "";
+  const m = desc.match(
+    /Tikkie\s*ID\s*\d+\s*,\s*(.+?)\s*,\s*(?:Van|From)\b/i,
+  );
+  if (!m) return null;
+  const topic = m[1]!.trim();
+  if (!topic || topic.length > 60) return null;
+  return topic;
 }
 
 function cleanName(raw: string): string {

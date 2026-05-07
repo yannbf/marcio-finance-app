@@ -57,3 +57,4 @@ mockdata
 
 *.key
 *.crt
+.claude

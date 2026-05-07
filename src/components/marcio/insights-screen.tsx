@@ -9,7 +9,8 @@ import { CounterpartyAvatar } from "./counterparty-avatar.tsx";
 import { MonthScopeBar, parseSearch } from "./month-scope-bar.tsx";
 import { trpc } from "@/lib/trpc/client.ts";
 import { useMounted } from "@/lib/use-mounted.ts";
-import { formatEUR } from "@/lib/format.ts";
+import { formatEUR, formatEURPrecise } from "@/lib/format.ts";
+import { PiggyBank } from "lucide-react";
 import { OUTFLOW_SECTIONS, SECTION_TR_KEY } from "@/lib/import/sections.ts";
 
 export function InsightsScreen({
@@ -63,6 +64,23 @@ export function InsightsScreen({
         )}
       </Card>
 
+      {data?.roundup && data.roundup.count > 0 ? (
+        <Card className="!flex-row items-center gap-3 border-border/40 bg-card/60 px-4 py-4">
+          <div className="grid size-9 shrink-0 place-items-center rounded-full bg-primary/15 text-primary">
+            <PiggyBank className="size-4" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium">{t("roundupTitle")}</p>
+            <p className="num text-xs text-muted-foreground">
+              {t("roundupHint", { n: data.roundup.count })}
+            </p>
+          </div>
+          <p className="num shrink-0 text-lg font-semibold tracking-tight">
+            {formatEURPrecise(data.roundup.totalCents / 100, locale)}
+          </p>
+        </Card>
+      ) : null}
+
       <Card className="border-border/40 bg-card/60 p-5">
         <h2 className="text-sm font-medium">{t("bySectionTitle")}</h2>
         <p className="mt-0.5 text-xs text-muted-foreground">
@@ -114,10 +132,24 @@ export function InsightsScreen({
               const cents = Math.abs(Number.parseInt(row.sum, 10));
               const total = data!.totalOutCents;
               const pct = total > 0 ? (cents / total) * 100 : 0;
+              const prevSum = row.naturalKey
+                ? data!.previous?.categorySumsByNaturalKey?.[row.naturalKey]
+                : undefined;
+              const prevCents = prevSum
+                ? Math.abs(Number.parseInt(prevSum, 10))
+                : 0;
               return (
                 <li key={row.itemId} className="flex items-center gap-3 py-1">
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm">{row.name}</p>
+                    <div className="flex items-baseline gap-1.5">
+                      <p className="truncate text-sm">{row.name}</p>
+                      <DeltaChip
+                        current={cents}
+                        previous={prevCents}
+                        t={t}
+                        compact
+                      />
+                    </div>
                     <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-muted">
                       <div
                         className="h-full rounded-full bg-primary"
@@ -146,6 +178,12 @@ export function InsightsScreen({
             {data!.topMerchants.map((row) => {
               const cents = Math.abs(Number.parseInt(row.sum, 10));
               const count = Number.parseInt(row.count, 10);
+              const prevSum = row.counterparty
+                ? data!.previous?.merchantSums?.[row.counterparty]
+                : undefined;
+              const prevCents = prevSum
+                ? Math.abs(Number.parseInt(prevSum, 10))
+                : 0;
               return (
                 <li
                   key={row.counterparty ?? "unknown"}
@@ -153,9 +191,17 @@ export function InsightsScreen({
                 >
                   <CounterpartyAvatar name={row.counterparty} size={32} />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">
-                      {row.counterparty ?? "—"}
-                    </p>
+                    <div className="flex items-baseline gap-1.5">
+                      <p className="truncate text-sm font-medium">
+                        {row.counterparty ?? "—"}
+                      </p>
+                      <DeltaChip
+                        current={cents}
+                        previous={prevCents}
+                        t={t}
+                        compact
+                      />
+                    </div>
                     <p className="num text-xs text-muted-foreground">
                       {t("hits", { n: count })}
                     </p>

@@ -17,6 +17,7 @@ import { AnchorInput, ScopeViewInput } from "../inputs.ts";
 import { getHouseholdSettings } from "@/lib/settings.ts";
 import { paydayMonthFor, paydayMonthForAnchor } from "@/lib/payday.ts";
 import { getUpcomingCharges } from "@/lib/forecast.ts";
+import { detectAmountAnomalies } from "@/lib/anomaly.ts";
 import { AFRONDING_PG_PATTERN } from "@/lib/matching/seed-rules.ts";
 import type { Section } from "@/lib/import/types.ts";
 
@@ -108,18 +109,40 @@ export const activityRouter = router({
         .filter((r) => r.amountCents < 0)
         .reduce((s, r) => s + Math.abs(r.amountCents), 0);
 
+      // Anomaly check — only outflows that already auto-matched to a
+      // recurring budget item are candidates.
+      const anomalyCandidates = txns
+        .filter(
+          (r): r is typeof r & { matchedItemId: string } =>
+            !!r.matchedItemId && r.amountCents < 0,
+        )
+        .map((r) => ({
+          id: r.id,
+          matchedItemId: r.matchedItemId,
+          absCents: Math.abs(r.amountCents),
+        }));
+      const anomalies = await detectAmountAnomalies(
+        anomalyCandidates,
+        allowed,
+        { startsOn: range.startsOn, endsOn: range.endsOn },
+      );
+
       return {
         anchor: { year: range.anchorYear, month: range.anchorMonth },
-        txns: txns.map((r) => ({
-          id: r.id,
-          counterparty: r.counterparty,
-          description: r.description,
-          bookingDate: r.bookingDate.toISOString(),
-          amountCents: r.amountCents,
-          matchedItemId: r.matchedItemId ?? null,
-          matchedName: r.matchedName ?? null,
-          owner: r.owner as "joint" | "yann" | "camila",
-        })),
+        txns: txns.map((r) => {
+          const a = anomalies.get(r.id);
+          return {
+            id: r.id,
+            counterparty: r.counterparty,
+            description: r.description,
+            bookingDate: r.bookingDate.toISOString(),
+            amountCents: r.amountCents,
+            matchedItemId: r.matchedItemId ?? null,
+            matchedName: r.matchedName ?? null,
+            owner: r.owner as "joint" | "yann" | "camila",
+            anomaly: a ? { meanCents: a.meanCents, samples: a.samples } : null,
+          };
+        }),
         forecast,
         monthSpend,
         optionsAll,
