@@ -271,6 +271,12 @@
     "connectExpired": "O consentimento expirou. Reconecte para retomar a sincronização diária.",
     "connectError": "Não foi possível conectar. Veja o erro na linha da conexão e tente de novo."
   },
+  "UpdatePrompt": {
+    "title": "Atualização disponível",
+    "body": "Recarregue para obter a versão mais recente.",
+    "refresh": "Atualizar",
+    "dismiss": "Depois"
+  },
   "SignIn": {
     "title": "Entrar",
     "heading": "Bem-vindo de volta",

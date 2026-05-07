@@ -271,6 +271,12 @@
     "connectExpired": "Consent has expired. Reconnect to resume daily sync.",
     "connectError": "Could not connect. Check the error on the connection row and try again."
   },
+  "UpdatePrompt": {
+    "title": "Update available",
+    "body": "Reload to get the latest version.",
+    "refresh": "Refresh",
+    "dismiss": "Dismiss"
+  },
   "SignIn": {
     "title": "Sign in",
     "heading": "Welcome back",

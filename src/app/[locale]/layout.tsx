@@ -9,6 +9,7 @@ import { BottomNav } from "@/components/marcio/bottom-nav.tsx";
 import { IosInstallHint } from "@/components/marcio/ios-install-hint.tsx";
 import { ThemeApplier } from "@/components/marcio/theme-applier.tsx";
 import { PullToRefresh } from "@/components/marcio/pull-to-refresh.tsx";
+import { UpdatePrompt } from "@/components/marcio/update-prompt.tsx";
 import { TrpcProvider } from "@/lib/trpc/provider.tsx";
 import "../globals.css";
 
@@ -66,6 +67,9 @@ export default async function LocaleLayout({
 
   setRequestLocale(locale);
   const messages = await getMessages();
+  // Captured at render time. The client component compares it against
+  // /api/version on focus/interval to detect a deploy.
+  const buildVersion = process.env.VERCEL_GIT_COMMIT_SHA ?? "dev";
 
   return (
     <html
@@ -105,6 +109,7 @@ export default async function LocaleLayout({
             />
             <BottomNav />
             <IosInstallHint />
+            <UpdatePrompt buildVersion={buildVersion} />
           </TrpcProvider>
         </NextIntlClientProvider>
       </body>
