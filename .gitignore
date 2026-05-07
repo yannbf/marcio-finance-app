@@ -58,3 +58,4 @@ mockdata
 *.key
 *.crt
 .claude
+.next-e2e
