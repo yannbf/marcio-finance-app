@@ -50,7 +50,28 @@ export function normalizeEbTransaction(
 
   const amountNum = Number.parseFloat(tx.transaction_amount.amount);
   if (!Number.isFinite(amountNum)) return null;
-  const amountCents = Math.round(amountNum * 100);
+  // Sign convention.
+  //
+  // Berlin Group's `transactionAmount.amount` SHOULD be signed
+  // (negative = outgoing) but ING via Enable Banking returns absolute
+  // values and indicates direction implicitly: `creditor` populated means
+  // we paid them (outgoing → negative), `debtor` populated means they
+  // paid us (incoming → positive). When both/neither are present we
+  // honour whatever sign the API returned as the safest fallback.
+  //
+  // Without this normalisation, sync rows arrived with the opposite sign
+  // from CSV-uploaded counterparts; both got matched to the same budget
+  // item and silently cancelled out — see the May 2026 incident where
+  // "spent so far" dropped to ~€0 after the first Enable Banking sync.
+  const hasCreditor = !!tx.creditor?.name;
+  const hasDebtor = !!tx.debtor?.name;
+  const absCents = Math.abs(Math.round(amountNum * 100));
+  const amountCents =
+    hasCreditor && !hasDebtor
+      ? -absCents
+      : hasDebtor && !hasCreditor
+        ? absCents
+        : Math.round(amountNum * 100);
 
   const counterparty = (tx.creditor?.name ?? tx.debtor?.name ?? "").trim();
   const descriptionParts: string[] = [];

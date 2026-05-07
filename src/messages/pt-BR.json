@@ -290,7 +290,10 @@
     "syncResultUpToDate": "Em dia em {accounts, plural, one {# conta} other {# contas}} — nada novo do ING.",
     "syncResultNoAccounts": "A sincronização rodou mas nenhuma conta foi processada. Veja o erro na linha da conexão.",
     "rematchAll": "Recategorizar tudo",
-    "rematchResult": "Re-categorizou {matched, plural, one {# transação} other {# transações}}."
+    "rematchResult": "Re-categorizou {matched, plural, one {# transação} other {# transações}}.",
+    "cleanupSignFlipped": "Limpar duplicadas com sinal invertido",
+    "cleanupSignFlippedConfirm": "Apagar toda transação importada via Enable Banking que tenha um par com sinal oposto já no banco? Use uma vez depois de subir a correção de sinal para limpar as duplicadas que estavam zerando os totais.",
+    "cleanupResult": "Apagou {deleted, plural, one {# linha} other {# linhas}}."
   },
   "UpdatePrompt": {
     "title": "Atualização disponível",
