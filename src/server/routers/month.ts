@@ -102,6 +102,12 @@ export const monthRouter = router({
         )
         .orderBy(asc(budgetItem.section), asc(budgetItem.name));
 
+      // Count any tx_match pointing at one of this month's budget items.
+      // Don't filter by transaction.bookingDate — the budget item is
+      // already month-scoped via monthId, and the user may legitimately
+      // assign a transaction whose booking date sits just outside the
+      // payday-month window (e.g. salary paid 21 Apr against May's
+      // "Salário Yann" line, since payday-month opens 25 Apr).
       const matchCounts = rawItems.length
         ? await db
             .select({
@@ -109,15 +115,10 @@ export const monthRouter = router({
               count: sql<string>`COUNT(*)`,
             })
             .from(txMatch)
-            .innerJoin(transaction, eq(transaction.id, txMatch.transactionId))
             .where(
-              and(
-                inArray(
-                  txMatch.budgetItemId,
-                  rawItems.map((i) => i.id),
-                ),
-                gte(transaction.bookingDate, range.startsOn),
-                lte(transaction.bookingDate, range.endsOn),
+              inArray(
+                txMatch.budgetItemId,
+                rawItems.map((i) => i.id),
               ),
             )
             .groupBy(txMatch.budgetItemId)

@@ -93,9 +93,12 @@ export async function getSectionsForToday(
     }));
   }
 
-  // Sums + counts of matches in the current payday-month per item. Strip
-  // internal household transfers so the per-section drill matches the
-  // headline "spent" — neither view counts moving money to joint as a spend.
+  // Sums + counts of matches against this month's items. The budget items
+  // are already month-scoped via monthId, so any tx_match pointing at one
+  // of them counts as paid — even if the transaction's booking date sits
+  // just outside the payday-month window (salary on day 21 for a payday-
+  // month that opens on day 25, for example). Internal household transfers
+  // are still stripped so per-section drill matches the headline "spent".
   const matchSums = await db
     .select({
       budgetItemId: txMatch.budgetItemId,
@@ -110,8 +113,6 @@ export async function getSectionsForToday(
           txMatch.budgetItemId,
           items.map((i) => i.id),
         ),
-        gte(transaction.bookingDate, range.startsOn),
-        lte(transaction.bookingDate, range.endsOn),
         sql`NOT (COALESCE(${transaction.counterparty}, '') || ' ' || COALESCE(${transaction.description}, '') ~* ${INTERNAL_TRANSFER_PG_PATTERN})`,
       ),
     )

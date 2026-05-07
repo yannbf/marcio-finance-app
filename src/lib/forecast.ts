@@ -86,21 +86,16 @@ export async function getUpcomingCharges(
         inArray(budgetItem.scope, scopes),
         inArray(budgetItem.section, ["FIXAS", "DIVIDAS"]),
         sql`${budgetItem.plannedCents} < 0`,
+        // An item is "still to pay" only if no tx_match exists at all for
+        // it. The booking date isn't checked — the budget item is already
+        // month-scoped via monthId, so any match is "for this month" by
+        // definition (and the user may legitimately have assigned a tx
+        // booked just outside the payday-month window).
         notExists(
           db
             .select({ one: sql`1` })
             .from(txMatch)
-            .innerJoin(
-              transaction,
-              eq(transaction.id, txMatch.transactionId),
-            )
-            .where(
-              and(
-                eq(txMatch.budgetItemId, budgetItem.id),
-                gte(transaction.bookingDate, range.startsOn),
-                lte(transaction.bookingDate, range.endsOn),
-              ),
-            ),
+            .where(eq(txMatch.budgetItemId, budgetItem.id)),
         ),
       ),
     );
