@@ -21,10 +21,10 @@ type CachedToken = { value: string; expiresAt: number };
 let cachedToken: CachedToken | null = null;
 
 function readPrivateKeyPem(): string {
-  const b64 = process.env.ENABLE_BANKING_PRIVATE_KEY_BASE64;
+  const b64 = process.env.ENABLE_BANKING_PRIVATE_KEY_B64;
   if (!b64) {
     throw new Error(
-      "ENABLE_BANKING_PRIVATE_KEY_BASE64 is not configured (base64 of the PEM private key).",
+      "ENABLE_BANKING_PRIVATE_KEY_B64 is not configured (base64 of the PEM private key).",
     );
   }
   return Buffer.from(b64, "base64").toString("utf8");

@@ -31,7 +31,7 @@ async function handle(request: Request) {
 
   if (
     !process.env.ENABLE_BANKING_APP_ID ||
-    !process.env.ENABLE_BANKING_PRIVATE_KEY_BASE64
+    !process.env.ENABLE_BANKING_PRIVATE_KEY_B64
   ) {
     return NextResponse.json(
       { skipped: true, reason: "no Enable Banking credentials configured" },
