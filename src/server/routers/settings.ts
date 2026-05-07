@@ -123,6 +123,43 @@ export const settingsRouter = router({
         return { ok: true as const }
       }),
 
+    /**
+     * Flip a bank account's owner (joint / yann / camila).
+     *
+     * Useful right after a sync because Enable Banking returns every
+     * account under the connection owner's role, even when the underlying
+     * ING account is jointly held. Only an account the caller can already
+     * see is flippable — the existing privacy guard on the per-account
+     * page enforces that visibility.
+     */
+    setAccountOwner: protectedProcedure
+      .input(
+        z.object({
+          bankAccountId: z.string().uuid(),
+          owner: z.enum(['joint', 'yann', 'camila']),
+        }),
+      )
+      .mutation(async ({ ctx, input }) => {
+        const [acct] = await db
+          .select({ id: bankAccount.id, owner: bankAccount.owner })
+          .from(bankAccount)
+          .where(eq(bankAccount.id, input.bankAccountId))
+        if (!acct) throw new TRPCError({ code: 'NOT_FOUND' })
+
+        // Privacy: the caller must already be allowed to see the account
+        // (joint, or it's their personal one) to mutate it.
+        if (acct.owner !== 'joint' && acct.owner !== ctx.user.role) {
+          throw new TRPCError({ code: 'FORBIDDEN' })
+        }
+
+        await db
+          .update(bankAccount)
+          .set({ owner: input.owner })
+          .where(eq(bankAccount.id, acct.id))
+
+        return { ok: true as const, owner: input.owner }
+      }),
+
     /** On-demand sync of one connection. */
     refresh: protectedProcedure
       .input(z.object({ connectionId: z.string().uuid() }))

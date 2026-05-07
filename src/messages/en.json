@@ -112,7 +112,9 @@
     "empty": "No transactions yet — upload a CSV.",
     "ownerJoint": "Joint",
     "ownerYann": "Yann personal",
-    "ownerCamila": "Camila personal"
+    "ownerCamila": "Camila personal",
+    "ownershipLabel": "Ownership",
+    "ownershipHint": "Synced accounts come back tagged with whoever logged in. Flip to Joint if both household members should see it."
   },
   "Inbox": {
     "title": "Inbox",

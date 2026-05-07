@@ -112,7 +112,9 @@
     "empty": "Nenhuma transação ainda — suba um CSV.",
     "ownerJoint": "Conjunta",
     "ownerYann": "Pessoal Yann",
-    "ownerCamila": "Pessoal Camila"
+    "ownerCamila": "Pessoal Camila",
+    "ownershipLabel": "Titularidade",
+    "ownershipHint": "Contas sincronizadas vêm marcadas com quem fez o login. Mude para Conjunta quando os dois precisarem ver."
   },
   "Inbox": {
     "title": "Caixa",

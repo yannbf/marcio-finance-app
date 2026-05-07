@@ -13,6 +13,7 @@ import { Card } from "@/components/ui/card.tsx";
 import { Link } from "@/i18n/navigation.ts";
 import { getCurrentUser } from "@/lib/auth/current-user.ts";
 import { TransactionRow } from "@/components/marcio/transaction-row.tsx";
+import { AccountOwnerToggle } from "@/components/marcio/account-owner-toggle.tsx";
 import type { Locale } from "@/i18n/routing.ts";
 
 export default async function AccountDetailPage({
@@ -89,6 +90,11 @@ export default async function AccountDetailPage({
           </p>
         </div>
       </header>
+
+      <AccountOwnerToggle
+        bankAccountId={account.id}
+        initialOwner={account.owner as "joint" | "yann" | "camila"}
+      />
 
       {rows.length === 0 ? (
         <Card className="border-border/40 bg-card/40 p-6 text-center text-sm text-muted-foreground">
