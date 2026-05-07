@@ -18,6 +18,10 @@ export function BankConnections() {
   const locale = useLocale();
   const search = useSearchParams();
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
+  // Stable timestamp captured at mount — used for "expires in N days" and
+  // "synced X minutes ago" math. React 19's compiler flags `Date.now()` in
+  // render as impure; capturing once with useState(() => …) is the fix.
+  const [now] = useState(() => Date.now());
 
   const list = trpc.settings.connections.list.useQuery();
   const utils = trpc.useUtils();
@@ -116,8 +120,12 @@ export function BankConnections() {
           </p>
         ) : (
           (list.data ?? []).map((c) => {
-            const expDays = c.expiresAt
-              ? Math.ceil((c.expiresAt.getTime() - Date.now()) / 86400_000)
+            // The persisted React Query cache (sessionStorage) restores Date
+            // values as strings, so coerce defensively before doing math.
+            const expiresAt = toDate(c.expiresAt);
+            const lastSyncedAt = toDate(c.lastSyncedAt);
+            const expDays = expiresAt
+              ? Math.ceil((expiresAt.getTime() - now) / 86400_000)
               : null;
             return (
               <div
@@ -129,8 +137,8 @@ export function BankConnections() {
                     <p className="truncate font-medium">{c.institutionId}</p>
                     <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
                       {statusLabel(c.status, t)}
-                      {c.lastSyncedAt
-                        ? ` · ${t("lastSynced", { when: relativeTime(c.lastSyncedAt, locale) })}`
+                      {lastSyncedAt
+                        ? ` · ${t("lastSynced", { when: relativeTime(lastSyncedAt, now, locale) })}`
                         : ""}
                       {expDays !== null
                         ? ` · ${
@@ -192,12 +200,17 @@ export function BankConnections() {
 
                 {lastResult[c.id] ? (
                   <p className="mt-2 text-[11px] text-muted-foreground">
-                    {lastResult[c.id].inserted > 0
-                      ? t("syncResultNew", {
-                          inserted: lastResult[c.id].inserted,
-                          matched: lastResult[c.id].matched,
-                        })
-                      : t("syncResultUpToDate")}
+                    {lastResult[c.id].accountsSynced === 0
+                      ? t("syncResultNoAccounts")
+                      : lastResult[c.id].inserted > 0
+                        ? t("syncResultNew", {
+                            inserted: lastResult[c.id].inserted,
+                            matched: lastResult[c.id].matched,
+                            accounts: lastResult[c.id].accountsSynced,
+                          })
+                        : t("syncResultUpToDate", {
+                            accounts: lastResult[c.id].accountsSynced,
+                          })}
                   </p>
                 ) : null}
 
@@ -246,8 +259,22 @@ function statusLabel(
   }
 }
 
-function relativeTime(d: Date, locale: string): string {
-  const diffMs = d.getTime() - Date.now();
+/**
+ * Coerce a Date | string | null | undefined to Date | null. The tRPC
+ * superjson transformer delivers Dates correctly on the wire, but
+ * TanStack Query's sessionStorage persister rehydrates them as ISO
+ * strings. Without this, any code that calls Date methods on a restored
+ * cache value crashes with "x.getTime is not a function".
+ */
+function toDate(v: Date | string | null | undefined): Date | null {
+  if (!v) return null;
+  if (v instanceof Date) return v;
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function relativeTime(d: Date, now: number, locale: string): string {
+  const diffMs = d.getTime() - now;
   const fmt = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
   const min = Math.round(diffMs / 60000);
   if (Math.abs(min) < 60) return fmt.format(min, "minute");

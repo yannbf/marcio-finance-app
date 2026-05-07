@@ -146,9 +146,19 @@ export type EbAccountUid = {
   identification_hash?: string;
 };
 
+/**
+ * Enable Banking returns two different shapes for the `accounts` array:
+ *   - POST /sessions returns an array of full `AccountResource` objects
+ *     ({uid, account_id, …}).
+ *   - GET /sessions/{id} returns an array of plain UUID strings.
+ * The session type unifies both — the `accountsToUids` helper below
+ * collapses to a string[] regardless.
+ */
+export type EbSessionAccount = string | EbAccountUid;
+
 export type EbSession = {
   session_id: string;
-  accounts: EbAccountUid[];
+  accounts: EbSessionAccount[];
   /** Detailed account information when returned (varies by ASPSP). */
   accounts_data?: EbAccountDetails[];
   aspsp: { name: string; country: string };
@@ -157,6 +167,13 @@ export type EbSession = {
   /** ISO datetime — when this session's consent expires. */
   access_valid_until?: string;
 };
+
+export function accountsToUids(accounts: EbSessionAccount[] | undefined): string[] {
+  if (!accounts) return [];
+  return accounts
+    .map((a) => (typeof a === "string" ? a : a.uid))
+    .filter((s): s is string => typeof s === "string" && s.length > 0);
+}
 
 export type EbAccountDetails = {
   uid?: string;

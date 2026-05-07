@@ -273,8 +273,9 @@
     "connectPending": "You can finish the consent later from the same Connect button.",
     "connectExpired": "Consent has expired. Reconnect to resume daily sync.",
     "connectError": "Could not connect. Check the error on the connection row and try again.",
-    "syncResultNew": "Synced {inserted, plural, one {# new transaction} other {# new transactions}} · {matched} matched",
-    "syncResultUpToDate": "Already up to date — nothing new from ING."
+    "syncResultNew": "Synced {inserted, plural, one {# new transaction} other {# new transactions}} across {accounts, plural, one {# account} other {# accounts}} · {matched} matched",
+    "syncResultUpToDate": "Up to date across {accounts, plural, one {# account} other {# accounts}} — nothing new from ING.",
+    "syncResultNoAccounts": "Sync ran but no accounts were processed. Check the error on the connection row."
   },
   "UpdatePrompt": {
     "title": "Update available",

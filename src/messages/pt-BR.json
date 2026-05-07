@@ -273,8 +273,9 @@
     "connectPending": "Você pode terminar o consentimento depois pelo mesmo botão Conectar.",
     "connectExpired": "O consentimento expirou. Reconecte para retomar a sincronização diária.",
     "connectError": "Não foi possível conectar. Veja o erro na linha da conexão e tente de novo.",
-    "syncResultNew": "Sincronizou {inserted, plural, one {# transação nova} other {# transações novas}} · {matched} categorizadas",
-    "syncResultUpToDate": "Tudo em dia — nada novo do ING."
+    "syncResultNew": "Sincronizou {inserted, plural, one {# transação nova} other {# transações novas}} em {accounts, plural, one {# conta} other {# contas}} · {matched} categorizadas",
+    "syncResultUpToDate": "Em dia em {accounts, plural, one {# conta} other {# contas}} — nada novo do ING.",
+    "syncResultNoAccounts": "A sincronização rodou mas nenhuma conta foi processada. Veja o erro na linha da conexão."
   },
   "UpdatePrompt": {
     "title": "Atualização disponível",

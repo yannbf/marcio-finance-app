@@ -11,6 +11,7 @@ import { runMatchingForAccount } from "@/lib/matching/engine.ts";
 import { decryptSecret } from "@/lib/crypto/secrets.ts";
 import {
   EnableBankingError,
+  accountsToUids,
   deleteSession,
   getAccountDetails,
   getAccountTransactions,
@@ -210,12 +211,15 @@ export async function syncConnection(
   let totalDuplicates = 0;
   let totalMatched = 0;
   let accountsSynced = 0;
+  const perAccountErrors: string[] = [];
 
-  for (const acct of session.accounts ?? []) {
+  const accountUids = accountsToUids(session.accounts);
+
+  for (const accountUid of accountUids) {
     try {
       const r = await syncAccount({
         connectionId: conn.id,
-        accountUid: acct.uid,
+        accountUid,
         owner: conn.owner,
       });
       totalInserted += r.inserted;
@@ -224,16 +228,24 @@ export async function syncConnection(
       accountsSynced++;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      await db
-        .update(bankConnection)
-        .set({ lastError: `account ${acct.uid}: ${msg}` })
-        .where(eq(bankConnection.id, conn.id));
+      perAccountErrors.push(`${accountUid.slice(0, 8)}…: ${msg}`);
     }
   }
 
+  // Only clear lastError if every per-account run succeeded (or we had
+  // nothing to do). Otherwise leave the diagnostic on the row so the user
+  // can see what went wrong from the UI.
   await db
     .update(bankConnection)
-    .set({ lastSyncedAt: new Date(), lastError: null })
+    .set({
+      lastSyncedAt: new Date(),
+      lastError:
+        perAccountErrors.length > 0
+          ? perAccountErrors.join(" | ").slice(0, 500)
+          : accountUids.length === 0
+            ? "session has no accounts — re-grant consent"
+            : null,
+    })
     .where(eq(bankConnection.id, conn.id));
 
   return {
