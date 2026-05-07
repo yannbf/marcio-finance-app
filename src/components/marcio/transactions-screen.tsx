@@ -32,9 +32,15 @@ export function TransactionsScreen({
     : "all") as "all" | "matched" | "unmatched";
   const { scope } = parseSearch(sp, defaultAnchor);
 
-  // Locally-controlled input mirrors `?q=` and writes back debounced so the
-  // search filters as the user types. Without this, the bare <form> only
-  // submitted on Enter — and dropped `show`/`scope` from the URL.
+  // The result set is keyed only on (show, scope) so the cache survives
+  // every keystroke. The text query filters the loaded rows on the client —
+  // no round-trip per character. URL still mirrors `?q=` (debounced) so the
+  // search is shareable and survives a refresh.
+  const { data, isLoading } = trpc.transactions.list.useQuery({
+    show,
+    scope,
+  });
+
   const [draft, setDraft] = useState(q);
   const draftRef = useRef(draft);
   draftRef.current = draft;
@@ -55,15 +61,25 @@ export function TransactionsScreen({
           : pathname) as `/transactions${string}`,
         { scroll: false },
       );
-    }, 250);
+    }, 300);
     return () => window.clearTimeout(id);
   }, [draft, q, sp, router, pathname]);
 
-  const { data, isLoading } = trpc.transactions.list.useQuery({
-    q: q || undefined,
-    show,
-    scope,
-  });
+  const filteredRows = useMemo(() => {
+    if (!data) return null;
+    const needle = draft.trim().toLowerCase();
+    if (!needle) return data.rows;
+    return data.rows.filter((r) => {
+      const cp = (r.counterparty ?? "").toLowerCase();
+      const desc = (r.description ?? "").toLowerCase();
+      const matched = (r.matchedName ?? "").toLowerCase();
+      return (
+        cp.includes(needle) ||
+        desc.includes(needle) ||
+        matched.includes(needle)
+      );
+    });
+  }, [data, draft]);
 
   const sectionLabels = useMemo(
     () =>
@@ -78,16 +94,16 @@ export function TransactionsScreen({
   );
 
   const groups = useMemo(() => {
-    if (!data) return [];
-    const out: { date: string; rows: typeof data.rows }[] = [];
-    for (const r of data.rows) {
+    if (!filteredRows) return [];
+    const out: { date: string; rows: typeof filteredRows }[] = [];
+    for (const r of filteredRows) {
       const key = formatGroupDate(new Date(r.bookingDate), locale);
       const last = out[out.length - 1];
       if (last && last.date === key) last.rows.push(r);
       else out.push({ date: key, rows: [r] });
     }
     return out;
-  }, [data, locale]);
+  }, [filteredRows, locale]);
 
   return (
     <main className="mx-auto flex w-full max-w-md flex-col gap-4 px-5 pb-8 pt-8">
@@ -136,7 +152,7 @@ export function TransactionsScreen({
           <Skeleton className="h-12 w-full" />
           <Skeleton className="h-12 w-full" />
         </Card>
-      ) : !data || data.rows.length === 0 ? (
+      ) : !filteredRows || filteredRows.length === 0 ? (
         <Card className="border-border/40 bg-card/40 p-6 text-center text-sm text-muted-foreground">
           {t("empty")}
         </Card>
