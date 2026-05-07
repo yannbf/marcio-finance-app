@@ -72,7 +72,7 @@ export default async function AccountDetailPage({
     <main className="mx-auto flex w-full max-w-md flex-col gap-4 px-5 pb-8 pt-8">
       <header className="flex items-center gap-3">
         <Link
-          href="/connections"
+          href="/settings/banks"
           className="-m-2 rounded p-2 text-muted-foreground transition-colors hover:text-foreground"
           aria-label={t("back")}
         >

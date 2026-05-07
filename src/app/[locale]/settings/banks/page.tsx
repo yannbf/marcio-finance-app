@@ -97,7 +97,9 @@ export default async function ConnectionsPage({
           accounts.map((a) => (
             <Link
               key={a.id}
-              href={`/connections/${a.id}` as `/connections/${string}`}
+              href={
+                `/settings/banks/${a.id}` as `/settings/banks/${string}`
+              }
             >
               <Card className="flex flex-row items-center gap-3 border-border/40 bg-card/60 px-4 py-3 transition-colors hover:bg-card/80">
                 <div className="min-w-0 flex-1">
