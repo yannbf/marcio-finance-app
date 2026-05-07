@@ -14,7 +14,11 @@ import {
 } from "../trpc.ts";
 import { AnchorInput, ScopeViewInput } from "../inputs.ts";
 import { getHouseholdSettings } from "@/lib/settings.ts";
-import { paydayMonthFor, paydayMonthForAnchor } from "@/lib/payday.ts";
+import {
+  paydayMonthFor,
+  paydayMonthForAnchor,
+  shiftAnchor,
+} from "@/lib/payday.ts";
 import {
   getMonthlyAggregates,
   totalOutflow,
@@ -44,6 +48,18 @@ export const insightsRouter = router({
 
       const agg = await getMonthlyAggregates(scopes, input?.anchor);
       const totalOutCents = Math.abs(totalOutflow(agg.actual));
+
+      // Comparison vs the previous payday-month — used by the "vs last
+      // month" delta chip on the insights screen. Only meaningful once the
+      // user has more than one month of imported data; the screen treats
+      // a missing previous month as "no comparison available".
+      const prevAnchor = shiftAnchor(
+        agg.anchorYear,
+        agg.anchorMonth,
+        -1,
+      );
+      const prevAgg = await getMonthlyAggregates(scopes, prevAnchor);
+      const prevTotalOutCents = Math.abs(totalOutflow(prevAgg.actual));
 
       const topMerchants = await db
         .select({
@@ -95,6 +111,11 @@ export const insightsRouter = router({
         totalOutCents,
         planned: agg.planned,
         actual: agg.actual,
+        previous: {
+          anchor: prevAnchor,
+          totalOutCents: prevTotalOutCents,
+          actual: prevAgg.actual,
+        },
         topMerchants: topMerchants.map((m) => ({
           counterparty: m.counterparty,
           sum: m.sum,

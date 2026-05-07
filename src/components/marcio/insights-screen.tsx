@@ -46,9 +46,16 @@ export function InsightsScreen({
         {isLoading ? (
           <Skeleton className="mt-1 h-9 w-40" />
         ) : (
-          <p className="num mt-1 text-3xl font-semibold tracking-tight">
-            {formatEUR((data?.totalOutCents ?? 0) / 100, locale)}
-          </p>
+          <div className="mt-1 flex items-baseline gap-2">
+            <p className="num text-3xl font-semibold tracking-tight">
+              {formatEUR((data?.totalOutCents ?? 0) / 100, locale)}
+            </p>
+            <DeltaChip
+              current={data?.totalOutCents ?? 0}
+              previous={data?.previous?.totalOutCents ?? 0}
+              t={t}
+            />
+          </div>
         )}
       </Card>
 
@@ -60,12 +67,21 @@ export function InsightsScreen({
         <ul className="mt-4 flex flex-col gap-3">
           {OUTFLOW_SECTIONS.map((s) => {
             const cents = Math.abs(data?.actual?.[s] ?? 0);
+            const prevCents = Math.abs(data?.previous?.actual?.[s] ?? 0);
             const total = data?.totalOutCents ?? 0;
             const pct = total > 0 ? (cents / total) * 100 : 0;
             return (
               <li key={s} className="flex flex-col gap-1.5">
-                <div className="flex items-baseline justify-between text-sm">
-                  <span>{tSections(SECTION_TR_KEY[s] as never)}</span>
+                <div className="flex items-baseline justify-between gap-2 text-sm">
+                  <span className="flex items-baseline gap-1.5">
+                    {tSections(SECTION_TR_KEY[s] as never)}
+                    <DeltaChip
+                      current={cents}
+                      previous={prevCents}
+                      t={t}
+                      compact
+                    />
+                  </span>
                   <span className="num text-muted-foreground">
                     {formatEUR(cents / 100, locale)} · {pct.toFixed(0)}%
                   </span>
@@ -161,3 +177,44 @@ export function InsightsScreen({
   );
 }
 
+
+/**
+ * "vs last month" delta chip.
+ *
+ * Renders nothing when there's no comparable previous-month spend (zero or
+ * within a 1% noise threshold) — first-time use of insights with only one
+ * month of data shouldn't show "+100%" on every section. The colour follows
+ * the convention "spending more = bad (red), less = good (green)".
+ */
+function DeltaChip({
+  current,
+  previous,
+  t,
+  compact = false,
+}: {
+  current: number;
+  previous: number;
+  t: (k: string, vals?: Record<string, string | number>) => string;
+  compact?: boolean;
+}) {
+  if (previous <= 0) return null;
+  const pct = ((current - previous) / previous) * 100;
+  if (Math.abs(pct) < 1) return null;
+  const direction = pct > 0 ? "up" : "down";
+  const tone =
+    direction === "up"
+      ? "text-destructive bg-destructive/10"
+      : "text-primary bg-primary/10";
+  const sign = pct > 0 ? "+" : "−";
+  const value = `${sign}${Math.abs(pct).toFixed(0)}%`;
+  return (
+    <span
+      className={`num inline-flex items-center rounded px-1.5 ${
+        compact ? "text-[9px]" : "text-[10px]"
+      } font-medium ${tone}`}
+      title={t("vsLastMonth")}
+    >
+      {value}
+    </span>
+  );
+}

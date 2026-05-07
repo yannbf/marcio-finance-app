@@ -160,7 +160,8 @@
     "topCategoriesTitle": "Top categorias",
     "topMerchantsTitle": "Top estabelecimentos",
     "emptyHint": "Sem dados ainda — categorize transações na Caixa.",
-    "hits": "{n, plural, one {# transação} other {# transações}}"
+    "hits": "{n, plural, one {# transação} other {# transações}}",
+    "vsLastMonth": "vs mês passado"
   },
   "Settings": {
     "title": "Ajustes",

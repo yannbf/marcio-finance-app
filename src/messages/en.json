@@ -160,7 +160,8 @@
     "topCategoriesTitle": "Top categories",
     "topMerchantsTitle": "Top merchants",
     "emptyHint": "Nothing yet — categorize a few transactions in Caixa.",
-    "hits": "{n, plural, one {# transaction} other {# transactions}}"
+    "hits": "{n, plural, one {# transaction} other {# transactions}}",
+    "vsLastMonth": "vs last month"
   },
   "Settings": {
     "title": "Settings",
