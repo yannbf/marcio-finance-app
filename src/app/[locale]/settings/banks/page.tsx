@@ -6,6 +6,7 @@ import { ChevronRight } from "lucide-react";
 import { Card } from "@/components/ui/card.tsx";
 import { CsvUpload } from "@/components/marcio/csv-upload.tsx";
 import { PaydaySetting } from "@/components/marcio/payday-setting.tsx";
+import { BankConnections } from "@/components/marcio/bank-connections.tsx";
 import { Link } from "@/i18n/navigation.ts";
 import { getCurrentUser } from "@/lib/auth/current-user.ts";
 import { getHouseholdSettings } from "@/lib/settings.ts";
@@ -60,6 +61,8 @@ export default async function ConnectionsPage({
       </header>
 
       <PaydaySetting initialDay={settings.paydayDay} />
+
+      <BankConnections />
 
       <Card className="border-border/40 bg-card/60 p-5">
         <h2 className="text-sm font-medium">{t("uploadTitle")}</h2>

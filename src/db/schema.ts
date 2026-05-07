@@ -51,6 +51,13 @@ export const matchSource = pgEnum("match_source", [
   "learned",
   "user",
 ]);
+export const bankConnectionStatus = pgEnum("bank_connection_status", [
+  "pending",
+  "linked",
+  "expired",
+  "revoked",
+  "error",
+]);
 
 /* -------------------------------------------------------------------------- */
 /* Auth (Better Auth core tables — kept aligned with their schema)             */
@@ -125,9 +132,63 @@ export const bankAccount = pgTable(
     consentExpiresAt: timestamp("consent_expires_at"),
     lastSyncedAt: timestamp("last_synced_at"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
+    /** Optional link to a bank_connection. Null for CSV-only accounts. */
+    connectionId: uuid("connection_id"),
+    /** Provider-issued account handle (Enable Banking account uid). */
+    externalId: text("external_id"),
   },
-  (t) => [index("bank_account_owner_idx").on(t.owner)],
+  (t) => [
+    index("bank_account_owner_idx").on(t.owner),
+    index("bank_account_connection_idx").on(t.connectionId),
+    uniqueIndex("bank_account_external_uniq").on(t.externalId),
+  ],
 );
+
+/* -------------------------------------------------------------------------- */
+/* Bank connections — one row per provider session (Enable Banking session).  */
+/* A session can hold multiple bank_account rows (joint + savings under the   */
+/* same login). CSV-only flows leave bank_account.connection_id null.          */
+/* -------------------------------------------------------------------------- */
+
+export const bankConnection = pgTable(
+  "bank_connection",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** Who clicked Connect — not the same as the account's privacy scope. */
+    owner: userRole("owner").notNull(),
+    /** Provider-specific institution id, e.g. Enable Banking's "ING_NL". */
+    institutionId: text("institution_id").notNull(),
+    /** Provider session id — Enable Banking session_id, encrypted. Null
+     *  while pending consent; set on a successful callback. */
+    sessionIdEncrypted: text("session_id_encrypted"),
+    /** Hosted consent URL returned by the provider. Cleared once linked. */
+    redirectLink: text("redirect_link"),
+    status: bankConnectionStatus("status").notNull().default("pending"),
+    /** When the underlying consent expires. Null until linked. */
+    expiresAt: timestamp("expires_at"),
+    /** Last attempted sync (success or failure). */
+    lastSyncedAt: timestamp("last_synced_at"),
+    /** Last error message if a sync or link step failed. */
+    lastError: text("last_error"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("bank_connection_owner_idx").on(t.owner)],
+);
+
+/* -------------------------------------------------------------------------- */
+/* Per-account sync cursor. One row per bank_account that's connected via a   */
+/* provider session. Tracks the last booked date we successfully ingested so  */
+/* the next cron call can ask for a small delta.                               */
+/* -------------------------------------------------------------------------- */
+
+export const bankSyncCursor = pgTable("bank_sync_cursor", {
+  bankAccountId: uuid("bank_account_id")
+    .primaryKey()
+    .references(() => bankAccount.id, { onDelete: "cascade" }),
+  lastBookedAt: timestamp("last_booked_at"),
+  lastTxnExternalId: text("last_txn_external_id"),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
 
 export const savingsBucket = pgTable("savings_bucket", {
   id: uuid("id").primaryKey().defaultRandom(),

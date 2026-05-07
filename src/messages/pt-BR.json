@@ -249,7 +249,27 @@
       "appStep3": "Escolha \"Download statements\" → CSV → defina o período → enviar/baixar.",
       "tip": "Dica: depois do primeiro upload, repita semanalmente com o intervalo curto. Marcio deduplica linhas iguais por (data, valor, descrição).",
       "officialDocs": "Documentação oficial do ING"
-    }
+    },
+    "connectionsTitle": "Conexões bancárias (experimental)",
+    "connectionsHint": "Vincule um login do ING via Enable Banking e o Marcio puxa as transações todos os dias. O consentimento dura até 180 dias.",
+    "connectIng": "Conectar ING",
+    "reconnect": "Reconectar",
+    "noConnections": "Nenhuma conexão bancária ainda. O upload de CSV abaixo continua como alternativa.",
+    "loading": "Carregando…",
+    "experimentalNote": "Experimental: continue usando uploads de CSV se uma conexão travar — os dois alimentam a mesma tabela e se desduplicam.",
+    "lastSynced": "sincronizada {when}",
+    "expiresIn": "expira em {days, plural, one {# dia} other {# dias}}",
+    "expiredAlready": "consentimento expirado",
+    "disconnectConfirm": "Desconectar este banco? As transações já importadas ficam; as próximas sincronizações param até você reconectar.",
+    "statusLinked": "Conectado",
+    "statusPending": "Aguardando consentimento",
+    "statusExpired": "Expirado",
+    "statusRevoked": "Desconectado",
+    "statusError": "Erro",
+    "connectLinked": "Banco conectado. Primeira sincronização em andamento.",
+    "connectPending": "Você pode terminar o consentimento depois pelo mesmo botão Conectar.",
+    "connectExpired": "O consentimento expirou. Reconecte para retomar a sincronização diária.",
+    "connectError": "Não foi possível conectar. Veja o erro na linha da conexão e tente de novo."
   },
   "SignIn": {
     "title": "Entrar",

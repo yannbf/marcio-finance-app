@@ -249,7 +249,27 @@
       "appStep3": "Choose \"Download statements\" → CSV → date range → send/save.",
       "tip": "Tip: after the first upload, repeat weekly with short ranges. Marcio dedupes by (date, amount, description).",
       "officialDocs": "ING official documentation"
-    }
+    },
+    "connectionsTitle": "Bank connections (experimental)",
+    "connectionsHint": "Link an ING login through Enable Banking and Marcio will pull transactions daily. Consent lasts up to 180 days.",
+    "connectIng": "Connect ING",
+    "reconnect": "Reconnect",
+    "noConnections": "No bank connections yet. CSV upload below stays as the fallback.",
+    "loading": "Loading…",
+    "experimentalNote": "Experimental: keep using CSV uploads if a connection looks stuck — both feed the same transactions table and dedupe against each other.",
+    "lastSynced": "synced {when}",
+    "expiresIn": "expires in {days, plural, one {# day} other {# days}}",
+    "expiredAlready": "consent expired",
+    "disconnectConfirm": "Disconnect this bank? Existing transactions stay; future syncs stop until you reconnect.",
+    "statusLinked": "Linked",
+    "statusPending": "Awaiting consent",
+    "statusExpired": "Expired",
+    "statusRevoked": "Disconnected",
+    "statusError": "Error",
+    "connectLinked": "Bank linked. First sync running.",
+    "connectPending": "You can finish the consent later from the same Connect button.",
+    "connectExpired": "Consent has expired. Reconnect to resume daily sync.",
+    "connectError": "Could not connect. Check the error on the connection row and try again."
   },
   "SignIn": {
     "title": "Sign in",

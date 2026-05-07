@@ -4,7 +4,7 @@ import { routing } from "./i18n/routing.ts";
 
 const intlMiddleware = createMiddleware(routing);
 
-const PUBLIC_SUBPATHS = ["/sign-in"];
+const PUBLIC_SUBPATHS = ["/sign-in", "/privacy", "/terms"];
 
 export default function middleware(request: NextRequest) {
   const response = intlMiddleware(request);
