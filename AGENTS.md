@@ -343,6 +343,67 @@ for list/CRUD work (Banks, Savings).
 - **base-ui Popover/Sheet** uses `render` props for asChild-style behavior;
   it doesn't accept `asChild`. Don't try to port radix patterns directly.
 
+## Verifying changes (when Playwright is broken or too slow)
+
+The Playwright suite is currently unreliable (cold Neon pooler + a
+hydration mismatch in mobile emulation — see `FOLLOWUP.md` §10). Until
+the test infra is fixed, the workflow that catches the most real bugs
+fastest is:
+
+1. **`pnpm typecheck`** before every commit. Cheap, catches contract
+   drift between routers and screens. Non-negotiable.
+
+2. **Run `pnpm dev` locally pointing at a real DB.** The `.env.local`
+   `DATABASE_URL` is the production Neon branch by default — running
+   `pnpm dev` reads that and gives you the actual prod data to verify
+   against. Read-only flows (most screens) are safe to test this way;
+   anything that mutates (assigning transactions, sync triggers,
+   disconnect) should be done against the e2e branch by overriding
+   `DATABASE_URL=$MARCIO_E2E_DATABASE_URL pnpm dev` first.
+
+3. **Drive the dev server with the Chrome MCP**, not just curl:
+   - `mcp__Claude_in_Chrome__navigate` to load the page in a real
+     browser (TanStack Query, persister, view-transitions, hydration —
+     the whole client runtime).
+   - `mcp__Claude_in_Chrome__computer { action: "screenshot" }` after
+     a `wait` to confirm the rendered output matches expectations.
+   - `mcp__Claude_in_Chrome__read_console_messages` with
+     `pattern: "error|TypeError|hydrat"` after each navigation. The
+     console catches the runtime-only bugs that typecheck and SSR HTML
+     scrapes both miss (e.g. `expiresAt.getTime is not a function`
+     from a persister round-trip).
+   - `mcp__Claude_in_Chrome__javascript_tool` to dispatch clicks
+     directly on a button when the CDP click action times out (it
+     intermittently does in long sessions).
+
+4. **Probe tRPC endpoints directly** as a sanity check the data is
+   actually flowing:
+   ```sh
+   curl -s "http://localhost:3100/api/rpc/today.get?batch=1&input=%7B%220%22%3A%7B%22json%22%3A%7B%22scope%22%3A%22joint%22%7D%7D%7D" \
+     | python3 -c "import sys,json; print(json.loads(sys.stdin.read())[0]['result']['data']['json'])"
+   ```
+   Useful when the page renders an empty state and you can't tell
+   whether the query actually returned empty or just hasn't hydrated
+   yet. Bypassing the React Query persister this way isolated several
+   bugs in the multi-month series — most importantly the sign-flipped
+   sync rows that were cancelling spend totals to ~€0.
+
+5. **Don't trust SSR-rendered HTML** to verify client-fetched data.
+   `useQuery` returns `{data: undefined, isLoading: true}` server-side,
+   so the SSR HTML is always the loading skeleton. The data only
+   arrives after hydration runs in a real browser.
+
+6. **Spot-check both with and without the persister cache.** Open the
+   page once to populate `marcio-query-cache-v2` in sessionStorage, then
+   reload to exercise the restore-from-cache path. The
+   `expiresAt.getTime is not a function` regression only fired on the
+   second load, not the first.
+
+If you make a UI-touching change and you don't take a screenshot or read
+the console after it landed in a real browser, the change isn't really
+verified. SSR HTML being scraped by curl is not the same as the page
+actually working.
+
 ## Production setup status
 
 - Vercel project deployed against the `marcio-app` repo's `main` branch.
