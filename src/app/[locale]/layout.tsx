@@ -8,6 +8,7 @@ import { routing } from "@/i18n/routing.ts";
 import { BottomNav } from "@/components/marcio/bottom-nav.tsx";
 import { IosInstallHint } from "@/components/marcio/ios-install-hint.tsx";
 import { ThemeApplier } from "@/components/marcio/theme-applier.tsx";
+import { PullToRefresh } from "@/components/marcio/pull-to-refresh.tsx";
 import { TrpcProvider } from "@/lib/trpc/provider.tsx";
 import "../globals.css";
 
@@ -78,15 +79,20 @@ export default async function LocaleLayout({
             and ThemeApplier keeps the class in sync after navigation. */}
         <script src="/theme-init.js" />
       </head>
-      <body className="min-h-full bg-background text-foreground">
+      <body className="min-h-dvh bg-background text-foreground">
         <NextIntlClientProvider messages={messages} locale={locale}>
           <TrpcProvider>
             <ThemeApplier />
             <div
-              className="pb-[calc(5rem+env(safe-area-inset-bottom))]"
-              style={{ viewTransitionName: "page" }}
+              className="min-h-dvh"
+              style={{
+                paddingTop: "env(safe-area-inset-top)",
+                paddingBottom:
+                  "calc(5rem + env(safe-area-inset-bottom))",
+                viewTransitionName: "page",
+              }}
             >
-              {children}
+              <PullToRefresh>{children}</PullToRefresh>
             </div>
             <BottomNav />
             <IosInstallHint />

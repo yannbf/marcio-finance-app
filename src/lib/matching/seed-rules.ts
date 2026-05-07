@@ -467,6 +467,19 @@ export const AFRONDING_PG_PATTERN =
   "afronding|notprovided.*spaarrekening|round[[:space:]]*up";
 
 /**
+ * Identify an internal household transfer between Yann's/Camila's personal
+ * accounts and the joint account. These show up as outflows on the personal
+ * side and inflows on the joint side — but they are *not* spending. Match
+ * either account holder's name, or the explicit "contrib(ution)" wording the
+ * couple uses in transfer descriptions. The pattern targets the same shape
+ * as the JOINT income seed rules above (Y/C ... ferreira / loureiro,
+ * "contrib(uicao)"), so excluding it from spent figures cancels out the
+ * pair without affecting any merchant transactions.
+ */
+export const INTERNAL_TRANSFER_PG_PATTERN =
+  "y[[:space:]]*bezerra[[:space:]]*braga[[:space:]]*ferreira|c[[:space:]]*ferrer[[:space:]]*bezerra[[:space:]]*loureiro|contribu(icao|ition|ic|tion)|contrib[[:space:]]*(yann|camila|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro|janeiro|fevereiro|marco|abril)";
+
+/**
  * Identify a counterparty as a savings-bucket transfer.
  * Returns the bucket reference id when it matches.
  */

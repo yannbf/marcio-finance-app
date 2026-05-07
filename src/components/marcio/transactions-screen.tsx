@@ -1,12 +1,12 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
-import { Link } from "@/i18n/navigation.ts";
+import { Link, useRouter, usePathname } from "@/i18n/navigation.ts";
 import { ActivityRow } from "./activity-row.tsx";
 import { MonthScopeBar, parseSearch } from "./month-scope-bar.tsx";
 import { trpc } from "@/lib/trpc/client.ts";
@@ -23,12 +23,41 @@ export function TransactionsScreen({
   const t = useTranslations("Transactions");
   const tSections = useTranslations("Sections");
   const sp = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const q = (sp.get("q") ?? "").trim();
   const showRaw = sp.get("show") ?? "all";
   const show = (showRaw === "matched" || showRaw === "unmatched"
     ? showRaw
     : "all") as "all" | "matched" | "unmatched";
   const { scope } = parseSearch(sp, defaultAnchor);
+
+  // Locally-controlled input mirrors `?q=` and writes back debounced so the
+  // search filters as the user types. Without this, the bare <form> only
+  // submitted on Enter — and dropped `show`/`scope` from the URL.
+  const [draft, setDraft] = useState(q);
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
+  useEffect(() => {
+    setDraft(q);
+  }, [q]);
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      const next = draftRef.current.trim();
+      if (next === q) return;
+      const params = new URLSearchParams(sp.toString());
+      if (next) params.set("q", next);
+      else params.delete("q");
+      const qs = params.toString();
+      router.replace(
+        (qs
+          ? `${pathname}?${qs}`
+          : pathname) as `/transactions${string}`,
+        { scroll: false },
+      );
+    }, 250);
+    return () => window.clearTimeout(id);
+  }, [draft, q, sp, router, pathname]);
 
   const { data, isLoading } = trpc.transactions.list.useQuery({
     q: q || undefined,
@@ -72,10 +101,13 @@ export function TransactionsScreen({
         <MonthScopeBar defaultAnchor={defaultAnchor} />
       </header>
 
-      <form className="flex flex-col gap-3">
+      <div className="flex flex-col gap-3">
         <Input
           name="q"
-          defaultValue={q}
+          value={draft}
+          onChange={(e) => setDraft(e.currentTarget.value)}
+          type="search"
+          inputMode="search"
           placeholder={t("searchPlaceholder")}
           className="num"
         />
@@ -96,7 +128,7 @@ export function TransactionsScreen({
             {t("filterUnmatched")}
           </FilterPill>
         </div>
-      </form>
+      </div>
 
       {isLoading ? (
         <Card className="flex flex-col gap-3 border-border/40 bg-card/40 p-4">

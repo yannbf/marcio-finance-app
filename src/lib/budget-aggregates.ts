@@ -8,11 +8,12 @@
 
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db/index.ts";
-import { budgetItem, month, txMatch } from "@/db/schema.ts";
+import { budgetItem, month, transaction, txMatch } from "@/db/schema.ts";
 import type { Scope, Section } from "./import/types.ts";
 import { paydayMonthFor, paydayMonthForAnchor } from "./payday.ts";
 import { getHouseholdSettings } from "./settings.ts";
 import { monthlyContributionCents } from "./cadence.ts";
+import { INTERNAL_TRANSFER_PG_PATTERN } from "./matching/seed-rules.ts";
 
 export type SectionTotals = Partial<Record<Section, number>>;
 
@@ -81,6 +82,12 @@ export async function getMonthlyAggregates(
     )
     .groupBy(budgetItem.section);
 
+  // Movements between Yann/Camila personal accounts and the joint account
+  // aren't spending — they're a transfer. Strip them from the actual sum
+  // so headline "spent" figures don't conflate moving money with using it.
+  // The matching transactions on the joint side land in ENTRADAS (income),
+  // which totalOutflow already ignores; on the personal side they would
+  // otherwise inflate any outflow section the user assigned them to.
   const actualRows = await db
     .select({
       section: budgetItem.section,
@@ -88,10 +95,12 @@ export async function getMonthlyAggregates(
     })
     .from(txMatch)
     .innerJoin(budgetItem, eq(budgetItem.id, txMatch.budgetItemId))
+    .innerJoin(transaction, eq(transaction.id, txMatch.transactionId))
     .where(
       and(
         eq(budgetItem.monthId, monthRow.id),
         inArray(budgetItem.scope, scopes),
+        sql`NOT (COALESCE(${transaction.counterparty}, '') || ' ' || COALESCE(${transaction.description}, '') ~* ${INTERNAL_TRANSFER_PG_PATTERN})`,
       ),
     )
     .groupBy(budgetItem.section);

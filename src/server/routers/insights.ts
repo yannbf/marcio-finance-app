@@ -19,7 +19,10 @@ import {
   getMonthlyAggregates,
   totalOutflow,
 } from "@/lib/budget-aggregates.ts";
-import { AFRONDING_PG_PATTERN } from "@/lib/matching/seed-rules.ts";
+import {
+  AFRONDING_PG_PATTERN,
+  INTERNAL_TRANSFER_PG_PATTERN,
+} from "@/lib/matching/seed-rules.ts";
 
 export const insightsRouter = router({
   get: publicProcedure
@@ -57,6 +60,7 @@ export const insightsRouter = router({
             lte(transaction.bookingDate, range.endsOn),
             sql`${transaction.amountCents} < 0`,
             sql`NOT (${transaction.counterparty} ~* ${AFRONDING_PG_PATTERN})`,
+            sql`NOT (COALESCE(${transaction.counterparty}, '') || ' ' || COALESCE(${transaction.description}, '') ~* ${INTERNAL_TRANSFER_PG_PATTERN})`,
           ),
         )
         .groupBy(transaction.counterparty)
@@ -79,6 +83,7 @@ export const insightsRouter = router({
             gte(transaction.bookingDate, range.startsOn),
             lte(transaction.bookingDate, range.endsOn),
             sql`${txMatch.allocatedCents} < 0`,
+            sql`NOT (COALESCE(${transaction.counterparty}, '') || ' ' || COALESCE(${transaction.description}, '') ~* ${INTERNAL_TRANSFER_PG_PATTERN})`,
           ),
         )
         .groupBy(budgetItem.id, budgetItem.name, budgetItem.section)

@@ -12,6 +12,7 @@ import type { Scope, Section } from "./import/types.ts";
 import { paydayMonthFor, paydayMonthForAnchor } from "./payday.ts";
 import { getHouseholdSettings } from "./settings.ts";
 import { monthlyContributionCents } from "./cadence.ts";
+import { INTERNAL_TRANSFER_PG_PATTERN } from "./matching/seed-rules.ts";
 
 export type SectionItemRow = {
   id: string;
@@ -92,7 +93,9 @@ export async function getSectionsForToday(
     }));
   }
 
-  // Sums + counts of matches in the current payday-month per item.
+  // Sums + counts of matches in the current payday-month per item. Strip
+  // internal household transfers so the per-section drill matches the
+  // headline "spent" — neither view counts moving money to joint as a spend.
   const matchSums = await db
     .select({
       budgetItemId: txMatch.budgetItemId,
@@ -109,6 +112,7 @@ export async function getSectionsForToday(
         ),
         gte(transaction.bookingDate, range.startsOn),
         lte(transaction.bookingDate, range.endsOn),
+        sql`NOT (COALESCE(${transaction.counterparty}, '') || ' ' || COALESCE(${transaction.description}, '') ~* ${INTERNAL_TRANSFER_PG_PATTERN})`,
       ),
     )
     .groupBy(txMatch.budgetItemId);
