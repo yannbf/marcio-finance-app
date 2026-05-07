@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import { db } from "@/db/index.ts";
 import {
   bankAccount,
@@ -34,6 +34,17 @@ export const transactionsRouter = router({
         show: ShowFilter.optional(),
         scope: ScopeViewInput,
         cursor: z.number().int().nonnegative().optional(),
+        // ISO date strings, inclusive on both ends. The screen surfaces
+        // shortcut pills (7 / 30 / 90 days) and a custom range; either or
+        // both can be omitted.
+        dateFrom: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/)
+          .optional(),
+        dateTo: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/)
+          .optional(),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -42,6 +53,17 @@ export const transactionsRouter = router({
       const offset = input?.cursor ?? 0;
 
       const filters = [inArray(bankAccount.owner, allowed)];
+
+      if (input.dateFrom) {
+        filters.push(
+          gte(transaction.bookingDate, new Date(`${input.dateFrom}T00:00:00.000Z`)),
+        );
+      }
+      if (input.dateTo) {
+        filters.push(
+          lte(transaction.bookingDate, new Date(`${input.dateTo}T23:59:59.999Z`)),
+        );
+      }
       if (show === "matched") {
         filters.push(
           sql`EXISTS (SELECT 1 FROM ${txMatch} WHERE ${txMatch.transactionId} = ${transaction.id})`,

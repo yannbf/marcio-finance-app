@@ -40,8 +40,24 @@ export function TransactionsScreen({
   ) as "all" | "matched" | "unmatched" | "duplicates";
   const { scope } = parseSearch(sp, defaultAnchor, defaultScope);
 
-  // Cache key is (show, scope) only — keystrokes never refetch. Pages
-  // accumulate so "Load more" extends the searchable window.
+  // Snapshot "now" once so React 19's compiler doesn't flag the `Date`
+  // calls in `isoNDaysAgo` below as impure-during-render.
+  const [nowMs] = useState(() => Date.now());
+
+  // Date range — either a shortcut ("7", "30", "90", "all") via ?range, or
+  // explicit ?from + ?to query params. Custom ranges win when both are set.
+  const range = sp.get("range") ?? "all";
+  const fromParam = sp.get("from") ?? "";
+  const toParam = sp.get("to") ?? "";
+  const dateFromIso =
+    fromParam ||
+    (range === "7" || range === "30" || range === "90"
+      ? isoNDaysAgo(nowMs, Number.parseInt(range, 10))
+      : undefined);
+  const dateToIso = toParam || undefined;
+
+  // Cache key is (show, scope, dateFrom, dateTo) — anything affecting the
+  // server set must be included or the persister returns stale rows.
   const {
     data,
     isLoading,
@@ -49,7 +65,7 @@ export function TransactionsScreen({
     hasNextPage,
     isFetchingNextPage,
   } = trpc.transactions.list.useInfiniteQuery(
-    { show, scope },
+    { show, scope, dateFrom: dateFromIso, dateTo: dateToIso },
     {
       getNextPageParam: (last) => last.nextCursor ?? undefined,
     },
@@ -177,6 +193,32 @@ export function TransactionsScreen({
             {t("filterDuplicates")}
           </FilterPill>
         </div>
+        <div className="flex gap-1 rounded-full border border-border/60 bg-card/50 p-1 text-xs">
+          <FilterPill
+            href={makeRangeHref(sp, "7")}
+            active={range === "7"}
+          >
+            {t("range7")}
+          </FilterPill>
+          <FilterPill
+            href={makeRangeHref(sp, "30")}
+            active={range === "30"}
+          >
+            {t("range30")}
+          </FilterPill>
+          <FilterPill
+            href={makeRangeHref(sp, "90")}
+            active={range === "90"}
+          >
+            {t("range90")}
+          </FilterPill>
+          <FilterPill
+            href={makeRangeHref(sp, "all")}
+            active={range === "all" && !fromParam && !toParam}
+          >
+            {t("rangeAll")}
+          </FilterPill>
+        </div>
       </div>
 
       {isLoading ? (
@@ -278,6 +320,26 @@ function makeHref(q: string, show: string): string {
   if (show && show !== "all") params.set("show", show);
   const qs = params.toString();
   return qs ? `/transactions?${qs}` : "/transactions";
+}
+
+function makeRangeHref(
+  current: { toString(): string },
+  range: "7" | "30" | "90" | "all",
+): string {
+  const params = new URLSearchParams(current.toString());
+  // Custom from/to wins over range pills — clear them when picking a pill.
+  params.delete("from");
+  params.delete("to");
+  if (range === "all") params.delete("range");
+  else params.set("range", range);
+  const qs = params.toString();
+  return qs ? `/transactions?${qs}` : "/transactions";
+}
+
+function isoNDaysAgo(now: number, days: number): string {
+  const d = new Date(now);
+  d.setUTCDate(d.getUTCDate() - days);
+  return d.toISOString().slice(0, 10);
 }
 
 function formatGroupDate(d: Date, locale: string): string {
