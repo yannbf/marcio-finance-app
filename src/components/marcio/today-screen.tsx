@@ -18,17 +18,22 @@ export function TodayScreen({
   locale,
   defaultAnchor,
   defaultScope = "joint",
+  defaultDaysUntilPayday,
 }: {
   locale: string;
   defaultAnchor: { year: number; month: number };
   defaultScope?: "joint" | "yann" | "camila";
+  /** Server-computed days-until-payday so the badge renders identically
+   *  on SSR and first client paint regardless of whether the persister
+   *  has restored cached data yet. */
+  defaultDaysUntilPayday: number;
 }) {
   const t = useTranslations();
   const sp = useSearchParams();
   const { anchor, scope } = parseSearch(sp, defaultAnchor, defaultScope);
   const { data } = trpc.today.get.useQuery({ anchor, scope });
 
-  const daysUntilPayday = data?.daysUntilPayday ?? 0;
+  const daysUntilPayday = data?.daysUntilPayday ?? defaultDaysUntilPayday;
   const plannedOutflowCents = data?.plannedOutflowCents ?? 0;
   const spentOutflowCents = data?.spentOutflowCents ?? 0;
   const marginCents = data?.marginCents ?? 0;
@@ -52,14 +57,10 @@ export function TodayScreen({
               {t("Today.spentSoFar")}
             </h1>
           </div>
-          {data ? (
-            <Badge variant="secondary" className="gap-1.5 px-2.5 py-1">
-              <Calendar className="size-3" />
-              {t("Today.untilPayday", { days: daysUntilPayday })}
-            </Badge>
-          ) : (
-            <Skeleton className="h-6 w-24 rounded-full" />
-          )}
+          <Badge variant="secondary" className="gap-1.5 px-2.5 py-1">
+            <Calendar className="size-3" />
+            {t("Today.untilPayday", { days: daysUntilPayday })}
+          </Badge>
         </div>
         <MonthScopeBar defaultAnchor={defaultAnchor} defaultScope={defaultScope} />
       </header>

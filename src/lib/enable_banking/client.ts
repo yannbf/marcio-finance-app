@@ -205,6 +205,9 @@ export type EbTransaction = {
   bank_transaction_code?: string;
   transaction_date?: string;
   status?: "BOOK" | "PDNG" | "INFO";
+  /** Berlin Group canonical sign indicator: DBIT = money leaves us
+   *  (outgoing → negative), CRDT = money enters us (incoming → positive). */
+  credit_debit_indicator?: "DBIT" | "CRDT";
 };
 
 export type EbTransactionsResponse = {

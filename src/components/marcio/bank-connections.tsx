@@ -56,17 +56,27 @@ export function BankConnections() {
   });
 
   const [rematchResult, setRematchResult] = useState<number | null>(null);
+  const invalidateAllScreens = () => {
+    void utils.inbox.list.invalidate();
+    void utils.activity.get.invalidate();
+    void utils.today.get.invalidate();
+    void utils.transactions.list.invalidate();
+    void utils.month.get.invalidate();
+    void utils.insights.get.invalidate();
+    void utils.buckets.get.invalidate();
+  };
   const rematch = trpc.settings.rematchAll.useMutation({
     onSuccess: (data) => {
       setRematchResult(data.matched);
-      // Invalidate every screen that derives from match state.
-      void utils.inbox.list.invalidate();
-      void utils.activity.get.invalidate();
-      void utils.today.get.invalidate();
-      void utils.transactions.list.invalidate();
-      void utils.month.get.invalidate();
-      void utils.insights.get.invalidate();
-      void utils.buckets.get.invalidate();
+      invalidateAllScreens();
+    },
+  });
+
+  const [fixSignResult, setFixSignResult] = useState<number | null>(null);
+  const fixSigns = trpc.settings.fixSyncRowSigns.useMutation({
+    onSuccess: (data) => {
+      setFixSignResult(data.fixed);
+      invalidateAllScreens();
     },
   });
 
@@ -258,27 +268,52 @@ export function BankConnections() {
         <p className="text-[11px] text-muted-foreground">
           {t("experimentalNote")}
         </p>
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => {
-            setRematchResult(null);
-            rematch.mutate();
-          }}
-          disabled={rematch.isPending}
-          className="shrink-0 text-[11px]"
-        >
-          {rematch.isPending ? (
-            <Loader2 className="size-3.5 animate-spin" />
-          ) : (
-            <Wand2 className="size-3.5" />
-          )}
-          {t("rematchAll")}
-        </Button>
+        <div className="flex shrink-0 gap-1">
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => {
+              if (window.confirm(t("fixSignsConfirm"))) {
+                setFixSignResult(null);
+                fixSigns.mutate();
+              }
+            }}
+            disabled={fixSigns.isPending}
+            className="text-[11px]"
+            title={t("fixSigns")}
+          >
+            {fixSigns.isPending ? (
+              <Loader2 className="size-3.5 animate-spin" />
+            ) : null}
+            {t("fixSigns")}
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => {
+              setRematchResult(null);
+              rematch.mutate();
+            }}
+            disabled={rematch.isPending}
+            className="text-[11px]"
+          >
+            {rematch.isPending ? (
+              <Loader2 className="size-3.5 animate-spin" />
+            ) : (
+              <Wand2 className="size-3.5" />
+            )}
+            {t("rematchAll")}
+          </Button>
+        </div>
       </div>
       {rematchResult !== null ? (
         <p className="mt-2 text-right text-[11px] text-muted-foreground">
           {t("rematchResult", { matched: rematchResult })}
+        </p>
+      ) : null}
+      {fixSignResult !== null ? (
+        <p className="mt-1 text-right text-[11px] text-muted-foreground">
+          {t("fixSignsResult", { fixed: fixSignResult })}
         </p>
       ) : null}
     </Card>

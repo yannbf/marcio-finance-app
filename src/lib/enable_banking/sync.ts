@@ -50,28 +50,50 @@ export function normalizeEbTransaction(
 
   const amountNum = Number.parseFloat(tx.transaction_amount.amount);
   if (!Number.isFinite(amountNum)) return null;
-  // Sign convention.
+  // Sign convention. ING via Enable Banking returns `transaction_amount`
+  // as an unsigned absolute value; direction comes from `credit_debit_indicator`
+  // (Berlin Group's canonical signal: DBIT = outgoing, CRDT = incoming).
   //
-  // Berlin Group's `transactionAmount.amount` SHOULD be signed
-  // (negative = outgoing) but ING via Enable Banking returns absolute
-  // values and indicates direction implicitly: `creditor` populated means
-  // we paid them (outgoing → negative), `debtor` populated means they
-  // paid us (incoming → positive). When both/neither are present we
-  // honour whatever sign the API returned as the safest fallback.
+  // Earlier versions of this file fell back to creditor/debtor name
+  // presence when the indicator was absent, but ALSO trusted the API's
+  // raw sign as a last resort — which was wrong because the API never
+  // returns a negative number. Result: the May 2026 incident where
+  // outgoing payments arrived positive, matched the same budget item as
+  // their CSV counterpart, and silently cancelled out spend totals.
   //
-  // Without this normalisation, sync rows arrived with the opposite sign
-  // from CSV-uploaded counterparts; both got matched to the same budget
-  // item and silently cancelled out — see the May 2026 incident where
-  // "spent so far" dropped to ~€0 after the first Enable Banking sync.
-  const hasCreditor = !!tx.creditor?.name;
-  const hasDebtor = !!tx.debtor?.name;
+  // New order:
+  //   1. credit_debit_indicator (deterministic, always trust it)
+  //   2. creditor/debtor name presence (fallback for older payloads)
+  //   3. Default to outgoing (negative) — ING transactions skew heavily
+  //      outgoing, and being wrong toward "spending" is a better failure
+  //      mode than silently inflating credits.
   const absCents = Math.abs(Math.round(amountNum * 100));
+  const indicator = tx.credit_debit_indicator;
+  // Fallback: identify our account by IBAN. If our IBAN is the
+  // creditor_account, money entered us (positive). If our IBAN is the
+  // debtor_account, money left us (negative).
+  const ourIban = (iban || "").replace(/\s+/g, "").toUpperCase();
+  const creditorIban = (tx.creditor_account?.iban ?? "")
+    .replace(/\s+/g, "")
+    .toUpperCase();
+  const debtorIban = (tx.debtor_account?.iban ?? "")
+    .replace(/\s+/g, "")
+    .toUpperCase();
+  const weAreCreditor = !!ourIban && ourIban === creditorIban;
+  const weAreDebtor = !!ourIban && ourIban === debtorIban;
   const amountCents =
-    hasCreditor && !hasDebtor
-      ? -absCents
-      : hasDebtor && !hasCreditor
-        ? absCents
-        : Math.round(amountNum * 100);
+    indicator === "CRDT"
+      ? absCents
+      : indicator === "DBIT"
+        ? -absCents
+        : weAreCreditor
+          ? absCents
+          : weAreDebtor
+            ? -absCents
+            : // Last resort: ING transactions skew heavily outgoing,
+              // and being wrong toward "spending" is a better failure
+              // mode than silently inflating credits.
+              -absCents;
 
   const counterparty = (tx.creditor?.name ?? tx.debtor?.name ?? "").trim();
   const descriptionParts: string[] = [];
