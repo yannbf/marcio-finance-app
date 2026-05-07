@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { and, asc, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db/index.ts";
 import {
   bankAccount,
@@ -23,11 +23,13 @@ const PAGE_SIZE = 100;
 const ShowFilter = z.enum(["all", "matched", "unmatched"]);
 
 export const transactionsRouter = router({
+  // Text search lives entirely on the client — the screen filters the cached
+  // page-of-100 instead of refetching per keystroke. The router stays scoped
+  // by show/scope so the cache key changes only when the underlying set does.
   list: publicProcedure
     .input(
       z
         .object({
-          q: z.string().optional(),
           show: ShowFilter.optional(),
           scope: ScopeViewInput,
         })
@@ -35,19 +37,9 @@ export const transactionsRouter = router({
     )
     .query(async ({ ctx, input }) => {
       const allowed = resolveVisibleScopes(ctx.allowedScopes, input?.scope);
-      const filterText = (input?.q ?? "").trim();
       const show = input?.show ?? "all";
 
       const filters = [inArray(bankAccount.owner, allowed)];
-      if (filterText) {
-        const like = `%${filterText.toLowerCase()}%`;
-        filters.push(
-          or(
-            ilike(transaction.counterparty, like),
-            ilike(transaction.description, like),
-          )!,
-        );
-      }
       if (show === "matched") {
         filters.push(
           sql`EXISTS (SELECT 1 FROM ${txMatch} WHERE ${txMatch.transactionId} = ${transaction.id})`,

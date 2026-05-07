@@ -165,7 +165,7 @@ export function TransactionsScreen({
             <Card className="border-border/40 bg-card/60 p-1">
               <ul className="divide-y divide-border/40">
                 {g.rows.map((r) => {
-                  const optsForScope = data.optionsAll.filter(
+                  const optsForScope = (data?.optionsAll ?? []).filter(
                     (o) => o.scope === r.owner,
                   );
                   return (
