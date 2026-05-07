@@ -64,6 +64,18 @@ export default async function SettingsPage({
       }).format(lastImport)
     : null;
 
+  // Build commit timestamp — captured at build time in next.config.ts.
+  // Local `pnpm dev` runs without re-evaluating next.config on every request,
+  // so this also reflects "when the dev server started" in development.
+  const buildTimeRaw = process.env.BUILD_COMMIT_TIME;
+  const buildTimeLabel =
+    buildTimeRaw && !Number.isNaN(new Date(buildTimeRaw).getTime())
+      ? new Intl.DateTimeFormat(locale, {
+          dateStyle: "medium",
+          timeStyle: "short",
+        }).format(new Date(buildTimeRaw))
+      : null;
+
   return (
     <main className="mx-auto flex w-full max-w-md flex-col gap-5 px-5 pb-8 pt-8">
       <header>
@@ -168,6 +180,11 @@ export default async function SettingsPage({
             · {(process.env.VERCEL_GIT_COMMIT_SHA ?? "dev").slice(0, 7)}
           </span>
         </p>
+        {buildTimeLabel ? (
+          <p className="num text-center text-[11px] text-muted-foreground/60">
+            {t("builtAt", { at: buildTimeLabel })}
+          </p>
+        ) : null}
         {lastImportLabel ? (
           <p className="num text-center text-[11px] text-muted-foreground/70">
             {t("lastSync", { at: lastImportLabel })}

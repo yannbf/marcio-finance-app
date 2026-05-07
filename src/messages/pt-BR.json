@@ -162,6 +162,7 @@
     "title": "Ajustes",
     "heading": "Configurações",
     "lastSync": "Última sincronização · {at}",
+    "builtAt": "Deploy · {at}",
     "sections": {
       "banks": {
         "title": "Bancos e contas",
