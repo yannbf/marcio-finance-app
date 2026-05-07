@@ -13,6 +13,7 @@ import {
   parseSearch,
 } from "./month-scope-bar.tsx";
 import { trpc } from "@/lib/trpc/client.ts";
+import { useMounted } from "@/lib/use-mounted.ts";
 import { formatEUR } from "@/lib/format.ts";
 import { SECTION_ORDER, SECTION_TR_KEY } from "@/lib/import/sections.ts";
 import type { Section } from "@/lib/import/types.ts";
@@ -40,10 +41,10 @@ export function MonthScreen({
   const sp = useSearchParams();
   const { anchor, scope } = parseSearch(sp, defaultAnchor, defaultScope);
 
-  const { data, isLoading } = trpc.month.get.useQuery({
-    scope,
-    anchor,
-  });
+  const mounted = useMounted();
+  const query = trpc.month.get.useQuery({ scope, anchor });
+  const data = mounted ? query.data : undefined;
+  const isLoading = mounted ? query.isLoading : true;
 
   const grouped = useMemo(() => {
     const out = new Map<Section, ItemRow[]>();

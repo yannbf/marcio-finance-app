@@ -5,13 +5,17 @@ import { Card } from "@/components/ui/card.tsx";
 import { InboxList } from "./inbox-list.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { trpc } from "@/lib/trpc/client.ts";
+import { useMounted } from "@/lib/use-mounted.ts";
 import { SECTION_ORDER, SECTION_TR_KEY } from "@/lib/import/sections.ts";
 import type { Section } from "@/lib/import/types.ts";
 
 export function InboxScreen({ locale }: { locale: string }) {
   const t = useTranslations("Inbox");
   const tSections = useTranslations("Sections");
-  const { data, isLoading } = trpc.inbox.list.useQuery();
+  const mounted = useMounted();
+  const query = trpc.inbox.list.useQuery();
+  const data = mounted ? query.data : undefined;
+  const isLoading = mounted ? query.isLoading : true;
 
   const sectionLabels = SECTION_ORDER.reduce(
     (acc, s) => {

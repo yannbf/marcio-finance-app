@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { ChevronLeft, ChevronRight, Users, User } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -73,7 +73,13 @@ export function MonthScopeBar({
     router.replace(`${pathname}?${qs.toString()}` as never);
   }
 
-  const meScope: Scope | undefined = me.data?.role;
+  // Gate session-derived UI behind a mount flag so SSR + first client paint
+  // match. The TanStack Query sessionStorage persister restores `me.data`
+  // before first paint, which would otherwise render the "Me" pill on the
+  // client but not on the server.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const meScope: Scope | undefined = mounted ? me.data?.role : undefined;
   // A unique layoutId per MonthScopeBar instance so multiple bars on the
   // same page (shouldn't happen, but cheap insurance) don't fight over
   // the shared "active pill" thumb animation.

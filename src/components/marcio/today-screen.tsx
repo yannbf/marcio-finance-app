@@ -10,6 +10,7 @@ import { AnimatedNumber } from "./animated-number.tsx";
 import { MonthScopeBar, parseSearch } from "./month-scope-bar.tsx";
 import { formatEUR, formatPercent } from "@/lib/format.ts";
 import { trpc } from "@/lib/trpc/client.ts";
+import { useMounted } from "@/lib/use-mounted.ts";
 import { SectionDrillSheet } from "./section-drill-sheet.tsx";
 import { Link } from "@/i18n/navigation.ts";
 import type { Section } from "@/lib/import/types.ts";
@@ -31,7 +32,11 @@ export function TodayScreen({
   const t = useTranslations();
   const sp = useSearchParams();
   const { anchor, scope } = parseSearch(sp, defaultAnchor, defaultScope);
-  const { data } = trpc.today.get.useQuery({ anchor, scope });
+  // Hold back persister-restored data until after mount so SSR + first
+  // client paint render the same skeleton tree (no hydration mismatch).
+  const mounted = useMounted();
+  const query = trpc.today.get.useQuery({ anchor, scope });
+  const data = mounted ? query.data : undefined;
 
   const daysUntilPayday = data?.daysUntilPayday ?? defaultDaysUntilPayday;
   const plannedOutflowCents = data?.plannedOutflowCents ?? 0;

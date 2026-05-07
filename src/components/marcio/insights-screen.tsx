@@ -8,6 +8,7 @@ import { Link } from "@/i18n/navigation.ts";
 import { CounterpartyAvatar } from "./counterparty-avatar.tsx";
 import { MonthScopeBar, parseSearch } from "./month-scope-bar.tsx";
 import { trpc } from "@/lib/trpc/client.ts";
+import { useMounted } from "@/lib/use-mounted.ts";
 import { formatEUR } from "@/lib/format.ts";
 import { OUTFLOW_SECTIONS, SECTION_TR_KEY } from "@/lib/import/sections.ts";
 
@@ -25,7 +26,10 @@ export function InsightsScreen({
   const tTikkie = useTranslations("Tikkie");
   const sp = useSearchParams();
   const { anchor, scope } = parseSearch(sp, defaultAnchor, defaultScope);
-  const { data, isLoading } = trpc.insights.get.useQuery({ anchor, scope });
+  const mounted = useMounted();
+  const query = trpc.insights.get.useQuery({ anchor, scope });
+  const data = mounted ? query.data : undefined;
+  const isLoading = mounted ? query.isLoading : true;
 
   return (
     <main className="mx-auto flex w-full max-w-md flex-col gap-5 px-5 pb-8 pt-8">

@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { CounterpartyAvatar } from "./counterparty-avatar.tsx";
 import { MonthScopeBar, parseSearch } from "./month-scope-bar.tsx";
 import { trpc } from "@/lib/trpc/client.ts";
+import { useMounted } from "@/lib/use-mounted.ts";
 import { formatEUR } from "@/lib/format.ts";
 
 export function TikkieScreen({
@@ -25,11 +26,10 @@ export function TikkieScreen({
   // data for — useful with 90+ days of synced history where one month
   // undercounts who really owes whom.
   const windowMode = sp.get("window") === "all" ? "all" : "month";
-  const { data, isLoading } = trpc.tikkie.get.useQuery({
-    anchor,
-    scope,
-    window: windowMode,
-  });
+  const mounted = useMounted();
+  const query = trpc.tikkie.get.useQuery({ anchor, scope, window: windowMode });
+  const data = mounted ? query.data : undefined;
+  const isLoading = mounted ? query.isLoading : true;
 
   return (
     <main className="mx-auto flex w-full max-w-md flex-col gap-5 px-5 pb-8 pt-8">

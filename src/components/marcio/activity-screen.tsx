@@ -9,6 +9,7 @@ import { Link } from "@/i18n/navigation.ts";
 import { ActivityRow } from "./activity-row.tsx";
 import { MonthScopeBar, parseSearch } from "./month-scope-bar.tsx";
 import { trpc } from "@/lib/trpc/client.ts";
+import { useMounted } from "@/lib/use-mounted.ts";
 import { formatEUR } from "@/lib/format.ts";
 import { SECTION_ORDER, SECTION_TR_KEY } from "@/lib/import/sections.ts";
 import type { Section } from "@/lib/import/types.ts";
@@ -27,7 +28,12 @@ export function ActivityScreen({
   const tToday = useTranslations("Today");
   const sp = useSearchParams();
   const { anchor, scope } = parseSearch(sp, defaultAnchor, defaultScope);
-  const { data, isLoading } = trpc.activity.get.useQuery({ anchor, scope });
+  // See useMounted note in today-screen.tsx — guards against the persister
+  // restoring data before hydration and tripping a hydration mismatch.
+  const mounted = useMounted();
+  const query = trpc.activity.get.useQuery({ anchor, scope });
+  const data = mounted ? query.data : undefined;
+  const isLoading = mounted ? query.isLoading : true;
 
   const sectionLabels = useMemo(
     () =>

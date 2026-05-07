@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { Link } from "@/i18n/navigation.ts";
 import { MonthScopeBar, parseSearch } from "./month-scope-bar.tsx";
 import { trpc } from "@/lib/trpc/client.ts";
+import { useMounted } from "@/lib/use-mounted.ts";
 import { formatEUR } from "@/lib/format.ts";
 
 export function BucketsScreen({
@@ -24,7 +25,10 @@ export function BucketsScreen({
   const t = useTranslations("Buckets");
   const sp = useSearchParams();
   const { anchor, scope } = parseSearch(sp, defaultAnchor, defaultScope);
-  const { data, isLoading } = trpc.buckets.get.useQuery({ anchor, scope });
+  const mounted = useMounted();
+  const query = trpc.buckets.get.useQuery({ anchor, scope });
+  const data = mounted ? query.data : undefined;
+  const isLoading = mounted ? query.isLoading : true;
 
   const groups = useMemo(() => {
     if (!data) return { groups: [], orphans: [], totalPlanned: 0, totalActual: 0 };
