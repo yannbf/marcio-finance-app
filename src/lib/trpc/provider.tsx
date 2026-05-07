@@ -6,7 +6,7 @@ import {
   PersistQueryClientProvider,
   type Persister,
 } from "@tanstack/react-query-persist-client";
-import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
+import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
 import { httpBatchLink } from "@trpc/client";
 import superjson from "superjson";
 import { trpc } from "./client.ts";
@@ -40,12 +40,24 @@ export function TrpcProvider({ children }: { children: ReactNode }) {
   const [persister] = useState<Persister | null>(() => {
     if (typeof window === "undefined") return null;
     try {
-      return createSyncStoragePersister({
+      return createAsyncStoragePersister({
+        // sessionStorage is sync, but the async persister accepts it — the
+        // get/set methods are awaited regardless and `Promise.resolve` of a
+        // sync return value is a no-op. The sync persister was deprecated
+        // in @tanstack/query 5.x.
         storage: window.sessionStorage,
-        key: "marcio-query-cache-v1",
-        // Don't persist the most volatile queries.
-        serialize: (data) => JSON.stringify(data),
-        deserialize: (s) => JSON.parse(s),
+        // Bumped from v1 → v2 because the serializer changed shape (plain
+        // JSON → superjson). Old entries become unreadable; bumping the key
+        // sidesteps that by starting fresh on first load post-deploy.
+        key: "marcio-query-cache-v2",
+        // superjson preserves Date / Set / Map / BigInt / undefined across a
+        // round-trip, which plain JSON.stringify silently drops to strings
+        // (or omits). Without this, code that calls Date methods on a
+        // restored cache value crashes — see the BankConnections regression
+        // where `expiresAt.getTime()` threw because the restored value was
+        // an ISO string.
+        serialize: (data) => superjson.stringify(data),
+        deserialize: (s) => superjson.parse(s),
       });
     } catch {
       return null;
