@@ -16,7 +16,17 @@ export const tikkieRouter = router({
   get: publicProcedure
     .input(
       z
-        .object({ anchor: AnchorInput, scope: ScopeViewInput })
+        .object({
+          anchor: AnchorInput,
+          scope: ScopeViewInput,
+          /**
+           * "month" — totals for one payday-month (default, original behavior).
+           * "all" — aggregate across every payday-month we have data for. With
+           * 90+ days of synced history a single-month view massively
+           * undercounts who actually owes whom.
+           */
+          window: z.enum(["month", "all"]).optional(),
+        })
         .optional(),
     )
     .query(async ({ ctx, input }) => {
@@ -29,6 +39,14 @@ export const tikkieRouter = router({
         )
       : paydayMonthFor(new Date(), settings.paydayDay);
     const allowed = resolveVisibleScopes(ctx.allowedScopes, input?.scope);
+    const allMonths = input?.window === "all";
+
+    const dateFilters = allMonths
+      ? []
+      : [
+          gte(transaction.bookingDate, range.startsOn),
+          lte(transaction.bookingDate, range.endsOn),
+        ];
 
     const rows = await db
       .select({
@@ -43,8 +61,7 @@ export const tikkieRouter = router({
       .where(
         and(
           inArray(bankAccount.owner, allowed),
-          gte(transaction.bookingDate, range.startsOn),
-          lte(transaction.bookingDate, range.endsOn),
+          ...dateFilters,
           sql`(${transaction.counterparty} ~* ${TIKKIE_PG_PATTERN}
               OR ${transaction.description} ~* ${TIKKIE_PG_PATTERN})`,
         ),
@@ -85,6 +102,7 @@ export const tikkieRouter = router({
     );
     return {
       anchor: { year: range.anchorYear, month: range.anchorMonth },
+      window: allMonths ? ("all" as const) : ("month" as const),
       byPerson: sorted,
       totals,
     };

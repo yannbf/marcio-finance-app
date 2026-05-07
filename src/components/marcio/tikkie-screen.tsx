@@ -21,7 +21,15 @@ export function TikkieScreen({
   const t = useTranslations("Tikkie");
   const sp = useSearchParams();
   const { anchor, scope } = parseSearch(sp, defaultAnchor, defaultScope);
-  const { data, isLoading } = trpc.tikkie.get.useQuery({ anchor, scope });
+  // window=all aggregates Tikkie totals across every payday-month we have
+  // data for — useful with 90+ days of synced history where one month
+  // undercounts who really owes whom.
+  const windowMode = sp.get("window") === "all" ? "all" : "month";
+  const { data, isLoading } = trpc.tikkie.get.useQuery({
+    anchor,
+    scope,
+    window: windowMode,
+  });
 
   return (
     <main className="mx-auto flex w-full max-w-md flex-col gap-5 px-5 pb-8 pt-8">
@@ -34,6 +42,14 @@ export function TikkieScreen({
         </h1>
         <p className="text-xs text-muted-foreground">{t("hint")}</p>
         <MonthScopeBar defaultAnchor={defaultAnchor} defaultScope={defaultScope} />
+        <div className="-mt-2 flex gap-1 self-start rounded-full border border-border/60 bg-card/50 p-1 text-[11px]">
+          <WindowPill href={makeWindowHref(sp, "month")} active={windowMode === "month"}>
+            {t("windowMonth")}
+          </WindowPill>
+          <WindowPill href={makeWindowHref(sp, "all")} active={windowMode === "all"}>
+            {t("windowAll")}
+          </WindowPill>
+        </div>
       </header>
 
       <div className="grid grid-cols-2 gap-3">
@@ -101,4 +117,38 @@ export function TikkieScreen({
       )}
     </main>
   );
+}
+
+function WindowPill({
+  href,
+  active,
+  children,
+}: {
+  href: string;
+  active: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <a
+      href={href}
+      className={`rounded-full px-3 py-1 transition-colors ${
+        active
+          ? "bg-primary text-primary-foreground"
+          : "text-muted-foreground hover:text-foreground"
+      }`}
+    >
+      {children}
+    </a>
+  );
+}
+
+function makeWindowHref(
+  sp: URLSearchParams,
+  next: "month" | "all",
+): string {
+  const params = new URLSearchParams(sp.toString());
+  if (next === "month") params.delete("window");
+  else params.set("window", "all");
+  const qs = params.toString();
+  return qs ? `?${qs}` : "?";
 }

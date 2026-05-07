@@ -306,7 +306,9 @@
     "paid": "Pago",
     "received": "Recebido",
     "txCount": "{n, plural, one {# racha} other {# rachas}}",
-    "empty": "Nenhum movimento de Tikkie neste mês."
+    "empty": "Nenhum movimento de Tikkie neste mês.",
+    "windowMonth": "Este mês",
+    "windowAll": "Todo o período"
   },
   "Theme": {
     "title": "Tema",

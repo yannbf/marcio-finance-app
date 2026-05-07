@@ -306,7 +306,9 @@
     "paid": "Paid out",
     "received": "Received",
     "txCount": "{n, plural, one {# split} other {# splits}}",
-    "empty": "No Tikkie movements this month."
+    "empty": "No Tikkie movements this month.",
+    "windowMonth": "This month",
+    "windowAll": "All time"
   },
   "Theme": {
     "title": "Theme",
