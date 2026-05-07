@@ -161,6 +161,34 @@ export const settingsRouter = router({
         return { ok: true as const, owner: input.owner }
       }),
 
+    /**
+     * Rename a bank account. Privacy guard reuses the same rule as the
+     * ownership toggle — only an account the caller can already see is
+     * mutable. Trims whitespace and rejects empty strings.
+     */
+    renameAccount: protectedProcedure
+      .input(
+        z.object({
+          bankAccountId: z.string().uuid(),
+          nickname: z.string().min(1).max(80).trim(),
+        }),
+      )
+      .mutation(async ({ ctx, input }) => {
+        const [acct] = await db
+          .select({ id: bankAccount.id, owner: bankAccount.owner })
+          .from(bankAccount)
+          .where(eq(bankAccount.id, input.bankAccountId))
+        if (!acct) throw new TRPCError({ code: 'NOT_FOUND' })
+        if (acct.owner !== 'joint' && acct.owner !== ctx.user.role) {
+          throw new TRPCError({ code: 'FORBIDDEN' })
+        }
+        await db
+          .update(bankAccount)
+          .set({ nickname: input.nickname })
+          .where(eq(bankAccount.id, acct.id))
+        return { ok: true as const, nickname: input.nickname }
+      }),
+
     /** On-demand sync of one connection. */
     refresh: protectedProcedure
       .input(z.object({ connectionId: z.string().uuid() }))

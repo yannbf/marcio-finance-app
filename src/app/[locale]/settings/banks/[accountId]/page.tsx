@@ -14,6 +14,7 @@ import { Link } from "@/i18n/navigation.ts";
 import { getCurrentUser } from "@/lib/auth/current-user.ts";
 import { TransactionRow } from "@/components/marcio/transaction-row.tsx";
 import { AccountOwnerToggle } from "@/components/marcio/account-owner-toggle.tsx";
+import { AccountRename } from "@/components/marcio/account-rename.tsx";
 import type { Locale } from "@/i18n/routing.ts";
 
 export default async function AccountDetailPage({
@@ -82,9 +83,12 @@ export default async function AccountDetailPage({
           <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
             {ownerLabel(account.owner, t)}
           </p>
-          <h1 className="mt-0.5 truncate text-xl font-semibold tracking-tight">
-            {account.nickname}
-          </h1>
+          <div className="mt-0.5">
+            <AccountRename
+              bankAccountId={account.id}
+              initialNickname={account.nickname}
+            />
+          </div>
           <p className="num mt-1 truncate text-xs text-muted-foreground">
             {account.iban}
           </p>

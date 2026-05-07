@@ -120,7 +120,10 @@
     "ownerYann": "Yann personal",
     "ownerCamila": "Camila personal",
     "ownershipLabel": "Ownership",
-    "ownershipHint": "Synced accounts come back tagged with whoever logged in. Flip to Joint if both household members should see it."
+    "ownershipHint": "Synced accounts come back tagged with whoever logged in. Flip to Joint if both household members should see it.",
+    "renameAria": "Rename account",
+    "renameSave": "Save",
+    "renameCancel": "Cancel"
   },
   "Inbox": {
     "title": "Inbox",
