@@ -59,7 +59,9 @@ export async function GET(request: Request) {
       state: pending.id,
       redirect_url: callbackUrl,
       psu_type: "personal",
-      language: locale.startsWith("pt") ? "PT" : "EN",
+      // Enable Banking validates language against ISO 639-1 (^[a-z]{2}$),
+      // so map "pt-BR" → "pt", "en" → "en", lowercase always.
+      language: locale.slice(0, 2).toLowerCase(),
     });
 
     await db
