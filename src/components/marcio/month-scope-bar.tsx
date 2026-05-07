@@ -40,6 +40,20 @@ export function MonthScopeBar({
   const pathname = usePathname();
   const sp = useSearchParams();
   const me = trpc.session.me.useQuery();
+  const knownAnchors = trpc.month.knownAnchors.useQuery(undefined, {
+    // Cheap query, but no need to refetch on focus while the user is just
+    // toggling a picker — invalidated when an import lands.
+    staleTime: 5 * 60_000,
+  });
+  const knownSet = useMemo(
+    () =>
+      new Set(
+        (knownAnchors.data?.anchors ?? []).map(
+          (a) => `${a.year}-${String(a.month).padStart(2, "0")}`,
+        ),
+      ),
+    [knownAnchors.data],
+  );
 
   const { anchor, scope } = useMemo(
     () => parseSearch(sp, defaultAnchor, defaultScope),
@@ -110,6 +124,7 @@ export function MonthScopeBar({
             <MonthGridPicker
               anchor={anchor}
               max={max}
+              knownSet={knownSet}
               onPick={(picked) => {
                 setPickerOpen(false);
                 navigate(picked);
@@ -224,10 +239,15 @@ function anchorLabel(year: number, month: number, locale: string): string {
 function MonthGridPicker({
   anchor,
   max,
+  knownSet,
   onPick,
 }: {
   anchor: { year: number; month: number };
   max: { year: number; month: number };
+  /** Set of "YYYY-MM" anchors that have an imported sheet — months not
+   *  in this set get rendered dim so the user understands navigating
+   *  there will land on an empty page. */
+  knownSet: Set<string>;
   onPick: (picked: { year: number; month: number }) => void;
 }) {
   const [year, setYear] = useState(anchor.year);
@@ -241,9 +261,12 @@ function MonthGridPicker({
         }).format(date);
         const beyondMax =
           year > max.year || (year === max.year && m > max.month);
-        return { month: m, label, disabled: beyondMax };
+        const known = knownSet.has(
+          `${year}-${String(m).padStart(2, "0")}`,
+        );
+        return { month: m, label, disabled: beyondMax, known };
       }),
-    [year, max],
+    [year, max, knownSet],
   );
   const isCurrentYear = year === anchor.year;
   return (
@@ -285,7 +308,11 @@ function MonthGridPicker({
                   ? "bg-primary text-primary-foreground"
                   : m.disabled
                     ? "cursor-not-allowed text-muted-foreground/40"
-                    : "text-foreground hover:bg-accent/50",
+                    : !m.known
+                      // Months with no imported sheet — clickable but dim
+                      // so the user knows they'll land on an empty state.
+                      ? "text-muted-foreground/50 hover:bg-accent/50 hover:text-foreground"
+                      : "text-foreground hover:bg-accent/50",
               )}
             >
               {m.label}

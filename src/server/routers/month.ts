@@ -19,6 +19,20 @@ const ScopeInput = z.enum(["joint", "yann", "camila"]);
 
 export const monthRouter = router({
   /**
+   * Distinct payday-month anchors that have an imported sheet, used by the
+   * MonthScopeBar picker to dim months not worth navigating to.
+   */
+  knownAnchors: publicProcedure.query(async () => {
+    const rows = await db
+      .select({ year: month.anchorYear, m: month.anchorMonth })
+      .from(month)
+      .orderBy(asc(month.anchorYear), asc(month.anchorMonth));
+    return {
+      anchors: rows.map((r) => ({ year: r.year, month: r.m })),
+    };
+  }),
+
+  /**
    * Month screen payload. Items + match counts for the active scope, plus
    * the active payday-month coordinates so the client can render the header.
    */
