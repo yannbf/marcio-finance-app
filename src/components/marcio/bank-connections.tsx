@@ -70,20 +70,6 @@ export function BankConnections() {
     },
   });
 
-  const [cleanupResult, setCleanupResult] = useState<number | null>(null);
-  const cleanup = trpc.settings.cleanupSignFlippedSyncRows.useMutation({
-    onSuccess: (data) => {
-      setCleanupResult(data.deleted);
-      void utils.inbox.list.invalidate();
-      void utils.activity.get.invalidate();
-      void utils.today.get.invalidate();
-      void utils.transactions.list.invalidate();
-      void utils.month.get.invalidate();
-      void utils.insights.get.invalidate();
-      void utils.buckets.get.invalidate();
-    },
-  });
-
   const disconnect = trpc.settings.connections.disconnect.useMutation({
     onSettled: async () => {
       await utils.settings.connections.list.invalidate();
@@ -272,54 +258,27 @@ export function BankConnections() {
         <p className="text-[11px] text-muted-foreground">
           {t("experimentalNote")}
         </p>
-        <div className="flex shrink-0 gap-1">
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => {
-              if (
-                window.confirm(t("cleanupSignFlippedConfirm"))
-              ) {
-                setCleanupResult(null);
-                cleanup.mutate();
-              }
-            }}
-            disabled={cleanup.isPending}
-            className="text-[11px]"
-            title={t("cleanupSignFlipped")}
-          >
-            {cleanup.isPending ? (
-              <Loader2 className="size-3.5 animate-spin" />
-            ) : null}
-            {t("cleanupSignFlipped")}
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => {
-              setRematchResult(null);
-              rematch.mutate();
-            }}
-            disabled={rematch.isPending}
-            className="text-[11px]"
-          >
-            {rematch.isPending ? (
-              <Loader2 className="size-3.5 animate-spin" />
-            ) : (
-              <Wand2 className="size-3.5" />
-            )}
-            {t("rematchAll")}
-          </Button>
-        </div>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => {
+            setRematchResult(null);
+            rematch.mutate();
+          }}
+          disabled={rematch.isPending}
+          className="shrink-0 text-[11px]"
+        >
+          {rematch.isPending ? (
+            <Loader2 className="size-3.5 animate-spin" />
+          ) : (
+            <Wand2 className="size-3.5" />
+          )}
+          {t("rematchAll")}
+        </Button>
       </div>
       {rematchResult !== null ? (
         <p className="mt-2 text-right text-[11px] text-muted-foreground">
           {t("rematchResult", { matched: rematchResult })}
-        </p>
-      ) : null}
-      {cleanupResult !== null ? (
-        <p className="mt-1 text-right text-[11px] text-muted-foreground">
-          {t("cleanupResult", { deleted: cleanupResult })}
         </p>
       ) : null}
     </Card>

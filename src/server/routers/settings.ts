@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { month } from '@/db/schema.ts'
 import { TRPCError } from '@trpc/server'
-import { and, desc, eq, inArray, sql } from 'drizzle-orm'
+import { and, desc, eq, inArray } from 'drizzle-orm'
 import { protectedProcedure, publicProcedure, router } from '../trpc.ts'
 import { getHouseholdSettings, updatePaydayDay } from '@/lib/settings.ts'
 import { db } from '@/db/index.ts'
@@ -219,38 +219,4 @@ export const settingsRouter = router({
     return result
   }),
 
-  /**
-   * One-shot cleanup for the May 2026 sign-flip incident.
-   *
-   * The original Enable Banking normaliser took transaction_amount.amount
-   * verbatim, but ING returns absolute values. Outgoing payments came in
-   * positive, matched the same budget item as their CSV counterpart, and
-   * cancelled the spend total to zero. The fix in normalizeEbTransaction
-   * uses creditor/debtor to derive the sign — but already-imported sync
-   * rows still have the wrong sign.
-   *
-   * This procedure deletes any sync-origin transaction (raw_payload has
-   * Berlin-Group-shape `transaction_amount` key) that has an exact
-   * sign-opposite twin on the same account/date. Cascades remove the
-   * paired tx_match row.
-   */
-  cleanupSignFlippedSyncRows: protectedProcedure.mutation(async () => {
-    const result = await db.execute(sql`
-      WITH wrong AS (
-        SELECT t1.id
-        FROM "transaction" t1
-        JOIN "transaction" t2
-          ON t2.bank_account_id = t1.bank_account_id
-         AND t2.booking_date = t1.booking_date
-         AND t2.amount_cents = -t1.amount_cents
-         AND t2.id <> t1.id
-        WHERE t1.raw_payload ? 'transaction_amount'
-          AND NOT (t2.raw_payload ? 'transaction_amount')
-      )
-      DELETE FROM "transaction"
-      WHERE id IN (SELECT id FROM wrong)
-      RETURNING id
-    `)
-    return { deleted: result.length ?? 0 }
-  }),
 })
