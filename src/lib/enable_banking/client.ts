@@ -252,12 +252,25 @@ export async function getAccountDetails(
   return ebFetch(`/accounts/${accountUid}/details`);
 }
 
+/**
+ * Enable Banking's `transaction_status` query param uses the Berlin Group
+ * short codes (BOOK / PDNG / INFO / CNCL / HOLD / OTHR), not lowercase
+ * descriptive words. Keep the value uppercase on the wire.
+ */
+export type EbTransactionStatus =
+  | "BOOK"
+  | "PDNG"
+  | "INFO"
+  | "CNCL"
+  | "HOLD"
+  | "OTHR";
+
 export async function getAccountTransactions(args: {
   accountUid: string;
   dateFrom?: string;
   dateTo?: string;
   continuationKey?: string;
-  status?: "booked" | "pending" | "information" | "all";
+  status?: EbTransactionStatus;
 }): Promise<EbTransactionsResponse> {
   const qs = new URLSearchParams();
   if (args.dateFrom) qs.set("date_from", args.dateFrom);

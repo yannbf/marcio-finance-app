@@ -377,7 +377,7 @@ async function syncAccount(args: {
       accountUid: args.accountUid,
       dateFrom,
       continuationKey,
-      status: "booked",
+      status: "BOOK",
     });
     for (const t of page.transactions ?? []) {
       const n = normalizeEbTransaction(t, ibanForHash);
