@@ -164,6 +164,9 @@ export default async function SettingsPage({
       <div className="flex flex-col items-center gap-0.5">
         <p className="text-center text-xs text-muted-foreground">
           Marcio v0.1
+          <span className="num ml-1.5 text-muted-foreground/60">
+            · {(process.env.VERCEL_GIT_COMMIT_SHA ?? "dev").slice(0, 7)}
+          </span>
         </p>
         {lastImportLabel ? (
           <p className="num text-center text-[11px] text-muted-foreground/70">

@@ -59,9 +59,10 @@ export async function GET(request: Request) {
       state: pending.id,
       redirect_url: callbackUrl,
       psu_type: "personal",
-      // Enable Banking validates language against ISO 639-1 (^[a-z]{2}$),
-      // so map "pt-BR" → "pt", "en" → "en", lowercase always.
-      language: locale.slice(0, 2).toLowerCase(),
+      // Enable Banking validates language against ISO 639-1 (^[a-z]{2}$).
+      // Hardcoded "en" — the bank's own consent page will still localize for
+      // NL users, and this keeps the param invariant across our own locales.
+      language: "en",
     });
 
     await db
