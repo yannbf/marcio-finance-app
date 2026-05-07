@@ -49,7 +49,12 @@ export async function GET(request: Request) {
     })
     .returning();
 
-  const callbackUrl = `${url.origin}/api/banks/callback?cid=${pending.id}&locale=${encodeURIComponent(locale)}`;
+  // Enable Banking validates `redirect_url` against the URL registered in
+  // their dashboard with exact-match rules — appending query params would
+  // trigger REDIRECT_URI_NOT_ALLOWED. Keep the URL bare and round-trip the
+  // connection id via `state` (which Enable Banking echoes back) and the
+  // locale via a short-lived cookie that the callback reads.
+  const callbackUrl = `${url.origin}/api/banks/callback`;
   const validUntil = new Date(Date.now() + days * 86400_000);
 
   try {
@@ -73,7 +78,17 @@ export async function GET(request: Request) {
       })
       .where(eq(bankConnection.id, pending.id));
 
-    return NextResponse.redirect(auth.url, { status: 302 });
+    const response = NextResponse.redirect(auth.url, { status: 302 });
+    // Stash the locale so the callback can land the user back on their
+    // preferred /[locale]/settings/banks. 30 min is plenty for the consent
+    // flow at the bank; expires automatically afterwards.
+    response.cookies.set("marcio-bank-callback-locale", locale, {
+      maxAge: 60 * 30,
+      path: "/",
+      sameSite: "lax",
+      httpOnly: true,
+    });
+    return response;
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     await db

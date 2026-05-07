@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { eq } from "drizzle-orm";
 import { db } from "@/db/index.ts";
 import { bankConnection } from "@/db/schema.ts";
@@ -25,20 +26,35 @@ export const maxDuration = 300;
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
-  const cid = url.searchParams.get("cid") ?? url.searchParams.get("state");
-  const locale = url.searchParams.get("locale") ?? "pt-BR";
+  // `state` is what we set on /auth (= pending connection id). Some legacy
+  // pre-fix runs sent it as `cid` on the URL; fall through.
+  const cid = url.searchParams.get("state") ?? url.searchParams.get("cid");
+  // Locale was stashed in a cookie by /api/banks/connect because we can't
+  // round-trip it via the redirect URL (Enable Banking enforces exact-match).
+  const cookieJar = await cookies();
+  const locale =
+    cookieJar.get("marcio-bank-callback-locale")?.value ??
+    url.searchParams.get("locale") ??
+    "pt-BR";
   const error = url.searchParams.get("error");
   const errorDescription = url.searchParams.get("error_description");
   const code = url.searchParams.get("code");
 
-  const back = (msg?: string) =>
-    NextResponse.redirect(
+  const back = (msg?: string) => {
+    const res = NextResponse.redirect(
       new URL(
         `/${locale}/settings/banks${msg ? `?bank_status=${encodeURIComponent(msg)}` : ""}`,
         url.origin,
       ),
       { status: 302 },
     );
+    // One-shot cookie — clear it on the way back regardless of outcome.
+    res.cookies.set("marcio-bank-callback-locale", "", {
+      maxAge: 0,
+      path: "/",
+    });
+    return res;
+  };
 
   if (!cid) return back("missing-cid");
 
