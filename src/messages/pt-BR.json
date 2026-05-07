@@ -291,10 +291,7 @@
     "syncResultUpToDate": "Em dia em {accounts, plural, one {# conta} other {# contas}} — nada novo do ING.",
     "syncResultNoAccounts": "A sincronização rodou mas nenhuma conta foi processada. Veja o erro na linha da conexão.",
     "rematchAll": "Recategorizar tudo",
-    "rematchResult": "Re-categorizou {matched, plural, one {# transação} other {# transações}}.",
-    "fixSigns": "Corrigir sinais",
-    "fixSignsConfirm": "Percorre toda transação importada via Enable Banking e reescreve o sinal do valor a partir do credit_debit_indicator (Berlin Group). As categorias atuais são mantidas. Use uma vez para corrigir as linhas que entraram com sinal errado.",
-    "fixSignsResult": "Corrigiu {fixed, plural, one {# linha} other {# linhas}}."
+    "rematchResult": "Re-categorizou {matched, plural, one {# transação} other {# transações}}."
   },
   "UpdatePrompt": {
     "title": "Atualização disponível",

@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { month } from '@/db/schema.ts'
 import { TRPCError } from '@trpc/server'
-import { and, desc, eq, inArray, sql } from 'drizzle-orm'
+import { and, desc, eq, inArray } from 'drizzle-orm'
 import { protectedProcedure, publicProcedure, router } from '../trpc.ts'
 import { getHouseholdSettings, updatePaydayDay } from '@/lib/settings.ts'
 import { db } from '@/db/index.ts'
@@ -219,34 +219,4 @@ export const settingsRouter = router({
     return result
   }),
 
-  /**
-   * Walks every sync-origin transaction with a `credit_debit_indicator`
-   * in its raw_payload and rewrites `amount_cents` to the sign that
-   * indicator implies (DBIT → negative, CRDT → positive). In-place
-   * UPDATE so existing tx_match rows stay attached.
-   *
-   * This is the surgical companion to the normalizer fix in
-   * `normalizeEbTransaction` — every row that was already in the DB
-   * with the wrong sign gets corrected without losing the user's manual
-   * categorisations.
-   */
-  fixSyncRowSigns: protectedProcedure.mutation(async () => {
-    const result = await db.execute(sql`
-      UPDATE "transaction"
-      SET amount_cents = CASE
-        WHEN raw_payload->>'credit_debit_indicator' = 'CRDT'
-          THEN ABS(amount_cents)
-        ELSE -ABS(amount_cents)
-      END
-      WHERE raw_payload ? 'credit_debit_indicator'
-        AND raw_payload->>'credit_debit_indicator' IN ('CRDT', 'DBIT')
-        AND CASE
-          WHEN raw_payload->>'credit_debit_indicator' = 'CRDT'
-            THEN amount_cents < 0
-          ELSE amount_cents > 0
-        END
-      RETURNING id
-    `)
-    return { fixed: result.length ?? 0 }
-  }),
 })

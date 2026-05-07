@@ -72,14 +72,6 @@ export function BankConnections() {
     },
   });
 
-  const [fixSignResult, setFixSignResult] = useState<number | null>(null);
-  const fixSigns = trpc.settings.fixSyncRowSigns.useMutation({
-    onSuccess: (data) => {
-      setFixSignResult(data.fixed);
-      invalidateAllScreens();
-    },
-  });
-
   const disconnect = trpc.settings.connections.disconnect.useMutation({
     onSettled: async () => {
       await utils.settings.connections.list.invalidate();
@@ -268,52 +260,27 @@ export function BankConnections() {
         <p className="text-[11px] text-muted-foreground">
           {t("experimentalNote")}
         </p>
-        <div className="flex shrink-0 gap-1">
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => {
-              if (window.confirm(t("fixSignsConfirm"))) {
-                setFixSignResult(null);
-                fixSigns.mutate();
-              }
-            }}
-            disabled={fixSigns.isPending}
-            className="text-[11px]"
-            title={t("fixSigns")}
-          >
-            {fixSigns.isPending ? (
-              <Loader2 className="size-3.5 animate-spin" />
-            ) : null}
-            {t("fixSigns")}
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => {
-              setRematchResult(null);
-              rematch.mutate();
-            }}
-            disabled={rematch.isPending}
-            className="text-[11px]"
-          >
-            {rematch.isPending ? (
-              <Loader2 className="size-3.5 animate-spin" />
-            ) : (
-              <Wand2 className="size-3.5" />
-            )}
-            {t("rematchAll")}
-          </Button>
-        </div>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => {
+            setRematchResult(null);
+            rematch.mutate();
+          }}
+          disabled={rematch.isPending}
+          className="shrink-0 text-[11px]"
+        >
+          {rematch.isPending ? (
+            <Loader2 className="size-3.5 animate-spin" />
+          ) : (
+            <Wand2 className="size-3.5" />
+          )}
+          {t("rematchAll")}
+        </Button>
       </div>
       {rematchResult !== null ? (
         <p className="mt-2 text-right text-[11px] text-muted-foreground">
           {t("rematchResult", { matched: rematchResult })}
-        </p>
-      ) : null}
-      {fixSignResult !== null ? (
-        <p className="mt-1 text-right text-[11px] text-muted-foreground">
-          {t("fixSignsResult", { fixed: fixSignResult })}
         </p>
       ) : null}
     </Card>

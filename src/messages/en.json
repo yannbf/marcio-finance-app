@@ -291,10 +291,7 @@
     "syncResultUpToDate": "Up to date across {accounts, plural, one {# account} other {# accounts}} — nothing new from ING.",
     "syncResultNoAccounts": "Sync ran but no accounts were processed. Check the error on the connection row.",
     "rematchAll": "Re-run matching",
-    "rematchResult": "Re-matched {matched, plural, one {# transaction} other {# transactions}}.",
-    "fixSigns": "Fix sync signs",
-    "fixSignsConfirm": "Walk every Enable-Banking-imported transaction and rewrite its amount sign from the Berlin Group credit_debit_indicator. Existing categorisations are kept. Use this once to repair pre-fix rows that came in with the wrong sign.",
-    "fixSignsResult": "Fixed {fixed, plural, one {# row} other {# rows}}."
+    "rematchResult": "Re-matched {matched, plural, one {# transaction} other {# transactions}}."
   },
   "UpdatePrompt": {
     "title": "Update available",
