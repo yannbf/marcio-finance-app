@@ -12,13 +12,15 @@ import { formatEUR } from "@/lib/format.ts";
 export function TikkieScreen({
   locale,
   defaultAnchor,
+  defaultScope = "joint",
 }: {
   locale: string;
   defaultAnchor: { year: number; month: number };
+  defaultScope?: "joint" | "yann" | "camila";
 }) {
   const t = useTranslations("Tikkie");
   const sp = useSearchParams();
-  const { anchor, scope } = parseSearch(sp, defaultAnchor);
+  const { anchor, scope } = parseSearch(sp, defaultAnchor, defaultScope);
   const { data, isLoading } = trpc.tikkie.get.useQuery({ anchor, scope });
 
   return (
@@ -31,7 +33,7 @@ export function TikkieScreen({
           {t("heading")}
         </h1>
         <p className="text-xs text-muted-foreground">{t("hint")}</p>
-        <MonthScopeBar defaultAnchor={defaultAnchor} />
+        <MonthScopeBar defaultAnchor={defaultAnchor} defaultScope={defaultScope} />
       </header>
 
       <div className="grid grid-cols-2 gap-3">

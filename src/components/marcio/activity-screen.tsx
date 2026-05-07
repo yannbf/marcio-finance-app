@@ -16,14 +16,16 @@ import type { Section } from "@/lib/import/types.ts";
 export function ActivityScreen({
   locale,
   defaultAnchor,
+  defaultScope = "joint",
 }: {
   locale: string;
   defaultAnchor: { year: number; month: number };
+  defaultScope?: "joint" | "yann" | "camila";
 }) {
   const t = useTranslations("Activity");
   const tSections = useTranslations("Sections");
   const sp = useSearchParams();
-  const { anchor, scope } = parseSearch(sp, defaultAnchor);
+  const { anchor, scope } = parseSearch(sp, defaultAnchor, defaultScope);
   const { data, isLoading } = trpc.activity.get.useQuery({ anchor, scope });
 
   const sectionLabels = useMemo(
@@ -59,7 +61,7 @@ export function ActivityScreen({
         <h1 className="text-2xl font-semibold tracking-tight">
           {t("heading")}
         </h1>
-        <MonthScopeBar defaultAnchor={defaultAnchor} />
+        <MonthScopeBar defaultAnchor={defaultAnchor} defaultScope={defaultScope} />
       </header>
 
       <Card className="border-border/40 bg-card/60 p-5">
@@ -141,6 +143,7 @@ export function ActivityScreen({
                             description: r.description,
                             bookingDate: r.bookingDate,
                             amountCents: r.amountCents,
+                            matchedItemId: r.matchedItemId,
                             matchedName: r.matchedName,
                             owner: r.owner,
                           }}

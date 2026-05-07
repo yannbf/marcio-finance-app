@@ -182,10 +182,18 @@
 }
 
 /*
- * iOS sheet open: stop background scroll. Combined with body[data-sheet-open]
- * being toggled by BottomSheetDraggable.
+ * iOS sheet open: stop background scroll. We freeze the body via
+ * overflow: hidden (set inline by BottomSheetDraggable) and contain
+ * overscroll, but we deliberately do NOT set touch-action: none on body —
+ * doing so cascades and would block vertical scroll inside the sheet's
+ * content. Inner scrollers opt in with [data-sheet-scroll].
  */
 body[data-sheet-open] {
   overscroll-behavior: contain;
-  touch-action: none;
+}
+
+[data-sheet-scroll] {
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }

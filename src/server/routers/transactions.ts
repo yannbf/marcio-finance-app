@@ -26,18 +26,20 @@ export const transactionsRouter = router({
   // Text search lives entirely on the client — the screen filters the cached
   // page-of-100 instead of refetching per keystroke. The router stays scoped
   // by show/scope so the cache key changes only when the underlying set does.
+  // Pagination is offset-based via the optional `cursor` field, which makes
+  // the procedure compatible with tRPC's useInfiniteQuery.
   list: publicProcedure
     .input(
-      z
-        .object({
-          show: ShowFilter.optional(),
-          scope: ScopeViewInput,
-        })
-        .optional(),
+      z.object({
+        show: ShowFilter.optional(),
+        scope: ScopeViewInput,
+        cursor: z.number().int().nonnegative().optional(),
+      }),
     )
     .query(async ({ ctx, input }) => {
       const allowed = resolveVisibleScopes(ctx.allowedScopes, input?.scope);
       const show = input?.show ?? "all";
+      const offset = input?.cursor ?? 0;
 
       const filters = [inArray(bankAccount.owner, allowed)];
       if (show === "matched") {
@@ -57,6 +59,7 @@ export const transactionsRouter = router({
           description: transaction.description,
           bookingDate: transaction.bookingDate,
           amountCents: transaction.amountCents,
+          matchedItemId: budgetItem.id,
           matchedName: budgetItem.name,
           owner: bankAccount.owner,
         })
@@ -66,43 +69,55 @@ export const transactionsRouter = router({
         .leftJoin(budgetItem, eq(budgetItem.id, txMatch.budgetItemId))
         .where(and(...filters))
         .orderBy(desc(transaction.bookingDate))
-        .limit(PAGE_SIZE);
+        .limit(PAGE_SIZE)
+        .offset(offset);
 
-      // Reuse this payday-month's items as reassign options.
-      const settings = await getHouseholdSettings();
-      const range = paydayMonthFor(new Date(), settings.paydayDay);
-      const [monthRow] = await db
-        .select({ id: month.id })
-        .from(month)
-        .where(
-          and(
-            eq(month.anchorYear, range.anchorYear),
-            eq(month.anchorMonth, range.anchorMonth),
-          ),
-        );
-      const items = monthRow
-        ? await db
-            .select({
-              id: budgetItem.id,
-              name: budgetItem.name,
-              section: budgetItem.section,
-              scope: budgetItem.scope,
-            })
-            .from(budgetItem)
-            .where(eq(budgetItem.monthId, monthRow.id))
-            .orderBy(asc(budgetItem.section), asc(budgetItem.name))
-        : [];
-      const optionsAll = items
-        .filter((i) =>
-          allowed.includes(i.scope as "joint" | "yann" | "camila"),
-        )
-        .map((i) => ({
-          id: i.id,
-          name: i.name,
-          section: i.section as Section,
-          scope: i.scope as "joint" | "yann" | "camila",
-        }));
+      // Options only need to be sent on the first page — every subsequent
+      // page would re-send the same payload otherwise. The client merges
+      // pages but keeps optionsAll from page 0.
+      let optionsAll: {
+        id: string;
+        name: string;
+        section: Section;
+        scope: "joint" | "yann" | "camila";
+      }[] = [];
+      if (offset === 0) {
+        const settings = await getHouseholdSettings();
+        const range = paydayMonthFor(new Date(), settings.paydayDay);
+        const [monthRow] = await db
+          .select({ id: month.id })
+          .from(month)
+          .where(
+            and(
+              eq(month.anchorYear, range.anchorYear),
+              eq(month.anchorMonth, range.anchorMonth),
+            ),
+          );
+        const items = monthRow
+          ? await db
+              .select({
+                id: budgetItem.id,
+                name: budgetItem.name,
+                section: budgetItem.section,
+                scope: budgetItem.scope,
+              })
+              .from(budgetItem)
+              .where(eq(budgetItem.monthId, monthRow.id))
+              .orderBy(asc(budgetItem.section), asc(budgetItem.name))
+          : [];
+        optionsAll = items
+          .filter((i) =>
+            allowed.includes(i.scope as "joint" | "yann" | "camila"),
+          )
+          .map((i) => ({
+            id: i.id,
+            name: i.name,
+            section: i.section as Section,
+            scope: i.scope as "joint" | "yann" | "camila",
+          }));
+      }
 
+      const hasMore = rows.length === PAGE_SIZE;
       return {
         rows: rows.map((r) => ({
           id: r.id,
@@ -110,11 +125,13 @@ export const transactionsRouter = router({
           description: r.description,
           bookingDate: r.bookingDate.toISOString(),
           amountCents: r.amountCents,
+          matchedItemId: r.matchedItemId ?? null,
           matchedName: r.matchedName ?? null,
           owner: r.owner as "joint" | "yann" | "camila",
         })),
         pageSize: PAGE_SIZE,
         optionsAll,
+        nextCursor: hasMore ? offset + PAGE_SIZE : null,
       };
     }),
 });

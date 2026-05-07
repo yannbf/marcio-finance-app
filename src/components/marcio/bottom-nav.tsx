@@ -31,16 +31,25 @@ export function BottomNav() {
       : pathname === href || pathname.startsWith(`${href}/`);
 
   // Warm the tRPC cache when the user signals intent to navigate. By the
-  // time the click resolves, the data is usually already loaded.
+  // time the click resolves, the data is usually already loaded. We pass
+  // the cookie-stored scope so the prefetch lines up with what the
+  // server-rendered page will read on arrival.
   function prefetch(key: TabKey) {
-    if (key === "today") void utils.today.get.prefetch();
+    const scope = readScopeCookieClient();
+    if (key === "today") void utils.today.get.prefetch({ scope });
     else if (key === "month") {
-      // Default scope/anchor are server-resolved; the screen reads the URL.
-      // Fire a no-args fetch to warm the common case.
-      void utils.month.get.prefetch({ scope: "joint" });
-    } else if (key === "activity") void utils.activity.get.prefetch();
-    else if (key === "buckets") void utils.buckets.get.prefetch();
+      void utils.month.get.prefetch({ scope });
+    } else if (key === "activity")
+      void utils.activity.get.prefetch({ scope });
+    else if (key === "buckets") void utils.buckets.get.prefetch({ scope });
     else if (key === "settings") void utils.settings.get.prefetch();
+  }
+
+  function readScopeCookieClient(): "joint" | "yann" | "camila" {
+    if (typeof document === "undefined") return "joint";
+    const m = document.cookie.match(/(?:^|; )marcio-month-scope=([^;]+)/);
+    const v = m ? decodeURIComponent(m[1]) : null;
+    return v === "yann" || v === "camila" ? v : "joint";
   }
 
   return (

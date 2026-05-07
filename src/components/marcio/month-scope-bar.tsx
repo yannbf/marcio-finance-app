@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useMemo } from "react";
+import { useId, useMemo, useState } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { ChevronLeft, ChevronRight, Users, User } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -8,6 +8,11 @@ import { motion } from "motion/react";
 import { cn } from "@/lib/utils.ts";
 import { shiftAnchor } from "@/lib/payday.ts";
 import { trpc } from "@/lib/trpc/client.ts";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover.tsx";
 
 const SCOPE_COOKIE = "marcio-month-scope";
 
@@ -23,9 +28,11 @@ type Scope = "joint" | "yann" | "camila";
  */
 export function MonthScopeBar({
   defaultAnchor,
+  defaultScope = "joint",
   showScope = true,
 }: {
   defaultAnchor: { year: number; month: number };
+  defaultScope?: Scope;
   showScope?: boolean;
 }) {
   const t = useTranslations();
@@ -34,10 +41,10 @@ export function MonthScopeBar({
   const sp = useSearchParams();
   const me = trpc.session.me.useQuery();
 
-  const { anchor, scope } = useMemo(() => parseSearch(sp, defaultAnchor), [
-    sp,
-    defaultAnchor,
-  ]);
+  const { anchor, scope } = useMemo(
+    () => parseSearch(sp, defaultAnchor, defaultScope),
+    [sp, defaultAnchor, defaultScope],
+  );
 
   function navigate(next: { year: number; month: number; scope?: Scope }) {
     const qs = new URLSearchParams(sp.toString());
@@ -59,6 +66,23 @@ export function MonthScopeBar({
   const thumbId = useId();
   const localized = anchorLabel(anchor.year, anchor.month, "en");
 
+  // The page's `defaultAnchor` is "today's" payday-month, computed
+  // server-side from current date + paydayDay. Cap navigation at one month
+  // beyond that — the budget is anchored to a sheet that doesn't yet exist
+  // for further-future months, and the planning UX assumes you're at most
+  // a month ahead of payday.
+  const max = useMemo(
+    () => shiftAnchor(defaultAnchor.year, defaultAnchor.month, 1),
+    [defaultAnchor],
+  );
+  const isAtMax = anchor.year === max.year && anchor.month === max.month;
+  const isAfterMax =
+    anchor.year > max.year ||
+    (anchor.year === max.year && anchor.month > max.month);
+  const nextDisabled = isAtMax || isAfterMax;
+
+  const [pickerOpen, setPickerOpen] = useState(false);
+
   return (
     <div className="flex items-center justify-between gap-3">
       <div className="flex items-center gap-1 rounded-full border border-border/60 bg-card/50 p-0.5 text-xs">
@@ -70,14 +94,39 @@ export function MonthScopeBar({
         >
           <ChevronLeft className="size-4" />
         </button>
-        <span className="px-1.5 text-xs uppercase tracking-[0.14em] text-foreground">
-          {localized}
-        </span>
+        <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
+          <PopoverTrigger
+            render={
+              <button
+                type="button"
+                aria-label="Pick month"
+                className="px-1.5 text-xs uppercase tracking-[0.14em] text-foreground hover:text-primary"
+              />
+            }
+          >
+            {localized}
+          </PopoverTrigger>
+          <PopoverContent className="w-72 p-3">
+            <MonthGridPicker
+              anchor={anchor}
+              max={max}
+              onPick={(picked) => {
+                setPickerOpen(false);
+                navigate(picked);
+              }}
+            />
+          </PopoverContent>
+        </Popover>
         <button
           type="button"
-          onClick={() => navigate(shiftAnchor(anchor.year, anchor.month, 1))}
-          className="grid size-7 place-items-center rounded-full text-muted-foreground hover:text-foreground"
+          onClick={() => {
+            if (nextDisabled) return;
+            navigate(shiftAnchor(anchor.year, anchor.month, 1));
+          }}
+          disabled={nextDisabled}
+          className="grid size-7 place-items-center rounded-full text-muted-foreground enabled:hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30"
           aria-label="Next month"
+          aria-disabled={nextDisabled || undefined}
         >
           <ChevronRight className="size-4" />
         </button>
@@ -168,13 +217,99 @@ function anchorLabel(year: number, month: number, locale: string): string {
 }
 
 /**
+ * Year + 12-month grid for jumping back arbitrarily far without spamming
+ * the chevron. Capped at `max` (one month past today's payday-month) so
+ * the user never lands on a month that has no budget data.
+ */
+function MonthGridPicker({
+  anchor,
+  max,
+  onPick,
+}: {
+  anchor: { year: number; month: number };
+  max: { year: number; month: number };
+  onPick: (picked: { year: number; month: number }) => void;
+}) {
+  const [year, setYear] = useState(anchor.year);
+  const months = useMemo(
+    () =>
+      Array.from({ length: 12 }, (_, i) => {
+        const m = i + 1;
+        const date = new Date(year, i, 1);
+        const label = new Intl.DateTimeFormat(undefined, {
+          month: "short",
+        }).format(date);
+        const beyondMax =
+          year > max.year || (year === max.year && m > max.month);
+        return { month: m, label, disabled: beyondMax };
+      }),
+    [year, max],
+  );
+  const isCurrentYear = year === anchor.year;
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center justify-between">
+        <button
+          type="button"
+          onClick={() => setYear((y) => y - 1)}
+          className="grid size-7 place-items-center rounded-full text-muted-foreground hover:bg-accent/40 hover:text-foreground"
+          aria-label="Previous year"
+        >
+          <ChevronLeft className="size-4" />
+        </button>
+        <span className="num text-sm font-semibold tracking-tight">
+          {year}
+        </span>
+        <button
+          type="button"
+          onClick={() => setYear((y) => y + 1)}
+          disabled={year >= max.year}
+          className="grid size-7 place-items-center rounded-full text-muted-foreground enabled:hover:bg-accent/40 enabled:hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30"
+          aria-label="Next year"
+        >
+          <ChevronRight className="size-4" />
+        </button>
+      </div>
+      <div className="grid grid-cols-3 gap-1">
+        {months.map((m) => {
+          const isActive = isCurrentYear && m.month === anchor.month;
+          return (
+            <button
+              key={m.month}
+              type="button"
+              disabled={m.disabled}
+              onClick={() => onPick({ year, month: m.month })}
+              className={cn(
+                "rounded-md px-2 py-2 text-xs uppercase tracking-[0.14em] transition-colors",
+                isActive
+                  ? "bg-primary text-primary-foreground"
+                  : m.disabled
+                    ? "cursor-not-allowed text-muted-foreground/40"
+                    : "text-foreground hover:bg-accent/50",
+              )}
+            >
+              {m.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/**
  * Parse `?anchor=YYYY-MM&scope=…` from the URL. Falls back to defaults.
  * Exported so screens can read the same URL state without re-mounting
  * the bar.
+ *
+ * `defaultScope` lets a page pass in the user's last-chosen scope (read
+ * server-side from the household cookie) so a fresh tab nav without
+ * `?scope=` doesn't snap back to "joint".
  */
 export function parseSearch(
   sp: URLSearchParams,
   defaultAnchor: { year: number; month: number },
+  defaultScope: Scope = "joint",
 ): {
   anchor: { year: number; month: number };
   scope: Scope;
@@ -193,6 +328,6 @@ export function parseSearch(
   const scope: Scope =
     scopeRaw === "yann" || scopeRaw === "camila" || scopeRaw === "joint"
       ? scopeRaw
-      : "joint";
+      : defaultScope;
   return { anchor, scope };
 }

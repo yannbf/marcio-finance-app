@@ -51,6 +51,7 @@ export const activityRouter = router({
             description: transaction.description,
             bookingDate: transaction.bookingDate,
             amountCents: transaction.amountCents,
+            matchedItemId: budgetItem.id,
             matchedName: budgetItem.name,
             owner: bankAccount.owner,
           })
@@ -115,6 +116,7 @@ export const activityRouter = router({
           description: r.description,
           bookingDate: r.bookingDate.toISOString(),
           amountCents: r.amountCents,
+          matchedItemId: r.matchedItemId ?? null,
           matchedName: r.matchedName ?? null,
           owner: r.owner as "joint" | "yann" | "camila",
         })),

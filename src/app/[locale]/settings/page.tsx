@@ -1,10 +1,10 @@
 import { setRequestLocale, getTranslations } from "next-intl/server";
-import { and, eq, inArray, notExists, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, notExists, sql } from "drizzle-orm";
 import { Banknote, PiggyBank, Inbox, ChevronRight } from "lucide-react";
 import { Card } from "@/components/ui/card.tsx";
 import { Link } from "@/i18n/navigation.ts";
 import { db } from "@/db/index.ts";
-import { bankAccount, transaction, txMatch } from "@/db/schema.ts";
+import { bankAccount, month, transaction, txMatch } from "@/db/schema.ts";
 import { getCurrentUser } from "@/lib/auth/current-user.ts";
 import { getHouseholdSettings } from "@/lib/settings.ts";
 import { PaydayInline } from "@/components/marcio/payday-inline.tsx";
@@ -48,6 +48,21 @@ export default async function SettingsPage({
       ),
     );
   const inboxCount = Number.parseInt(n, 10);
+
+  // Most-recent sheet import across any month — surfaced under the version
+  // line so users can confirm the daily cron is still running.
+  const [latestImport] = await db
+    .select({ importedAt: month.importedAt })
+    .from(month)
+    .orderBy(desc(month.importedAt))
+    .limit(1);
+  const lastImport = latestImport?.importedAt ?? null;
+  const lastImportLabel = lastImport
+    ? new Intl.DateTimeFormat(locale, {
+        dateStyle: "medium",
+        timeStyle: "short",
+      }).format(lastImport)
+    : null;
 
   return (
     <main className="mx-auto flex w-full max-w-md flex-col gap-5 px-5 pb-8 pt-8">
@@ -146,7 +161,16 @@ export default async function SettingsPage({
         </div>
       ) : null}
 
-      <p className="text-center text-xs text-muted-foreground">Marcio v0.1</p>
+      <div className="flex flex-col items-center gap-0.5">
+        <p className="text-center text-xs text-muted-foreground">
+          Marcio v0.1
+        </p>
+        {lastImportLabel ? (
+          <p className="num text-center text-[11px] text-muted-foreground/70">
+            {t("lastSync", { at: lastImportLabel })}
+          </p>
+        ) : null}
+      </div>
     </main>
   );
 }

@@ -94,6 +94,15 @@ export default async function LocaleLayout({
             >
               <PullToRefresh>{children}</PullToRefresh>
             </div>
+            {/* Solid backdrop behind the iOS status bar so scrolled content
+                doesn't bleed under the time/wifi/battery indicators with the
+                "black-translucent" status bar style. Lives above the page
+                z-stack but below the install hint and modals. */}
+            <div
+              aria-hidden
+              className="pointer-events-none fixed inset-x-0 top-0 z-40 bg-background"
+              style={{ height: "env(safe-area-inset-top)" }}
+            />
             <BottomNav />
             <IosInstallHint />
           </TrpcProvider>

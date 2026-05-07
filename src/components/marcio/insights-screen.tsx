@@ -14,15 +14,17 @@ import { OUTFLOW_SECTIONS, SECTION_TR_KEY } from "@/lib/import/sections.ts";
 export function InsightsScreen({
   locale,
   defaultAnchor,
+  defaultScope = "joint",
 }: {
   locale: string;
   defaultAnchor: { year: number; month: number };
+  defaultScope?: "joint" | "yann" | "camila";
 }) {
   const t = useTranslations("Insights");
   const tSections = useTranslations("Sections");
   const tTikkie = useTranslations("Tikkie");
   const sp = useSearchParams();
-  const { anchor, scope } = parseSearch(sp, defaultAnchor);
+  const { anchor, scope } = parseSearch(sp, defaultAnchor, defaultScope);
   const { data, isLoading } = trpc.insights.get.useQuery({ anchor, scope });
 
   return (
@@ -34,7 +36,7 @@ export function InsightsScreen({
         <h1 className="text-2xl font-semibold tracking-tight">
           {t("heading")}
         </h1>
-        <MonthScopeBar defaultAnchor={defaultAnchor} />
+        <MonthScopeBar defaultAnchor={defaultAnchor} defaultScope={defaultScope} />
       </header>
 
       <Card className="border-border/40 bg-card/60 p-5">

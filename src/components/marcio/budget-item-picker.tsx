@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
-import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet.tsx";
 import { Label } from "@/components/ui/label.tsx";
 import { SECTION_ORDER } from "@/lib/import/sections.ts";
@@ -17,6 +17,12 @@ type Props = {
   title: string;
   /** Subtitle under the title (counterparty, "X selected", etc.). */
   subtitle: string;
+  /**
+   * Budget item this transaction is currently assigned to, if any.
+   * The picker marks both the section and the item with a check so the
+   * user can see at a glance where it landed (and reassign if it's wrong).
+   */
+  currentItemId?: string | null;
   /** When true, picker shows the "remember rule" footer toggle. */
   showRemember?: boolean;
   /** Called when the user picks a budget item; should resolve before close. */
@@ -39,6 +45,7 @@ export function BudgetItemPicker({
   sectionLabels,
   title,
   subtitle,
+  currentItemId = null,
   showRemember = true,
   onPick,
   onOpenChange,
@@ -48,6 +55,10 @@ export function BudgetItemPicker({
   const [section, setSection] = useState<Section | null>(null);
   const [remember, setRemember] = useState(true);
   const [pending, startTransition] = useTransition();
+  // Track whether the user has manually changed sections during this open
+  // session — once they navigate, we stop auto-drilling on subsequent opens
+  // within the same mount. Resets when the sheet closes.
+  const [manualSection, setManualSection] = useState(false);
 
   const grouped = useMemo(() => {
     const map = new Map<Section, BudgetItemOption[]>();
@@ -62,6 +73,15 @@ export function BudgetItemPicker({
     })).filter((g) => g.items.length > 0);
   }, [options]);
 
+  // Section that holds the currently-assigned item — used to decorate the
+  // section row at the top level so the user sees the trail without
+  // drilling in.
+  const currentSection = useMemo<Section | null>(() => {
+    if (!currentItemId) return null;
+    const hit = options.find((o) => o.id === currentItemId);
+    return hit?.section ?? null;
+  }, [options, currentItemId]);
+
   function pick(itemId: string) {
     startTransition(async () => {
       await onPick(itemId, remember);
@@ -72,7 +92,15 @@ export function BudgetItemPicker({
 
   function handleOpenChange(next: boolean) {
     setOpen(next);
-    if (!next) setSection(null);
+    if (next) {
+      // On open, jump to the section holding the current assignment so
+      // the user lands on the item without an extra tap. They can still
+      // chevron-back to the section list to reassign elsewhere.
+      setSection(!manualSection && currentSection ? currentSection : null);
+    } else {
+      setSection(null);
+      setManualSection(false);
+    }
     onOpenChange?.(next);
   }
 
@@ -91,7 +119,10 @@ export function BudgetItemPicker({
             {section ? (
               <button
                 type="button"
-                onClick={() => setSection(null)}
+                onClick={() => {
+                  setSection(null);
+                  setManualSection(true);
+                }}
                 className="-m-1 rounded p-1 hover:bg-accent/40"
                 aria-label={t("back")}
               >
@@ -119,34 +150,75 @@ export function BudgetItemPicker({
             ) : section ? (
               grouped
                 .find((g) => g.section === section)
-                ?.items.map((opt) => (
+                ?.items.map((opt) => {
+                  const isCurrent = opt.id === currentItemId;
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      disabled={pending}
+                      onClick={() => pick(opt.id)}
+                      aria-current={isCurrent ? "true" : undefined}
+                      className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-base transition-colors hover:bg-accent/40 active:bg-accent/60"
+                    >
+                      <span
+                        className={
+                          isCurrent
+                            ? "truncate font-medium text-primary"
+                            : "truncate"
+                        }
+                      >
+                        {opt.name}
+                      </span>
+                      {isCurrent ? (
+                        <span
+                          aria-label={t("currentlyAssigned")}
+                          className="grid size-5 shrink-0 place-items-center rounded-full bg-primary/15 text-primary"
+                        >
+                          <Check className="size-3" strokeWidth={3} />
+                        </span>
+                      ) : null}
+                    </button>
+                  );
+                })
+            ) : (
+              grouped.map((g) => {
+                const sectionHasCurrent = g.section === currentSection;
+                return (
                   <button
-                    key={opt.id}
+                    key={g.section}
                     type="button"
-                    disabled={pending}
-                    onClick={() => pick(opt.id)}
+                    onClick={() => {
+                      setSection(g.section);
+                      setManualSection(true);
+                    }}
+                    aria-current={sectionHasCurrent ? "true" : undefined}
                     className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-base transition-colors hover:bg-accent/40 active:bg-accent/60"
                   >
-                    <span className="truncate">{opt.name}</span>
+                    <span
+                      className={
+                        sectionHasCurrent
+                          ? "flex items-center gap-2 font-medium text-primary"
+                          : "font-medium"
+                      }
+                    >
+                      {sectionLabels[g.section]}
+                      {sectionHasCurrent ? (
+                        <span
+                          aria-hidden
+                          className="grid size-4 shrink-0 place-items-center rounded-full bg-primary/15 text-primary"
+                        >
+                          <Check className="size-2.5" strokeWidth={3} />
+                        </span>
+                      ) : null}
+                    </span>
+                    <span className="flex items-center gap-2 text-xs text-muted-foreground">
+                      {g.items.length}
+                      <ChevronRight className="size-4" />
+                    </span>
                   </button>
-                ))
-            ) : (
-              grouped.map((g) => (
-                <button
-                  key={g.section}
-                  type="button"
-                  onClick={() => setSection(g.section)}
-                  className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-base transition-colors hover:bg-accent/40 active:bg-accent/60"
-                >
-                  <span className="font-medium">
-                    {sectionLabels[g.section]}
-                  </span>
-                  <span className="flex items-center gap-2 text-xs text-muted-foreground">
-                    {g.items.length}
-                    <ChevronRight className="size-4" />
-                  </span>
-                </button>
-              ))
+                );
+              })
             )}
           </div>
 

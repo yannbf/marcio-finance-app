@@ -14,6 +14,7 @@ type Props = {
     description: string | null;
     bookingDate: string;
     amountCents: number;
+    matchedItemId?: string | null;
     matchedName: string | null;
     owner: "joint" | "camila" | "yann";
   };
@@ -53,6 +54,7 @@ export function ActivityRow({ tx, options, locale, sectionLabels }: Props) {
       }
       options={options}
       sectionLabels={sectionLabels}
+      currentItemId={tx.matchedItemId ?? null}
       title={t("assignTo")}
       subtitle={tx.counterparty || tx.description || ""}
       onPick={async (budgetItemId, remember) => {

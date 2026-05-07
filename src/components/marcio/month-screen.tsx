@@ -30,13 +30,15 @@ type ItemRow = {
 export function MonthScreen({
   locale,
   defaultAnchor,
+  defaultScope = "joint",
 }: {
   locale: string;
   defaultAnchor: { year: number; month: number };
+  defaultScope?: "joint" | "yann" | "camila";
 }) {
   const t = useTranslations();
   const sp = useSearchParams();
-  const { anchor, scope } = parseSearch(sp, defaultAnchor);
+  const { anchor, scope } = parseSearch(sp, defaultAnchor, defaultScope);
 
   const { data, isLoading } = trpc.month.get.useQuery({
     scope,
@@ -60,7 +62,7 @@ export function MonthScreen({
         <h1 className="text-2xl font-semibold tracking-tight">
           {t("Nav.month")}
         </h1>
-        <MonthScopeBar defaultAnchor={defaultAnchor} />
+        <MonthScopeBar defaultAnchor={defaultAnchor} defaultScope={defaultScope} />
       </header>
 
       <div className="grid grid-cols-3 gap-3">

@@ -87,7 +87,7 @@ export function SectionDrillSheet({
           </SheetTitle>
         </SheetHeader>
 
-        <div className="overflow-y-auto px-4 pb-6">
+        <div data-sheet-scroll className="max-h-[70dvh] overflow-y-auto px-4 pb-6">
           {paid.length > 0 ? (
             <Group title={paidLabel} items={paid} locale={locale} daySuffix={daySuffix} />
           ) : null}

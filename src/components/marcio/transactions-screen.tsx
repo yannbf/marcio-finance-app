@@ -6,6 +6,8 @@ import { useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
+import { Button } from "@/components/ui/button.tsx";
+import { Loader2 } from "lucide-react";
 import { Link, useRouter, usePathname } from "@/i18n/navigation.ts";
 import { ActivityRow } from "./activity-row.tsx";
 import { MonthScopeBar, parseSearch } from "./month-scope-bar.tsx";
@@ -16,9 +18,11 @@ import type { Section } from "@/lib/import/types.ts";
 export function TransactionsScreen({
   locale,
   defaultAnchor,
+  defaultScope = "joint",
 }: {
   locale: string;
   defaultAnchor: { year: number; month: number };
+  defaultScope?: "joint" | "yann" | "camila";
 }) {
   const t = useTranslations("Transactions");
   const tSections = useTranslations("Sections");
@@ -30,27 +34,46 @@ export function TransactionsScreen({
   const show = (showRaw === "matched" || showRaw === "unmatched"
     ? showRaw
     : "all") as "all" | "matched" | "unmatched";
-  const { scope } = parseSearch(sp, defaultAnchor);
+  const { scope } = parseSearch(sp, defaultAnchor, defaultScope);
 
-  // The result set is keyed only on (show, scope) so the cache survives
-  // every keystroke. The text query filters the loaded rows on the client —
-  // no round-trip per character. URL still mirrors `?q=` (debounced) so the
-  // search is shareable and survives a refresh.
-  const { data, isLoading } = trpc.transactions.list.useQuery({
-    show,
-    scope,
-  });
+  // Cache key is (show, scope) only — keystrokes never refetch. Pages
+  // accumulate so "Load more" extends the searchable window.
+  const {
+    data,
+    isLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = trpc.transactions.list.useInfiniteQuery(
+    { show, scope },
+    {
+      getNextPageParam: (last) => last.nextCursor ?? undefined,
+    },
+  );
 
+  const allRows = useMemo(
+    () => data?.pages.flatMap((p) => p.rows) ?? null,
+    [data],
+  );
+  const optionsAll = data?.pages[0]?.optionsAll ?? [];
+  const pageSize = data?.pages[0]?.pageSize ?? 100;
+
+  // The input is the source of truth while typing. We only seed it from the
+  // URL on initial mount and refresh it if the URL changed without us asking
+  // (back/forward, deep link). When the user types we never bounce back to
+  // the URL value mid-stroke — that's what was eating keystrokes before.
   const [draft, setDraft] = useState(q);
-  const draftRef = useRef(draft);
-  draftRef.current = draft;
+  const lastWroteRef = useRef(q);
   useEffect(() => {
+    if (q === lastWroteRef.current) return;
     setDraft(q);
+    lastWroteRef.current = q;
   }, [q]);
   useEffect(() => {
+    const next = draft.trim();
+    if (next === lastWroteRef.current) return;
     const id = window.setTimeout(() => {
-      const next = draftRef.current.trim();
-      if (next === q) return;
+      lastWroteRef.current = next;
       const params = new URLSearchParams(sp.toString());
       if (next) params.set("q", next);
       else params.delete("q");
@@ -61,15 +84,15 @@ export function TransactionsScreen({
           : pathname) as `/transactions${string}`,
         { scroll: false },
       );
-    }, 300);
+    }, 350);
     return () => window.clearTimeout(id);
-  }, [draft, q, sp, router, pathname]);
+  }, [draft, sp, router, pathname]);
 
   const filteredRows = useMemo(() => {
-    if (!data) return null;
+    if (!allRows) return null;
     const needle = draft.trim().toLowerCase();
-    if (!needle) return data.rows;
-    return data.rows.filter((r) => {
+    if (!needle) return allRows;
+    return allRows.filter((r) => {
       const cp = (r.counterparty ?? "").toLowerCase();
       const desc = (r.description ?? "").toLowerCase();
       const matched = (r.matchedName ?? "").toLowerCase();
@@ -79,7 +102,7 @@ export function TransactionsScreen({
         matched.includes(needle)
       );
     });
-  }, [data, draft]);
+  }, [allRows, draft]);
 
   const sectionLabels = useMemo(
     () =>
@@ -114,7 +137,7 @@ export function TransactionsScreen({
         <h1 className="text-2xl font-semibold tracking-tight">
           {t("heading")}
         </h1>
-        <MonthScopeBar defaultAnchor={defaultAnchor} />
+        <MonthScopeBar defaultAnchor={defaultAnchor} defaultScope={defaultScope} />
       </header>
 
       <div className="flex flex-col gap-3">
@@ -165,7 +188,7 @@ export function TransactionsScreen({
             <Card className="border-border/40 bg-card/60 p-1">
               <ul className="divide-y divide-border/40">
                 {g.rows.map((r) => {
-                  const optsForScope = (data?.optionsAll ?? []).filter(
+                  const optsForScope = optionsAll.filter(
                     (o) => o.scope === r.owner,
                   );
                   return (
@@ -177,6 +200,7 @@ export function TransactionsScreen({
                           description: r.description,
                           bookingDate: r.bookingDate,
                           amountCents: r.amountCents,
+                          matchedItemId: r.matchedItemId,
                           matchedName: r.matchedName,
                           owner: r.owner,
                         }}
@@ -193,9 +217,23 @@ export function TransactionsScreen({
         ))
       )}
 
-      {data && data.rows.length === data.pageSize ? (
+      {hasNextPage && allRows && allRows.length > 0 ? (
+        <Button
+          variant="outline"
+          className="self-center"
+          onClick={() => void fetchNextPage()}
+          disabled={isFetchingNextPage}
+        >
+          {isFetchingNextPage ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : null}
+          {t("loadMore", { n: pageSize })}
+        </Button>
+      ) : null}
+
+      {!hasNextPage && allRows && allRows.length > pageSize ? (
         <p className="text-center text-xs text-muted-foreground">
-          {t("limited", { n: data.pageSize })}
+          {t("loadedAll", { n: allRows.length })}
         </p>
       ) : null}
     </main>

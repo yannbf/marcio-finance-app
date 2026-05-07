@@ -1,6 +1,5 @@
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import { and, asc, eq, sql } from "drizzle-orm";
-import { ChevronLeft } from "lucide-react";
 import { notFound } from "next/navigation";
 import { db } from "@/db/index.ts";
 import {
@@ -13,7 +12,7 @@ import {
 import { Card } from "@/components/ui/card.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
 import { TransactionRow } from "@/components/marcio/transaction-row.tsx";
-import { Link } from "@/i18n/navigation.ts";
+import { BackButton } from "@/components/marcio/back-button.tsx";
 import { formatEUR } from "@/lib/format.ts";
 import { monthlyContributionCents } from "@/lib/cadence.ts";
 import { getCurrentUser } from "@/lib/auth/current-user.ts";
@@ -76,13 +75,7 @@ export default async function BudgetItemDetailPage({
   return (
     <main className="mx-auto flex w-full max-w-md flex-col gap-5 px-5 pb-8 pt-8">
       <header className="flex items-start gap-3">
-        <Link
-          href="/month"
-          className="-m-2 mt-0 rounded p-2 text-muted-foreground transition-colors hover:text-foreground"
-          aria-label={t("back")}
-        >
-          <ChevronLeft className="size-5" />
-        </Link>
+        <BackButton fallbackHref="/month" ariaLabel={t("back")} />
         <div className="min-w-0 flex-1">
           <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
             {tSections(

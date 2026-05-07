@@ -15,13 +15,15 @@ import { formatEUR } from "@/lib/format.ts";
 export function BucketsScreen({
   locale,
   defaultAnchor,
+  defaultScope = "joint",
 }: {
   locale: string;
   defaultAnchor: { year: number; month: number };
+  defaultScope?: "joint" | "yann" | "camila";
 }) {
   const t = useTranslations("Buckets");
   const sp = useSearchParams();
-  const { anchor, scope } = parseSearch(sp, defaultAnchor);
+  const { anchor, scope } = parseSearch(sp, defaultAnchor, defaultScope);
   const { data, isLoading } = trpc.buckets.get.useQuery({ anchor, scope });
 
   const groups = useMemo(() => {
@@ -66,7 +68,7 @@ export function BucketsScreen({
         <h1 className="text-2xl font-semibold tracking-tight">
           {t("heading")}
         </h1>
-        <MonthScopeBar defaultAnchor={defaultAnchor} />
+        <MonthScopeBar defaultAnchor={defaultAnchor} defaultScope={defaultScope} />
       </header>
 
       {isLoading ? (

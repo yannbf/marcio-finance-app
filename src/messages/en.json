@@ -90,7 +90,9 @@
     "filterMatched": "Categorized",
     "filterUnmatched": "Uncategorized",
     "empty": "No transactions found.",
-    "limited": "Showing the {n} most recent."
+    "limited": "Showing the {n} most recent.",
+    "loadMore": "Load {n} more",
+    "loadedAll": "All {n} transactions loaded"
   },
   "ItemDetail": {
     "back": "Back",
@@ -121,6 +123,7 @@
     "assignTo": "Assign to",
     "noBudgetItems": "No budget items yet — import the sheet first.",
     "remember": "Remember for next time",
+    "currentlyAssigned": "Currently assigned",
     "back": "Back",
     "selectAll": "Select all",
     "selected": "{n, plural, one {# selected} other {# selected}}",
@@ -156,6 +159,7 @@
   "Settings": {
     "title": "Settings",
     "heading": "Configuration",
+    "lastSync": "Last sync · {at}",
     "sections": {
       "banks": {
         "title": "Banks & accounts",
