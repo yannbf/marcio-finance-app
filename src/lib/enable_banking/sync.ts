@@ -263,25 +263,71 @@ async function syncAccount(args: {
   accountUid: string;
   owner: "yann" | "camila";
 }): Promise<{ inserted: number; duplicates: number; matched: number }> {
-  const [existing] = await db
+  // Resolve to an existing bank_account row in three steps:
+  //   1. By external_id — already synced under this same Enable Banking uid.
+  //   2. By IBAN — was previously created via CSV upload and has no
+  //      connection yet. Claim it by stamping connection_id + external_id
+  //      so transactions land on the same row going forward.
+  //   3. Create a brand-new row.
+  let acct: typeof bankAccount.$inferSelect | undefined;
+
+  const [byExternal] = await db
     .select()
     .from(bankAccount)
     .where(eq(bankAccount.externalId, args.accountUid));
+  acct = byExternal;
 
-  let acct = existing;
+  // Pull the account details up front — we need the IBAN for the claim
+  // path AND the nickname/kind for the create path.
+  let details:
+    | Awaited<ReturnType<typeof getAccountDetails>>
+    | undefined;
+  let providerIban: string | null = null;
   if (!acct) {
-    const details = await getAccountDetails(args.accountUid);
-    const iban = (
+    details = await getAccountDetails(args.accountUid);
+    const ibanRaw =
       details.account_id?.iban ??
       details.account_id?.other?.identification ??
-      ""
-    ).toUpperCase();
+      "";
+    providerIban = ibanRaw ? ibanRaw.replace(/\s+/g, "").toUpperCase() : null;
+  }
+
+  if (!acct && providerIban) {
+    // Step 2: try to claim a CSV-created row with the same IBAN.
+    const [byIban] = await db
+      .select()
+      .from(bankAccount)
+      .where(eq(bankAccount.iban, providerIban));
+    if (byIban && !byIban.externalId) {
+      const [updated] = await db
+        .update(bankAccount)
+        .set({
+          externalId: args.accountUid,
+          connectionId: args.connectionId,
+        })
+        .where(eq(bankAccount.id, byIban.id))
+        .returning();
+      acct = updated;
+    }
+  }
+
+  if (!acct) {
+    // Step 3: brand-new row.
+    const d = details ?? (await getAccountDetails(args.accountUid));
+    const iban =
+      providerIban ??
+      ((d.account_id?.iban ??
+        d.account_id?.other?.identification ??
+        "")
+        .replace(/\s+/g, "")
+        .toUpperCase() ||
+        null);
     const nickname =
-      details.name ??
-      details.product ??
-      `ING ${iban.slice(-4) || "account"}`;
-    const cashType = (details.cash_account_type ?? "").toLowerCase();
-    const product = (details.product ?? "").toLowerCase();
+      d.name ??
+      d.product ??
+      `ING ${(iban ?? "").slice(-4) || "account"}`;
+    const cashType = (d.cash_account_type ?? "").toLowerCase();
+    const product = (d.product ?? "").toLowerCase();
     const isSavings =
       cashType === "svgs" ||
       product.includes("spaar") ||
@@ -294,13 +340,15 @@ async function syncAccount(args: {
         kind: isSavings ? "savings" : "checking",
         nickname,
         bank: "ING",
-        iban: iban || null,
+        iban,
         connectionId: args.connectionId,
         externalId: args.accountUid,
       })
       .returning();
     acct = created;
   } else if (!acct.connectionId) {
+    // Existing row found by external_id but not yet linked to this
+    // connection — happens if the connection was rebuilt.
     await db
       .update(bankAccount)
       .set({ connectionId: args.connectionId })
