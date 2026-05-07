@@ -146,7 +146,7 @@ Ship as Vitest in `code/test/` with `pnpm test` script.
 
 The Enable Banking integration backfilled ~90 days on first connect,
 which exposed a pile of single-payday-month assumptions across the app.
-The full feature set was shipped between commits `b698973` and `7800847`
+The full feature set was shipped between commits `b698973` and `1c42133`
 (see `git log --grep "FOLLOWUP" -- FOLLOWUP.md` for context). What
 remains is just test infra and a few opinionated items that aren't worth
 doing speculatively.
@@ -160,13 +160,17 @@ doing speculatively.
   cloud, no second DB to admin. Drizzle has a `drizzle-orm/pglite`
   adapter. Same schema, same SQL semantics. Should remove the
   `MARCIO_E2E_DATABASE_URL` requirement entirely.
-- [ ] **Fix the Playwright hydration mismatch.** The current E2E suite
-  fails because the server-rendered loading skeleton doesn't match the
-  hydrated client (`PersistQueryClientProvider` with the async persister
-  + iPhone emulation). Real browsers recover transparently; Playwright
-  doesn't, and tests time out without the tRPC fetch ever firing.
-  Likely fix: gate per-screen rendering behind a `mounted` flag, or
-  manually orchestrate the persister hydration in a `useEffect`.
+- [ ] **Fix the Playwright hydration mismatch (rest of the screens).**
+  The current E2E suite fails because the server-rendered loading
+  skeleton doesn't match the hydrated client (`PersistQueryClientProvider`
+  with the async persister + iPhone emulation). Real browsers recover
+  transparently; Playwright doesn't, and tests time out without the tRPC
+  fetch ever firing. The Today header badge was already fixed in
+  `5778d35` by pre-computing days-until-payday on the server and
+  passing it as `defaultDaysUntilPayday`. Apply the same shape to the
+  other screens that show data-dependent UI in the header — likely
+  Month, Activity, Insights, Buckets, Tikkie. Or globally: gate every
+  screen render behind a `mounted` flag.
 - [ ] **Add a Vitest integration layer.** Right now the only test suite
   is Playwright, which forces UI rendering for every assertion. Most
   logic bugs (matching engine, payday math, sync field mapping) would
@@ -185,7 +189,10 @@ doing speculatively.
 - [ ] **Drop `revoked` enum value.** `bank_connection.status` still has
   `revoked` even though disconnect now hard-deletes. Cosmetic; needs a
   migration.
-- [ ] **Bank-aware sign normalisation.** `normalizeEbTransaction` derives
-  outgoing/incoming from creditor-vs-debtor presence — correct for ING
-  NL, possibly wrong for other ASPSPs that DO return signed amounts.
-  Add a per-ASPSP test the next time another bank gets connected.
+- [ ] **Bank-aware sign normalisation.** `normalizeEbTransaction` reads
+  Berlin Group's `credit_debit_indicator` first (DBIT/CRDT) and falls
+  back to comparing our IBAN to creditor_account/debtor_account. Both
+  are standard fields, so this should generalise — but no other ASPSP
+  has been tested. Worth a sanity check the next time a non-ING bank
+  gets connected: spot-check one outgoing payment and one incoming
+  payment land with the right sign before trusting the rest.
