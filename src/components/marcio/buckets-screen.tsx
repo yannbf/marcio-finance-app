@@ -130,6 +130,8 @@ export function BucketsScreen({
               }))}
               plannedCents={g.planned}
               actualCents={g.actual}
+              ytdActualCents={g.account.ytdActualCents}
+              ytdYearlyTargetCents={g.account.yearlyTargetCents}
               locale={locale}
               t={t}
             />
@@ -194,8 +196,19 @@ type BucketCardProps = {
   }[];
   plannedCents: number;
   actualCents: number;
+  /** YTD total contributions to this account in the current calendar year. */
+  ytdActualCents: number;
+  /** Yearly target = sum of SAZONAIS plannedCents linked to this account. */
+  ytdYearlyTargetCents: number;
   locale: string;
-  t: (k: "noLinkedItems" | "linkItems" | "yearEstimate" | "missed") => string;
+  t: (
+    k:
+      | "noLinkedItems"
+      | "linkItems"
+      | "yearEstimate"
+      | "missed"
+      | "ytdProgress",
+  ) => string;
 };
 
 function BucketCard({
@@ -203,11 +216,15 @@ function BucketCard({
   items,
   plannedCents,
   actualCents,
+  ytdActualCents,
+  ytdYearlyTargetCents,
   locale,
   t,
 }: BucketCardProps) {
   const ratio = plannedCents > 0 ? actualCents / plannedCents : 0;
   const done = ratio >= 0.95;
+  const ytdRatio =
+    ytdYearlyTargetCents > 0 ? ytdActualCents / ytdYearlyTargetCents : 0;
 
   return (
     <Card className="border-border/40 bg-card/60 p-4">
@@ -249,6 +266,31 @@ function BucketCard({
             className="h-full rounded-full bg-primary"
             style={{ width: `${Math.min(100, ratio * 100).toFixed(2)}%` }}
           />
+        </div>
+      ) : null}
+
+      {ytdYearlyTargetCents > 0 ? (
+        <div className="mt-3 flex flex-col gap-1">
+          <div className="flex items-baseline justify-between text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+            <span>
+              {t("ytdProgress")}
+            </span>
+            <span className="num">
+              {formatEUR(ytdActualCents / 100, locale)}
+              {" / "}
+              {formatEUR(ytdYearlyTargetCents / 100, locale)}
+              {" · "}
+              {Math.round(ytdRatio * 100)}%
+            </span>
+          </div>
+          <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full rounded-full bg-amber-500/70"
+              style={{
+                width: `${Math.min(100, ytdRatio * 100).toFixed(2)}%`,
+              }}
+            />
+          </div>
         </div>
       ) : null}
 

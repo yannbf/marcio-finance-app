@@ -149,7 +149,8 @@
     "untagged": "Items not in a bucket",
     "untaggedHint": "Link these to a bucket in Settings → Savings so Marcio can track contributions.",
     "yearEstimate": "year:",
-    "missed": "Missing"
+    "missed": "Missing",
+    "ytdProgress": "YTD"
   },
   "Insights": {
     "title": "Insights",

@@ -149,7 +149,8 @@
     "untagged": "Itens sem cofre",
     "untaggedHint": "Vincule estes itens a um cofre em Ajustes → Poupanças para o Marcio acompanhar as contribuições.",
     "yearEstimate": "ano:",
-    "missed": "Faltando"
+    "missed": "Faltando",
+    "ytdProgress": "Acumulado no ano"
   },
   "Insights": {
     "title": "Análises",
