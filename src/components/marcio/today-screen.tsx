@@ -37,6 +37,7 @@ export function TodayScreen({
   const forecast = data?.forecast ?? { charges: [], totalRemainingCents: 0 };
   const sectionData = data?.sectionData ?? [];
   const inboxCount = data?.inboxCount ?? 0;
+  const recentlyAddedCount = data?.recentlyAddedCount ?? 0;
   const sectionByKey = new Map(sectionData.map((s) => [s.section, s]));
 
   return (
@@ -209,7 +210,16 @@ export function TodayScreen({
               <Inbox className="size-4" />
             </div>
             <div className="flex-1">
-              <p className="text-sm font-medium">{t("Today.inboxTitle")}</p>
+              <div className="flex items-baseline gap-1.5">
+                <p className="text-sm font-medium">{t("Today.inboxTitle")}</p>
+                {recentlyAddedCount > 0 ? (
+                  <span className="num inline-flex items-center rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium text-primary">
+                    {t("Inbox.newSinceLastSync", {
+                      n: recentlyAddedCount,
+                    })}
+                  </span>
+                ) : null}
+              </div>
               <p className="num text-xs text-muted-foreground">
                 {t("Today.inboxCount", { n: inboxCount })}
               </p>

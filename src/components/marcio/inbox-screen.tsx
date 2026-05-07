@@ -27,13 +27,20 @@ export function InboxScreen({ locale }: { locale: string }) {
         <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
           {t("title")}
         </p>
-        <div className="mt-1 flex items-baseline justify-between">
+        <div className="mt-1 flex items-baseline justify-between gap-2">
           <h1 className="text-2xl font-semibold tracking-tight">
             {t("heading")}
           </h1>
-          <span className="num text-sm text-muted-foreground">
-            {t("count", { n: data?.txns.length ?? 0 })}
-          </span>
+          <div className="flex items-baseline gap-1.5">
+            {data?.recentlyAddedCount ? (
+              <span className="num inline-flex items-center rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-medium text-primary">
+                {t("newSinceLastSync", { n: data.recentlyAddedCount })}
+              </span>
+            ) : null}
+            <span className="num text-sm text-muted-foreground">
+              {t("count", { n: data?.txns.length ?? 0 })}
+            </span>
+          </div>
         </div>
       </header>
 

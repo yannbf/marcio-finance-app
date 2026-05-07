@@ -52,6 +52,9 @@ export const inboxRouter = router({
         bookingDate: transaction.bookingDate,
         amountCents: transaction.amountCents,
         owner: bankAccount.owner,
+        // Used to flag rows added since the last cron / sync — surfaced
+        // as a "X new" banner on /today and /inbox.
+        createdAt: transaction.createdAt,
       })
       .from(transaction)
       .innerJoin(bankAccount, eq(bankAccount.id, transaction.bankAccountId))
@@ -210,11 +213,22 @@ export const inboxRouter = router({
       ).values(),
     );
 
+    // Count how many of the visible inbox txns landed in the last 36h —
+    // covers an overnight 06:00 UTC cron + the user opening the app the
+    // morning after. Drives the "X new since last sync" banner.
+    const RECENTLY_ADDED_HOURS = 36;
+    const recentlyAddedCutoff =
+      Date.now() - RECENTLY_ADDED_HOURS * 60 * 60 * 1000;
+    const recentlyAddedCount = visible.filter(
+      (r) => r.createdAt.getTime() >= recentlyAddedCutoff,
+    ).length;
+
     return {
       txns,
       optionsByAnchor,
       monthsWithoutSheet,
       optionsAll,
+      recentlyAddedCount,
     };
   }),
 

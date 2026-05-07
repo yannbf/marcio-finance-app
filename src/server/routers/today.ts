@@ -32,12 +32,14 @@ export const todayRouter = router({
       const scopes = resolveVisibleScopes(ctx.allowedScopes, input?.scope);
       const anchor = input?.anchor;
 
-      const [agg, forecast, sectionData, inboxCount] = await Promise.all([
-        getMonthlyAggregates(scopes, anchor),
-        getUpcomingCharges(scopes, anchor),
-        getSectionsForToday(scopes, anchor),
-        unmatchedCount(scopes),
-      ]);
+      const [agg, forecast, sectionData, inboxCount, recentlyAddedCount] =
+        await Promise.all([
+          getMonthlyAggregates(scopes, anchor),
+          getUpcomingCharges(scopes, anchor),
+          getSectionsForToday(scopes, anchor),
+          unmatchedCount(scopes),
+          unmatchedCount(scopes, RECENTLY_ADDED_HOURS),
+        ]);
 
       const plannedOutflowCents = Math.abs(totalOutflow(agg.planned));
       const spentOutflowCents = Math.abs(totalOutflow(agg.actual));
@@ -65,28 +67,44 @@ export const todayRouter = router({
         forecast,
         sectionData,
         inboxCount,
+        recentlyAddedCount,
       };
     }),
 });
 
+/**
+ * "Recently added" window for the new-transactions banner. 36 hours
+ * comfortably covers an overnight cron run (06:00 UTC) plus the user
+ * opening the app the morning after — they see "X new" exactly once
+ * before the window slides past.
+ */
+const RECENTLY_ADDED_HOURS = 36;
+
 async function unmatchedCount(
   scopes: ("joint" | "yann" | "camila")[],
+  withinHours?: number,
 ): Promise<number> {
+  // When `withinHours` is set, only count transactions inserted in the
+  // recent window — used by the "new since last cron" banner.
+  const filters = [
+    inArray(bankAccount.owner, scopes),
+    notExists(
+      db
+        .select({ one: sql`1` })
+        .from(txMatch)
+        .where(eq(txMatch.transactionId, transaction.id)),
+    ),
+    sql`NOT (${transaction.counterparty} ~* ${AFRONDING_PG_PATTERN})`,
+  ];
+  if (withinHours) {
+    filters.push(
+      sql`${transaction.createdAt} > NOW() - (${withinHours} || ' hours')::interval`,
+    );
+  }
   const [{ n }] = await db
     .select({ n: sql<string>`COUNT(*)` })
     .from(transaction)
     .innerJoin(bankAccount, eq(bankAccount.id, transaction.bankAccountId))
-    .where(
-      and(
-        inArray(bankAccount.owner, scopes),
-        notExists(
-          db
-            .select({ one: sql`1` })
-            .from(txMatch)
-            .where(eq(txMatch.transactionId, transaction.id)),
-        ),
-        sql`NOT (${transaction.counterparty} ~* ${AFRONDING_PG_PATTERN})`,
-      ),
-    );
+    .where(and(...filters));
   return Number.parseInt(n, 10);
 }
