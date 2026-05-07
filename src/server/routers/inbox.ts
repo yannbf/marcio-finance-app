@@ -1,5 +1,14 @@
 import { z } from "zod";
-import { and, asc, desc, eq, inArray, notExists, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  inArray,
+  notExists,
+  or,
+  sql,
+} from "drizzle-orm";
 import { db } from "@/db/index.ts";
 import {
   bankAccount,
@@ -18,10 +27,21 @@ import { computeRuleConfidence } from "@/lib/matching/rule-confidence.ts";
 import type { Section } from "@/lib/import/types.ts";
 
 export const inboxRouter = router({
-  /** Unmatched transactions for the visible scopes + budget-item options. */
+  /**
+   * Unmatched transactions for the visible scopes, tagged with the
+   * payday-month each one belongs to + the budget-item options for that
+   * specific month.
+   *
+   * With ~90 days of synced history the inbox spans 3+ payday-months. The
+   * old shape returned options from `paydayMonthFor(now)` only, which forced
+   * a February transaction to be filed under a May category. Now each
+   * transaction carries `anchorYear`/`anchorMonth`, and we return
+   * `optionsByAnchor` keyed by `"YYYY-MM"` so the picker can offer the
+   * categories that actually exist for that month — or surface
+   * `monthsWithoutSheet` so the UI can prompt for a sheet import.
+   */
   list: publicProcedure.query(async ({ ctx }) => {
     const settings = await getHouseholdSettings();
-    const range = paydayMonthFor(new Date(), settings.paydayDay);
     const allowed = ctx.allowedScopes;
 
     const rows = await db
@@ -49,49 +69,151 @@ export const inboxRouter = router({
       .orderBy(desc(transaction.bookingDate));
 
     const visible = rows.filter(
-      (r) => !AFRONDING_PATTERN.test(`${r.counterparty ?? ""} ${r.description ?? ""}`),
+      (r) =>
+        !AFRONDING_PATTERN.test(`${r.counterparty ?? ""} ${r.description ?? ""}`),
     );
 
-    const [monthRow] = await db
-      .select({ id: month.id })
-      .from(month)
-      .where(
-        and(
-          eq(month.anchorYear, range.anchorYear),
-          eq(month.anchorMonth, range.anchorMonth),
-        ),
-      );
-    const items = monthRow
-      ? await db
-          .select({
-            id: budgetItem.id,
-            name: budgetItem.name,
-            section: budgetItem.section,
-            scope: budgetItem.scope,
-          })
-          .from(budgetItem)
-          .where(eq(budgetItem.monthId, monthRow.id))
-          .orderBy(asc(budgetItem.section), asc(budgetItem.name))
-      : [];
-
-    const optionsAll = items
-      .filter((i) => allowed.includes(i.scope as "joint" | "yann" | "camila"))
-      .map((i) => ({
-        id: i.id,
-        name: i.name,
-        section: i.section as Section,
-        scope: i.scope as "joint" | "yann" | "camila",
-      }));
-
-    return {
-      txns: visible.map((r) => ({
+    // Tag each transaction with the payday-month it belongs to.
+    const txns = visible.map((r) => {
+      const range = paydayMonthFor(r.bookingDate, settings.paydayDay);
+      return {
         id: r.id,
         counterparty: r.counterparty,
         description: r.description,
         bookingDate: r.bookingDate.toISOString(),
         amountCents: r.amountCents,
         owner: r.owner as "joint" | "yann" | "camila",
-      })),
+        anchorYear: range.anchorYear,
+        anchorMonth: range.anchorMonth,
+      };
+    });
+
+    // Collect every distinct anchor referenced by the inbox + the current
+    // month (so the picker still shows current-month items even when the
+    // inbox is empty). Keep current month at the end so it doesn't override
+    // older anchor entries.
+    const distinctAnchors = new Map<
+      string,
+      { year: number; month: number }
+    >();
+    for (const t of txns) {
+      const k = anchorKey(t.anchorYear, t.anchorMonth);
+      if (!distinctAnchors.has(k))
+        distinctAnchors.set(k, { year: t.anchorYear, month: t.anchorMonth });
+    }
+    const currentRange = paydayMonthFor(new Date(), settings.paydayDay);
+    const currentKey = anchorKey(
+      currentRange.anchorYear,
+      currentRange.anchorMonth,
+    );
+    if (!distinctAnchors.has(currentKey)) {
+      distinctAnchors.set(currentKey, {
+        year: currentRange.anchorYear,
+        month: currentRange.anchorMonth,
+      });
+    }
+
+    // Look up which of those anchors have a `month` row (and therefore
+    // could possibly have budget items). OR of equality predicates — clean
+    // and parameterised; the row-tuple IN form would have required raw SQL.
+    const anchorPredicates = [...distinctAnchors.values()].map((a) =>
+      and(
+        eq(month.anchorYear, a.year),
+        eq(month.anchorMonth, a.month),
+      ),
+    );
+    const monthRows =
+      anchorPredicates.length === 0
+        ? []
+        : await db
+            .select({
+              id: month.id,
+              anchorYear: month.anchorYear,
+              anchorMonth: month.anchorMonth,
+            })
+            .from(month)
+            .where(or(...anchorPredicates));
+
+    const monthIdByKey = new Map<string, string>();
+    for (const m of monthRows) {
+      monthIdByKey.set(anchorKey(m.anchorYear, m.anchorMonth), m.id);
+    }
+
+    // Fetch all budget items for those months in one query.
+    const monthIds = monthRows.map((m) => m.id);
+    const allItems =
+      monthIds.length === 0
+        ? []
+        : await db
+            .select({
+              id: budgetItem.id,
+              name: budgetItem.name,
+              section: budgetItem.section,
+              scope: budgetItem.scope,
+              monthId: budgetItem.monthId,
+            })
+            .from(budgetItem)
+            .where(inArray(budgetItem.monthId, monthIds))
+            .orderBy(asc(budgetItem.section), asc(budgetItem.name));
+
+    // Group options by anchor, filtered to scopes the caller can see.
+    const optionsByAnchor: Record<
+      string,
+      {
+        id: string;
+        name: string;
+        section: Section;
+        scope: "joint" | "yann" | "camila";
+      }[]
+    > = {};
+    for (const m of monthRows) {
+      const k = anchorKey(m.anchorYear, m.anchorMonth);
+      optionsByAnchor[k] = allItems
+        .filter((i) => i.monthId === m.id)
+        .filter((i) =>
+          allowed.includes(i.scope as "joint" | "yann" | "camila"),
+        )
+        .map((i) => ({
+          id: i.id,
+          name: i.name,
+          section: i.section as Section,
+          scope: i.scope as "joint" | "yann" | "camila",
+        }));
+    }
+
+    // Months that have inbox transactions but no `month` row at all —
+    // these are the ones that need a sheet import.
+    const monthsWithoutSheet: { year: number; month: number }[] = [];
+    for (const t of txns) {
+      const k = anchorKey(t.anchorYear, t.anchorMonth);
+      if (!monthIdByKey.has(k)) {
+        if (
+          !monthsWithoutSheet.some(
+            (m) => m.year === t.anchorYear && m.month === t.anchorMonth,
+          )
+        ) {
+          monthsWithoutSheet.push({
+            year: t.anchorYear,
+            month: t.anchorMonth,
+          });
+        }
+      }
+    }
+
+    // Backwards-compatible flat options list — used by older consumers
+    // (kept until the bulk picker is moved to per-anchor).
+    const optionsAll = Array.from(
+      new Map(
+        Object.values(optionsByAnchor)
+          .flat()
+          .map((o) => [o.id, o]),
+      ).values(),
+    );
+
+    return {
+      txns,
+      optionsByAnchor,
+      monthsWithoutSheet,
       optionsAll,
     };
   }),
@@ -262,6 +384,10 @@ async function bumpRule(
       })
       .where(eq(matchRule.id, r.id));
   }
+}
+
+function anchorKey(year: number, month: number): string {
+  return `${year}-${String(month).padStart(2, "0")}`;
 }
 
 async function rememberRule(

@@ -131,7 +131,9 @@
     "selected": "{n, plural, one {# selected} other {# selected}}",
     "clearSelection": "Clear",
     "assignSelected": "Assign {n}",
-    "bulkMixedScopes": "Bulk assign needs all selected items on the same account."
+    "bulkMixedScopes": "Bulk assign needs all selected items on the same account.",
+    "bulkMixedMonths": "Bulk assign needs all selected items in the same month.",
+    "monthNeedsSheet": "No sheet imported for {month} yet — import it so these can be categorized."
   },
   "Buckets": {
     "title": "Buckets",

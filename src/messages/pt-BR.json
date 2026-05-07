@@ -131,7 +131,9 @@
     "selected": "{n, plural, one {# selecionada} other {# selecionadas}}",
     "clearSelection": "Limpar",
     "assignSelected": "Vincular {n}",
-    "bulkMixedScopes": "Para vincular em lote, todas precisam ser da mesma conta."
+    "bulkMixedScopes": "Para vincular em lote, todas precisam ser da mesma conta.",
+    "bulkMixedMonths": "Para vincular em lote, todas precisam ser do mesmo mês.",
+    "monthNeedsSheet": "Nenhuma planilha importada para {month} ainda — importe para conseguir categorizar."
   },
   "Buckets": {
     "title": "Cofres",

@@ -51,7 +51,8 @@ export function InboxScreen({ locale }: { locale: string }) {
       ) : (
         <InboxList
           items={data.txns}
-          optionsAll={data.optionsAll}
+          optionsByAnchor={data.optionsByAnchor}
+          monthsWithoutSheet={data.monthsWithoutSheet}
           locale={locale}
           sectionLabels={sectionLabels}
         />
