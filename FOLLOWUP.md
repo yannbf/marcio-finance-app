@@ -223,3 +223,18 @@ Items are ordered by impact, not by ease.
 - [ ] **Drop `revoked` enum value.** `bank_connection.status` still has
   `revoked` even though disconnect now hard-deletes. Cosmetic; needs a
   migration.
+
+### Test infra (own commit when there's an hour to spare)
+
+- [ ] **Swap the E2E Neon branch for PGlite.** `tests/e2e/setup/seed.ts`
+  currently requires `MARCIO_E2E_DATABASE_URL` pointing at a separate
+  Neon branch. PGlite (`@electric-sql/pglite` + `pglite-server`) is a
+  real Postgres compiled to WASM that runs in-process — no Docker, no
+  cloud, no second DB to admin. Drizzle has a `drizzle-orm/pglite`
+  adapter. Same schema, same SQL semantics. Should remove the
+  `MARCIO_E2E_DATABASE_URL` requirement entirely.
+- [ ] **Add a Vitest integration layer.** Right now the only test suite
+  is Playwright, which forces UI rendering for every assertion. Most
+  logic bugs (matching engine, payday math, sync field mapping) would
+  be better caught by direct tRPC + DB tests. Vitest + PGlite gives
+  millisecond-fast tests that exercise real SQL without a browser.
