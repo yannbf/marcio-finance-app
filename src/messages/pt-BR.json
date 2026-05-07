@@ -277,7 +277,9 @@
     "connectError": "Não foi possível conectar. Veja o erro na linha da conexão e tente de novo.",
     "syncResultNew": "Sincronizou {inserted, plural, one {# transação nova} other {# transações novas}} em {accounts, plural, one {# conta} other {# contas}} · {matched} categorizadas",
     "syncResultUpToDate": "Em dia em {accounts, plural, one {# conta} other {# contas}} — nada novo do ING.",
-    "syncResultNoAccounts": "A sincronização rodou mas nenhuma conta foi processada. Veja o erro na linha da conexão."
+    "syncResultNoAccounts": "A sincronização rodou mas nenhuma conta foi processada. Veja o erro na linha da conexão.",
+    "rematchAll": "Recategorizar tudo",
+    "rematchResult": "Re-categorizou {matched, plural, one {# transação} other {# transações}}."
   },
   "UpdatePrompt": {
     "title": "Atualização disponível",

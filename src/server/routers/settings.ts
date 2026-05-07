@@ -10,6 +10,7 @@ import {
   syncConnection,
   revokeSessionForConnection,
 } from '@/lib/enable_banking/sync.ts'
+import { runMatchingAllAccounts } from '@/lib/matching/engine.ts'
 
 export const settingsRouter = router({
   get: publicProcedure.query(async () => {
@@ -177,5 +178,16 @@ export const settingsRouter = router({
         const result = await syncConnection(conn.id)
         return result
       }),
+  }),
+
+  /**
+   * Re-run the matching engine across every bank account. Useful after the
+   * user creates or refines a learned rule — without this, only newly
+   * inserted transactions get re-evaluated, so old unmatched rows of the
+   * same merchant stay in inbox forever. Returns the global matched count.
+   */
+  rematchAll: protectedProcedure.mutation(async () => {
+    const result = await runMatchingAllAccounts()
+    return result
   }),
 })

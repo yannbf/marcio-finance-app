@@ -3,7 +3,14 @@
 import { useTranslations, useLocale } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Loader2, Plug, RefreshCw, Unplug, AlertTriangle } from "lucide-react";
+import {
+  Loader2,
+  Plug,
+  RefreshCw,
+  Unplug,
+  AlertTriangle,
+  Wand2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button.tsx";
 import { Card } from "@/components/ui/card.tsx";
 import { trpc } from "@/lib/trpc/client.ts";
@@ -45,6 +52,21 @@ export function BankConnections() {
     onSettled: async () => {
       setRefreshingId(null);
       await utils.settings.connections.list.invalidate();
+    },
+  });
+
+  const [rematchResult, setRematchResult] = useState<number | null>(null);
+  const rematch = trpc.settings.rematchAll.useMutation({
+    onSuccess: (data) => {
+      setRematchResult(data.matched);
+      // Invalidate every screen that derives from match state.
+      void utils.inbox.list.invalidate();
+      void utils.activity.get.invalidate();
+      void utils.today.get.invalidate();
+      void utils.transactions.list.invalidate();
+      void utils.month.get.invalidate();
+      void utils.insights.get.invalidate();
+      void utils.buckets.get.invalidate();
     },
   });
 
@@ -232,9 +254,33 @@ export function BankConnections() {
         )}
       </div>
 
-      <p className="mt-3 text-[11px] text-muted-foreground">
-        {t("experimentalNote")}
-      </p>
+      <div className="mt-3 flex items-center justify-between gap-2 border-t border-border/30 pt-3">
+        <p className="text-[11px] text-muted-foreground">
+          {t("experimentalNote")}
+        </p>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => {
+            setRematchResult(null);
+            rematch.mutate();
+          }}
+          disabled={rematch.isPending}
+          className="shrink-0 text-[11px]"
+        >
+          {rematch.isPending ? (
+            <Loader2 className="size-3.5 animate-spin" />
+          ) : (
+            <Wand2 className="size-3.5" />
+          )}
+          {t("rematchAll")}
+        </Button>
+      </div>
+      {rematchResult !== null ? (
+        <p className="mt-2 text-right text-[11px] text-muted-foreground">
+          {t("rematchResult", { matched: rematchResult })}
+        </p>
+      ) : null}
     </Card>
   );
 }
