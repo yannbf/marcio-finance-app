@@ -1,4 +1,12 @@
 import { defineConfig, devices } from "@playwright/test";
+import { config as loadEnv } from "dotenv";
+
+// Read MARCIO_E2E_DATABASE_URL from .env.test.local first (preferred for CI
+// or split setups), then .env.local (typical local dev setup). Without this
+// the config inlines an empty TEST_DB into the webServer env block and the
+// dev server crashes during boot with "DATABASE_URL is not set".
+loadEnv({ path: ".env.test.local" });
+loadEnv({ path: ".env.local" });
 
 /**
  * Playwright config for Marcio's E2E tests.
@@ -31,8 +39,11 @@ if (!TEST_DB) {
 export default defineConfig({
   testDir: "./tests/e2e",
   testMatch: /.*\.spec\.ts$/,
-  timeout: 60_000,
-  expect: { timeout: 10_000 },
+  // Per-test cap (60s default + buffer for cold Neon pooler on first hit).
+  timeout: 90_000,
+  // Per-assertion timeout. Cold-start tRPC round-trips against the e2e
+  // Neon branch can run 10–20s on the first query of a session.
+  expect: { timeout: 30_000 },
   fullyParallel: false,        // share one DB → sequential is safer
   workers: 1,
   retries: process.env.CI ? 1 : 0,

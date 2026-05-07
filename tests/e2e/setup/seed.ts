@@ -45,13 +45,19 @@ async function run() {
   // 1) Wipe all app tables in dependency order.
   console.log("[e2e seed] wiping target DB...");
   // Truncate everything inside a single transaction for speed.
+  // Note: the JS symbol is `txMatch` but the on-disk table is
+  // `transaction_match` (also covers bank_connection / bank_sync_cursor
+  // / savings_bucket added since the original seed).
   await db.execute(sql`
     TRUNCATE TABLE
-      tx_match,
+      transaction_match,
       "transaction",
+      bank_sync_cursor,
+      bank_connection,
       bank_account,
       match_rule,
       savings_account,
+      savings_bucket,
       budget_item,
       "month",
       household_setting,
