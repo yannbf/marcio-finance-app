@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card.tsx";
@@ -39,11 +40,66 @@ export function TodayScreen({
   const t = useTranslations();
   const sp = useSearchParams();
   const { anchor, scope } = parseSearch(sp, defaultAnchor, defaultScope);
-  // Hold back persister-restored data until after mount so SSR + first
-  // client paint render the same skeleton tree (no hydration mismatch).
+  // The persister attaches in a useEffect, so SSR returns
+  // `data: undefined`; on the client React's hydration may run AFTER
+  // the persister's microtask resolves (concurrent rendering can
+  // reorder), which produces "skeleton on server, real value on
+  // client" mismatches. The mount gate forces the first client render
+  // to also paint a skeleton, then the next render shows real data.
+  // Costs ~1 frame per nav; cheaper than a hydration error.
   const mounted = useMounted();
+  const utils = trpc.useUtils();
   const query = trpc.today.get.useQuery({ anchor, scope });
   const data = mounted ? query.data : undefined;
+
+  // Boot-time warm-up: as soon as Today's own query has settled, kick
+  // off the rest of the bottom-nav routes' queries in parallel so the
+  // user's first tab tap renders from cache instantly. Off-nav routes
+  // (tikkie/insights/transactions) get warmed lazily during browser
+  // idle so they don't fight the bottom-nav queries for a cold Vercel
+  // function slot.
+  //
+  // Each `prefetch` is a no-op if the cache already has fresh data, so
+  // re-mounts (locale switch, scope toggle) don't spam the server.
+  // We deliberately wait for Today's own data first — this app's
+  // Vercel functions are cold-started per request, so firing six
+  // queries at once on a fresh tab would deadlock all of them behind
+  // the same cold starts.
+  useEffect(() => {
+    if (!mounted || !query.data) return;
+    let cancelled = false;
+    const warmNav = () => {
+      if (cancelled) return;
+      void utils.month.get.prefetch({ anchor, scope });
+      void utils.activity.get.prefetch({ anchor, scope });
+      void utils.buckets.get.prefetch({ anchor, scope });
+      void utils.inbox.list.prefetch();
+    };
+    const warmOffNav = () => {
+      if (cancelled) return;
+      void utils.tikkie.get.prefetch({ anchor, scope });
+      void utils.insights.get.prefetch({ anchor, scope });
+      void utils.transactions.list.prefetch({ scope });
+    };
+    // Bottom-nav: small delay so React finishes painting Today first.
+    const navTimer = setTimeout(warmNav, 80);
+    // Off-nav: requestIdleCallback when available, fallback timeout.
+    type IdleAPI = (cb: () => void, opts?: { timeout: number }) => number;
+    const ric = (window as unknown as { requestIdleCallback?: IdleAPI })
+      .requestIdleCallback;
+    const offNavHandle = ric
+      ? ric(warmOffNav, { timeout: 4000 })
+      : setTimeout(warmOffNav, 1500);
+    return () => {
+      cancelled = true;
+      clearTimeout(navTimer);
+      const cic = (
+        window as unknown as { cancelIdleCallback?: (h: number) => void }
+      ).cancelIdleCallback;
+      if (typeof cic === "function") cic(offNavHandle as number);
+      else clearTimeout(offNavHandle as ReturnType<typeof setTimeout>);
+    };
+  }, [mounted, query.data, anchor, scope, utils]);
 
   const daysUntilPayday = data?.daysUntilPayday ?? defaultDaysUntilPayday;
   const plannedOutflowCents = data?.plannedOutflowCents ?? 0;
