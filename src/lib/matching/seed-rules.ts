@@ -480,6 +480,23 @@ export const INTERNAL_TRANSFER_PG_PATTERN =
   "y[[:space:]]*bezerra[[:space:]]*braga[[:space:]]*ferreira|c[[:space:]]*ferrer[[:space:]]*bezerra[[:space:]]*loureiro|contribu(icao|ition|ic|tion)|contrib[[:space:]]*(yann|camila|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro|janeiro|fevereiro|marco|abril)";
 
 /**
+ * JS-flavored equivalent of `INTERNAL_TRANSFER_PG_PATTERN`. Used in
+ * places that filter transactions in JS (Activity's `monthSpend`
+ * sum) rather than in SQL. Keep in sync with the POSIX version
+ * above when adding new household transfer wording.
+ */
+export const INTERNAL_TRANSFER_PATTERN =
+  /y\s*bezerra\s*braga\s*ferreira|c\s*ferrer\s*bezerra\s*loureiro|contribu(icao|ition|ic|tion)|contrib\s*(yann|camila|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro|janeiro|fevereiro|marco|abril)/i;
+
+export function isInternalTransferTx(row: {
+  counterparty: string | null;
+  description: string | null;
+}): boolean {
+  const haystack = `${row.counterparty ?? ""} ${row.description ?? ""}`;
+  return INTERNAL_TRANSFER_PATTERN.test(haystack);
+}
+
+/**
  * Identify a counterparty as a savings-bucket transfer.
  * Returns the bucket reference id when it matches.
  */

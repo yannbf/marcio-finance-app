@@ -18,7 +18,10 @@ import { getHouseholdSettings } from "@/lib/settings.ts";
 import { paydayMonthFor, paydayMonthForAnchor } from "@/lib/payday.ts";
 import { getUpcomingCharges } from "@/lib/forecast.ts";
 import { detectAmountAnomalies } from "@/lib/anomaly.ts";
-import { AFRONDING_PG_PATTERN } from "@/lib/matching/seed-rules.ts";
+import {
+  AFRONDING_PG_PATTERN,
+  isInternalTransferTx,
+} from "@/lib/matching/seed-rules.ts";
 import type { Section } from "@/lib/import/types.ts";
 
 export const activityRouter = router({
@@ -105,8 +108,16 @@ export const activityRouter = router({
           scope: i.scope as "joint" | "yann" | "camila",
         }));
 
+      // Sum negative transactions for the "Spent this month" headline,
+      // but exclude internal household transfers (yann/camila ↔ joint
+      // account). Moving money between household accounts isn't
+      // spending — without this filter the personal-scope view
+      // counted the joint contribution against personal expenses,
+      // double-charging the user. The same pattern guards
+      // getMonthlyAggregates' actual sums; we apply it here so the
+      // Activity headline matches Today's "Spent so far".
       const monthSpend = txns
-        .filter((r) => r.amountCents < 0)
+        .filter((r) => r.amountCents < 0 && !isInternalTransferTx(r))
         .reduce((s, r) => s + Math.abs(r.amountCents), 0);
 
       // Anomaly check — only outflows that already auto-matched to a
