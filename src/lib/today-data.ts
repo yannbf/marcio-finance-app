@@ -12,7 +12,10 @@ import type { Scope, Section } from "./import/types.ts";
 import { paydayMonthFor, paydayMonthForAnchor } from "./payday.ts";
 import { getHouseholdSettings } from "./settings.ts";
 import { monthlyContributionCents } from "./cadence.ts";
-import { INTERNAL_TRANSFER_PG_PATTERN } from "./matching/seed-rules.ts";
+import {
+  INTERNAL_TRANSFER_PG_PATTERN,
+  SAVINGS_TRANSFER_PG_PATTERN,
+} from "./matching/seed-rules.ts";
 
 export type SectionItemRow = {
   id: string;
@@ -114,6 +117,7 @@ export async function getSectionsForToday(
           items.map((i) => i.id),
         ),
         sql`NOT (COALESCE(${transaction.counterparty}, '') || ' ' || COALESCE(${transaction.description}, '') ~* ${INTERNAL_TRANSFER_PG_PATTERN})`,
+        sql`NOT (COALESCE(${transaction.counterparty}, '') || ' ' || COALESCE(${transaction.description}, '') ~* ${SAVINGS_TRANSFER_PG_PATTERN})`,
       ),
     )
     .groupBy(txMatch.budgetItemId);

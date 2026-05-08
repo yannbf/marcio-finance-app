@@ -26,6 +26,7 @@ import { getPersonalChecklist } from "@/lib/personal-checklist.ts";
 import {
   AFRONDING_PG_PATTERN,
   isInternalTransferTx,
+  isSavingsTransferTx,
 } from "@/lib/matching/seed-rules.ts";
 import type { Section } from "@/lib/import/types.ts";
 
@@ -122,7 +123,12 @@ export const activityRouter = router({
       // getMonthlyAggregates' actual sums; we apply it here so the
       // Activity headline matches Today's "Spent so far".
       const monthSpend = txns
-        .filter((r) => r.amountCents < 0 && !isInternalTransferTx(r))
+        .filter(
+          (r) =>
+            r.amountCents < 0 &&
+            !isInternalTransferTx(r) &&
+            !isSavingsTransferTx(r),
+        )
         .reduce((s, r) => s + Math.abs(r.amountCents), 0);
 
       // Planned outflow for the active scope — same shape Today uses

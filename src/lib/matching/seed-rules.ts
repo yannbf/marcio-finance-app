@@ -497,6 +497,47 @@ export function isInternalTransferTx(row: {
 }
 
 /**
+ * Identify a savings-account transfer — a movement of money from a
+ * checking account to (or from) a Dutch ING-style savings account
+ * ("spaarrekening"). These are NOT spending — moving money to a
+ * savings pot doesn't reduce the household's net worth, so they
+ * must be excluded from "spent this month" totals exactly the way
+ * INTERNAL_TRANSFER_PATTERN already excludes household-internal
+ * transfers between checking accounts.
+ *
+ * The pattern is intentionally broad: ING surfaces these flows under
+ * a few different shapes (e.g. "Oranje spaarrekening V12602730",
+ * "spaarrekening N14631597", or simply "savings transfer …"). We
+ * also match the `[NVA]\d{8}` ref token directly so refs surfaced
+ * in the description (without the "spaarrekening" prefix) still
+ * count.
+ */
+export const SAVINGS_TRANSFER_PG_PATTERN =
+  "spaarrekening|savings[[:space:]]*account";
+
+/**
+ * JS-flavored equivalent of `SAVINGS_TRANSFER_PG_PATTERN`. Used by
+ * code that filters transactions in JS (router reducers, screens
+ * computing running cumulatives, etc.). Keep in sync with the
+ * POSIX version above.
+ */
+export const SAVINGS_TRANSFER_PATTERN =
+  /spaarrekening|savings\s*account/i;
+
+/**
+ * Returns true when the transaction looks like a transfer to/from a
+ * savings account (regardless of whether the user has identified
+ * that savings account in Settings yet).
+ */
+export function isSavingsTransferTx(row: {
+  counterparty: string | null;
+  description: string | null;
+}): boolean {
+  const haystack = `${row.counterparty ?? ""} ${row.description ?? ""}`;
+  return SAVINGS_TRANSFER_PATTERN.test(haystack);
+}
+
+/**
  * Identify a counterparty as a savings-bucket transfer.
  * Returns the bucket reference id when it matches.
  */

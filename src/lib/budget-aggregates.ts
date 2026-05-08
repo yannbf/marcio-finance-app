@@ -13,7 +13,10 @@ import type { Scope, Section } from "./import/types.ts";
 import { paydayMonthFor, paydayMonthForAnchor } from "./payday.ts";
 import { getHouseholdSettings } from "./settings.ts";
 import { monthlyContributionCents } from "./cadence.ts";
-import { INTERNAL_TRANSFER_PG_PATTERN } from "./matching/seed-rules.ts";
+import {
+  INTERNAL_TRANSFER_PG_PATTERN,
+  SAVINGS_TRANSFER_PG_PATTERN,
+} from "./matching/seed-rules.ts";
 
 export type SectionTotals = Partial<Record<Section, number>>;
 
@@ -121,6 +124,7 @@ export async function getMonthlyAggregates(
         eq(budgetItem.monthId, monthRow.id),
         inArray(budgetItem.scope, scopes),
         sql`NOT (COALESCE(${transaction.counterparty}, '') || ' ' || COALESCE(${transaction.description}, '') ~* ${INTERNAL_TRANSFER_PG_PATTERN})`,
+        sql`NOT (COALESCE(${transaction.counterparty}, '') || ' ' || COALESCE(${transaction.description}, '') ~* ${SAVINGS_TRANSFER_PG_PATTERN})`,
       ),
     )
     .groupBy(budgetItem.section);

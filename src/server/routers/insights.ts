@@ -26,6 +26,7 @@ import {
 import {
   AFRONDING_PG_PATTERN,
   INTERNAL_TRANSFER_PG_PATTERN,
+  SAVINGS_TRANSFER_PG_PATTERN,
 } from "@/lib/matching/seed-rules.ts";
 
 export const insightsRouter = router({
@@ -108,6 +109,7 @@ export const insightsRouter = router({
             sql`${transaction.amountCents} < 0`,
             sql`NOT (${transaction.counterparty} ~* ${AFRONDING_PG_PATTERN})`,
             sql`NOT (COALESCE(${transaction.counterparty}, '') || ' ' || COALESCE(${transaction.description}, '') ~* ${INTERNAL_TRANSFER_PG_PATTERN})`,
+            sql`NOT (COALESCE(${transaction.counterparty}, '') || ' ' || COALESCE(${transaction.description}, '') ~* ${SAVINGS_TRANSFER_PG_PATTERN})`,
           ),
         )
         .groupBy(transaction.counterparty)
@@ -131,6 +133,7 @@ export const insightsRouter = router({
             lte(transaction.bookingDate, range.endsOn),
             sql`${txMatch.allocatedCents} < 0`,
             sql`NOT (COALESCE(${transaction.counterparty}, '') || ' ' || COALESCE(${transaction.description}, '') ~* ${INTERNAL_TRANSFER_PG_PATTERN})`,
+            sql`NOT (COALESCE(${transaction.counterparty}, '') || ' ' || COALESCE(${transaction.description}, '') ~* ${SAVINGS_TRANSFER_PG_PATTERN})`,
           ),
         )
         .groupBy(budgetItem.id, budgetItem.name, budgetItem.section)
@@ -160,6 +163,7 @@ export const insightsRouter = router({
                   sql`${transaction.amountCents} < 0`,
                   sql`NOT (${transaction.counterparty} ~* ${AFRONDING_PG_PATTERN})`,
                   sql`NOT (COALESCE(${transaction.counterparty}, '') || ' ' || COALESCE(${transaction.description}, '') ~* ${INTERNAL_TRANSFER_PG_PATTERN})`,
+                  sql`NOT (COALESCE(${transaction.counterparty}, '') || ' ' || COALESCE(${transaction.description}, '') ~* ${SAVINGS_TRANSFER_PG_PATTERN})`,
                 ),
               )
               .groupBy(transaction.counterparty),
@@ -184,6 +188,7 @@ export const insightsRouter = router({
                   lte(transaction.bookingDate, prevRange.endsOn),
                   sql`${txMatch.allocatedCents} < 0`,
                   sql`NOT (COALESCE(${transaction.counterparty}, '') || ' ' || COALESCE(${transaction.description}, '') ~* ${INTERNAL_TRANSFER_PG_PATTERN})`,
+                  sql`NOT (COALESCE(${transaction.counterparty}, '') || ' ' || COALESCE(${transaction.description}, '') ~* ${SAVINGS_TRANSFER_PG_PATTERN})`,
                 ),
               )
               .groupBy(budgetItem.naturalKey),
