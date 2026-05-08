@@ -14,6 +14,7 @@ import { trpc } from "@/lib/trpc/client.ts";
 import { useMounted } from "@/lib/use-mounted.ts";
 import { formatEUR, formatEURPrecise } from "@/lib/format.ts";
 import { fingerprintCounterparty } from "@/lib/matching/fingerprint.ts";
+import { isInternalTransferTx } from "@/lib/matching/seed-rules.ts";
 import { isTikkie } from "@/lib/tikkie.ts";
 import { SECTION_ORDER, SECTION_TR_KEY } from "@/lib/import/sections.ts";
 import type { Section } from "@/lib/import/types.ts";
@@ -68,14 +69,43 @@ export function ActivityScreen({
 
   const dateGroups = useMemo(() => {
     if (!data || view !== "date") return [];
-    const out: { date: string; rows: Txn[] }[] = [];
+    type DateGroup = {
+      date: string;
+      rows: Txn[];
+      // Cumulative qualifying outflow from the start of the payday-month
+      // up to and INCLUDING this date — same filter monthSpend uses
+      // (negative amount, internal transfers excluded). Mirrors ING's
+      // "spent so far" indicator pinned to the running date as the user
+      // scrolls.
+      runningSpentCents: number;
+    };
+    const out: (DateGroup & { spentTodayCents: number })[] = [];
     for (const r of data.txns) {
       const key = formatGroupDate(new Date(r.bookingDate), locale);
       const last = out[out.length - 1];
-      if (last && last.date === key) last.rows.push(r);
-      else out.push({ date: key, rows: [r] });
+      const spend =
+        r.amountCents < 0 && !isInternalTransferTx(r) ? -r.amountCents : 0;
+      if (last && last.date === key) {
+        last.rows.push(r);
+        last.spentTodayCents += spend;
+      } else {
+        out.push({
+          date: key,
+          rows: [r],
+          spentTodayCents: spend,
+          runningSpentCents: 0,
+        });
+      }
     }
-    return out;
+    // Txns are returned newest-first. The newest visible group's running
+    // total IS the full month spend; each older group subtracts the
+    // newer days that scrolled past above it.
+    let running = data.monthSpend;
+    for (const g of out) {
+      g.runningSpentCents = running;
+      running -= g.spentTodayCents;
+    }
+    return out as DateGroup[];
   }, [data, locale, view]);
 
   // Merchant groups: collapse same-counterparty rows (after stripping
@@ -217,9 +247,23 @@ export function ActivityScreen({
         <>
           {dateGroups.map((g) => (
             <section key={g.date} className="flex flex-col gap-1">
-              <p className="sticky top-0 z-10 -mx-1 bg-background/85 px-2 py-1.5 text-xs uppercase tracking-[0.14em] text-muted-foreground backdrop-blur supports-backdrop-filter:bg-background/70">
-                {g.date}
-              </p>
+              <div
+                className="sticky top-0 z-10 -mx-1 flex items-baseline justify-between gap-3 bg-background/85 px-2 py-1.5 backdrop-blur supports-backdrop-filter:bg-background/70"
+                aria-label={t("runningSpentAria", {
+                  date: g.date,
+                  amount: formatEUR(g.runningSpentCents / 100, locale),
+                })}
+              >
+                <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                  {g.date}
+                </p>
+                <p
+                  className="num text-[11px] tabular-nums text-muted-foreground/70"
+                  aria-hidden
+                >
+                  {formatEUR(g.runningSpentCents / 100, locale)}
+                </p>
+              </div>
               <Card className="border-border/40 bg-card/60 p-1">
                 <ul className="divide-y divide-border/40">
                   {g.rows.map((r) => {

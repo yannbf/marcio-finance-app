@@ -23,7 +23,8 @@
     "seeAllHistory": "See full history",
     "unusuallyHigh": "Unusual · usually {mean}",
     "viewByDate": "By date",
-    "viewByAmount": "By amount"
+    "viewByAmount": "By amount",
+    "runningSpentAria": "Spent through {date}: {amount}"
   },
   "Today": {
     "untilPayday": "{days, plural, one {# day} other {# days}} until payday",
