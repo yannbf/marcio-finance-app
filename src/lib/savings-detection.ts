@@ -18,6 +18,13 @@ import {
 import { detectSavingsBucketRef } from "./matching/seed-rules.ts";
 import type { Scope } from "./import/types.ts";
 
+export type UnidentifiedSavingsSample = {
+  bookingDate: string;
+  /** Cleaned-up description (ref + "Value date:" tail stripped). */
+  description: string;
+  amountCents: number;
+};
+
 export type UnidentifiedSavingsRef = {
   /** The "[NVA]\d{8}" ref pulled out of the description. */
   ref: string;
@@ -29,7 +36,52 @@ export type UnidentifiedSavingsRef = {
   latestBookingDate: string;
   /** Owner of the bank account where this ref's transactions appeared. */
   suggestedOwner: Scope;
+  /**
+   * User-typed labels seen between the ref and the "Value date:" suffix
+   * — e.g. "Afronding", "Maio", "Impostos" — ordered by frequency desc.
+   * These are the strongest hint about what the savings account is
+   * actually used for.
+   */
+  topPurposes: string[];
+  /** Up to 5 most recent transactions, kept for at-a-glance recognition. */
+  samples: UnidentifiedSavingsSample[];
 };
+
+/**
+ * Pull the user-typed purpose label out of the savings transfer
+ * description. ING formats the row as
+ *   "To/From Oranje spaarrekening <REF> <PURPOSE> Value date: dd/mm/yyyy"
+ * so we capture whatever sits between the ref and "Value date:". Falls
+ * back to null when the description doesn't follow the canonical shape.
+ */
+export function extractSavingsPurpose(
+  description: string | null,
+  ref: string,
+): string | null {
+  if (!description) return null;
+  const escaped = ref.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const re = new RegExp(
+    `spaarrekening\\s+${escaped}\\s+(.+?)\\s+(?:value\\s*date|$)`,
+    "i",
+  );
+  const m = description.match(re);
+  if (!m) return null;
+  const purpose = m[1].trim();
+  if (!purpose || purpose.length > 40) return null;
+  return purpose;
+}
+
+/**
+ * Strip the "Value date: …" suffix from a savings transfer description
+ * so the sample preview reads cleanly. The booking date in the parent
+ * row already gives the user the temporal context.
+ */
+export function cleanSavingsDescription(description: string | null): string {
+  if (!description) return "";
+  return description.replace(/\s*value\s*date:.*$/i, "").trim();
+}
+
+const MAX_SAMPLES = 5;
 
 /**
  * Window for detecting unidentified refs. We look back at the last
@@ -81,8 +133,32 @@ export async function detectUnidentifiedSavingsRefs(
     /** Track per-owner counts so we can pick the most-frequent one as
      * the suggested owner of the new savings_account row. */
     ownerCounts: Map<Scope, number>;
+    /** Frequency-counted user-typed purposes — surfaces "Afronding" /
+     * "Maio" / "Impostos" so the user can recognise the account at a
+     * glance instead of squinting at "V12602730". */
+    purposeCounts: Map<string, number>;
+    /** Recent transactions, kept sorted newest-first up to MAX_SAMPLES. */
+    samples: UnidentifiedSavingsSample[];
   };
   const byRef = new Map<string, Bucket>();
+
+  function pushSample(b: Bucket, r: (typeof rows)[number]) {
+    const sample: UnidentifiedSavingsSample = {
+      bookingDate: r.bookingDate.toISOString(),
+      description: cleanSavingsDescription(r.description),
+      amountCents: r.amountCents,
+    };
+    // Insert in newest-first order; cap at MAX_SAMPLES.
+    const idx = b.samples.findIndex(
+      (s) => new Date(s.bookingDate) < r.bookingDate,
+    );
+    if (idx === -1) {
+      if (b.samples.length < MAX_SAMPLES) b.samples.push(sample);
+    } else {
+      b.samples.splice(idx, 0, sample);
+      if (b.samples.length > MAX_SAMPLES) b.samples.length = MAX_SAMPLES;
+    }
+  }
 
   for (const r of rows) {
     const haystack = `${r.counterparty ?? ""} ${r.description ?? ""}`;
@@ -91,6 +167,8 @@ export async function detectUnidentifiedSavingsRefs(
     if (knownRefs.has(ref.toUpperCase())) continue;
 
     const owner = r.owner as Scope;
+    const purpose = extractSavingsPurpose(r.description, ref);
+
     const cur = byRef.get(ref);
     if (cur) {
       cur.txCount += 1;
@@ -99,14 +177,25 @@ export async function detectUnidentifiedSavingsRefs(
         cur.latestBookingDate = r.bookingDate;
       }
       cur.ownerCounts.set(owner, (cur.ownerCounts.get(owner) ?? 0) + 1);
+      if (purpose) {
+        cur.purposeCounts.set(
+          purpose,
+          (cur.purposeCounts.get(purpose) ?? 0) + 1,
+        );
+      }
+      pushSample(cur, r);
     } else {
-      byRef.set(ref, {
+      const bucket: Bucket = {
         ref,
         txCount: 1,
         totalAbsCents: Math.abs(r.amountCents),
         latestBookingDate: r.bookingDate,
         ownerCounts: new Map([[owner, 1]]),
-      });
+        purposeCounts: purpose ? new Map([[purpose, 1]]) : new Map(),
+        samples: [],
+      };
+      pushSample(bucket, r);
+      byRef.set(ref, bucket);
     }
   }
 
@@ -120,12 +209,18 @@ export async function detectUnidentifiedSavingsRefs(
           topOwner = o;
         }
       }
+      const topPurposes = [...b.purposeCounts.entries()]
+        .sort((a, c) => c[1] - a[1])
+        .slice(0, 3)
+        .map(([p]) => p);
       return {
         ref: b.ref,
         txCount: b.txCount,
         totalAbsCents: b.totalAbsCents,
         latestBookingDate: b.latestBookingDate.toISOString(),
         suggestedOwner: topOwner,
+        topPurposes,
+        samples: b.samples,
       };
     })
     .sort((a, b) => b.txCount - a.txCount);

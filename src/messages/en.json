@@ -239,6 +239,8 @@
         "unidentifiedBadge": "Not identified",
         "unidentifiedActivity": "{count, plural, one {# transfer} other {# transfers}} · last seen {date}",
         "unidentifiedFlow": "Total flow {amount}",
+        "unidentifiedPurposes": "Mostly: {purposes}",
+        "unidentifiedSamplesTitle": "Recent transfers",
         "unidentifiedIdentify": "Identify",
         "unidentifiedClaimTitle": "Claim {ref}",
         "unidentifiedClaimHint": "Give this savings reference a name so Marcio can route past and future transfers to it.",

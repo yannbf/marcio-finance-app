@@ -239,6 +239,8 @@
         "unidentifiedBadge": "Não identificado",
         "unidentifiedActivity": "{count, plural, one {# transferência} other {# transferências}} · vista pela última vez em {date}",
         "unidentifiedFlow": "Fluxo total {amount}",
+        "unidentifiedPurposes": "Mais usado para: {purposes}",
+        "unidentifiedSamplesTitle": "Transferências recentes",
         "unidentifiedIdentify": "Identificar",
         "unidentifiedClaimTitle": "Reivindicar {ref}",
         "unidentifiedClaimHint": "Dê um nome a esta referência para o Marcio rotear transferências passadas e futuras para ela.",

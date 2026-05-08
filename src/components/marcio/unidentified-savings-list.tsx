@@ -25,12 +25,20 @@ import { trpc } from "@/lib/trpc/client.ts";
 import { formatEUR } from "@/lib/format.ts";
 import type { BudgetSuggestion } from "./savings-form.tsx";
 
+export type UnidentifiedSample = {
+  bookingDate: string;
+  description: string;
+  amountCents: number;
+};
+
 export type UnidentifiedRef = {
   ref: string;
   txCount: number;
   totalAbsCents: number;
   latestBookingDate: string;
   suggestedOwner: "joint" | "yann" | "camila";
+  topPurposes: string[];
+  samples: UnidentifiedSample[];
 };
 
 type Props = {
@@ -84,6 +92,13 @@ export function UnidentifiedSavingsList({
                   </span>
                 </div>
                 <p className="num mt-1 text-sm font-medium">{r.ref}</p>
+                {r.topPurposes.length > 0 ? (
+                  <p className="mt-0.5 text-[11px] text-foreground/70">
+                    {t("unidentifiedPurposes", {
+                      purposes: r.topPurposes.join(" · "),
+                    })}
+                  </p>
+                ) : null}
                 <p className="num mt-0.5 text-[11px] text-muted-foreground">
                   {t("unidentifiedActivity", {
                     count: r.txCount,
@@ -127,6 +142,7 @@ export function UnidentifiedSavingsList({
                 target={open}
                 ownerOptions={ownerOptions}
                 budgetItemSuggestions={budgetItemSuggestions}
+                locale={locale}
                 onDone={() => setOpen(null)}
               />
             </>
@@ -143,11 +159,13 @@ function ClaimForm({
   target,
   ownerOptions,
   budgetItemSuggestions,
+  locale,
   onDone,
 }: {
   target: UnidentifiedRef;
   ownerOptions: Props["ownerOptions"];
   budgetItemSuggestions: BudgetSuggestion[];
+  locale: string;
   onDone: () => void;
 }) {
   const t = useTranslations("Settings.sections.savings");
@@ -201,6 +219,37 @@ function ClaimForm({
       <p className="text-[11px] text-muted-foreground">
         {t("unidentifiedClaimHint")}
       </p>
+
+      {target.samples.length > 0 ? (
+        <section className="rounded-md border border-border/40 bg-card/40 p-2.5">
+          <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+            {t("unidentifiedSamplesTitle")}
+          </p>
+          <ul className="mt-1.5 divide-y divide-border/40">
+            {target.samples.map((s, i) => (
+              <li
+                key={`${s.bookingDate}-${i}`}
+                className="flex items-baseline gap-2 py-1.5 text-[11px]"
+              >
+                <span className="num shrink-0 text-muted-foreground">
+                  {formatSampleDate(s.bookingDate, locale)}
+                </span>
+                <span className="min-w-0 flex-1 truncate">
+                  {s.description || "—"}
+                </span>
+                <span
+                  className={`num shrink-0 font-medium ${
+                    s.amountCents > 0 ? "text-primary" : ""
+                  }`}
+                >
+                  {s.amountCents > 0 ? "+" : "−"}
+                  {formatEUR(Math.abs(s.amountCents) / 100, locale)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       <div>
         <Label htmlFor="claim-nickname" className="text-xs">
@@ -314,6 +363,14 @@ function ClaimForm({
 }
 
 function formatShortDate(iso: string, locale: string): string {
+  return new Date(iso).toLocaleDateString(locale, {
+    day: "2-digit",
+    month: "short",
+  });
+}
+
+/** "12 May" — used for sample rows inside the Identify sheet. */
+function formatSampleDate(iso: string, locale: string): string {
   return new Date(iso).toLocaleDateString(locale, {
     day: "2-digit",
     month: "short",
