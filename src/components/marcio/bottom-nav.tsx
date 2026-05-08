@@ -26,6 +26,9 @@ export function BottomNav() {
   const sp = useSearchParams();
   const utils = trpc.useUtils();
   if (pathname === "/sign-in" || pathname.startsWith("/sign-in/")) return null;
+  // Hide the bottom nav on the Look Back full-screen takeover so the
+  // sticky footer indicator and "Done" affordance own the chrome.
+  if (pathname === "/activity/look-back") return null;
   const isActive = (href: string) =>
     href === "/"
       ? pathname === "/"

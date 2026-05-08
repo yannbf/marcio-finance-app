@@ -1,26 +1,19 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Footprints } from "lucide-react";
 import { Card } from "@/components/ui/card.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { Link } from "@/i18n/navigation.ts";
 import { ActivityRow } from "./activity-row.tsx";
-import { AnimatedNumber } from "./animated-number.tsx";
 import { CounterpartyAvatar } from "./counterparty-avatar.tsx";
 import { MonthScopeBar, parseSearch } from "./month-scope-bar.tsx";
-import {
-  OverBudgetPill,
-  SpendProgress,
-  progressTone,
-} from "./spend-progress.tsx";
 import { trpc } from "@/lib/trpc/client.ts";
 import { useMounted } from "@/lib/use-mounted.ts";
 import { formatEUR, formatEURPrecise } from "@/lib/format.ts";
 import { fingerprintCounterparty } from "@/lib/matching/fingerprint.ts";
-import { isInternalTransferTx } from "@/lib/matching/seed-rules.ts";
 import { isTikkie } from "@/lib/tikkie.ts";
 import { SECTION_ORDER, SECTION_TR_KEY } from "@/lib/import/sections.ts";
 import type { Section } from "@/lib/import/types.ts";
@@ -72,28 +65,6 @@ export function ActivityScreen({
       ),
     [tSections],
   );
-
-  // Per-transaction running totals: cumulative qualifying outflow AND
-  // cumulative txn count, both from the start of the payday-month up to
-  // and INCLUDING this txn. Same filter monthSpend uses (negative
-  // amount, internal transfers excluded). Powers the single animated
-  // "spent so far" headline that ticks as each row scrolls past —
-  // mirrors ING's running-balance UX.
-  const txRunning = useMemo(() => {
-    type Cumulative = { runningCents: number; runningCount: number };
-    if (!data) return new Map<string, Cumulative>();
-    const map = new Map<string, Cumulative>();
-    let runningCents = data.monthSpend;
-    let runningCount = data.txns.length;
-    for (const r of data.txns) {
-      map.set(r.id, { runningCents, runningCount });
-      runningCount -= 1;
-      if (r.amountCents < 0 && !isInternalTransferTx(r)) {
-        runningCents -= -r.amountCents;
-      }
-    }
-    return map;
-  }, [data]);
 
   const dateGroups = useMemo(() => {
     if (!data || view !== "date") return [];
@@ -157,103 +128,6 @@ export function ActivityScreen({
     });
   }, [data, view]);
 
-  // The single animated "spent so far" indicator. As the user scrolls,
-  // we track which row sits at the indicator line just below the sticky
-  // headline card and feed its per-txn running cumulative into the
-  // headline's AnimatedNumber. ING-style — the headline ticks as every
-  // transaction crosses the line.
-  const indicatorRef = useRef<HTMLDivElement | null>(null);
-  const [scrolledRunningCents, setScrolledRunningCents] = useState<
-    number | null
-  >(null);
-  const [scrolledRunningCount, setScrolledRunningCount] = useState<
-    number | null
-  >(null);
-  const [scrolledDateLabel, setScrolledDateLabel] = useState<string | null>(
-    null,
-  );
-  // True once any tx row has crossed the headline indicator line.
-  // Drives the compact / opaque-header presentation — the headline
-  // shrinks to a single thin row while the user is actively
-  // scrolling through the month's transactions.
-  const [compact, setCompact] = useState(false);
-
-  useEffect(() => {
-    if (view !== "date" || !data || data.txns.length === 0) {
-      setScrolledRunningCents(null);
-      setScrolledRunningCount(null);
-      setScrolledDateLabel(null);
-      setCompact(false);
-      return;
-    }
-    let raf: number | null = null;
-    const tick = () => {
-      raf = null;
-      const indicatorEl = indicatorRef.current;
-      if (!indicatorEl) return;
-      const rect = indicatorEl.getBoundingClientRect();
-      // Use a line just below the sticky headline. Rows whose top is at
-      // or above this line have already scrolled "past" the indicator;
-      // the most recently-passed one drives the displayed value.
-      const lineY = rect.bottom + 8;
-      const rows = document.querySelectorAll<HTMLElement>(
-        "[data-tx-running]",
-      );
-      let chosen: HTMLElement | null = null;
-      for (const row of rows) {
-        const r = row.getBoundingClientRect();
-        if (r.top <= lineY) chosen = row;
-        // Newest-first DOM order: once a row sits below the line, every
-        // subsequent (older) row is also below — bail out early.
-        else break;
-      }
-      if (!chosen) {
-        setScrolledRunningCents(null);
-        setScrolledRunningCount(null);
-        setScrolledDateLabel(null);
-        setCompact(false);
-        return;
-      }
-      const cents = Number(chosen.dataset.txRunning ?? "0");
-      const count = Number(chosen.dataset.txRunningCount ?? "0");
-      const date = chosen.dataset.txDate ?? null;
-      setScrolledRunningCents(Number.isFinite(cents) ? cents : null);
-      setScrolledRunningCount(Number.isFinite(count) ? count : null);
-      setScrolledDateLabel(date);
-      setCompact(true);
-    };
-    const onScroll = () => {
-      if (raf == null) raf = requestAnimationFrame(tick);
-    };
-    tick();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      if (raf != null) cancelAnimationFrame(raf);
-    };
-  }, [view, data]);
-
-  // Indicator value: while in date view and a row has crossed the line,
-  // show the per-txn cumulative; otherwise show the headline month total.
-  const headlineCents =
-    view === "date" && scrolledRunningCents != null
-      ? scrolledRunningCents
-      : (data?.monthSpend ?? 0);
-  const headlineCount =
-    view === "date" && scrolledRunningCount != null
-      ? scrolledRunningCount
-      : (data?.txns.length ?? 0);
-  const headlineTitle =
-    view === "date" && scrolledDateLabel
-      ? t("spentThrough", { date: scrolledDateLabel })
-      : t("monthSpend");
-  const plannedCents = data?.plannedOutflowCents ?? 0;
-  const tone = progressTone(headlineCents, plannedCents);
-  const overByCents =
-    plannedCents > 0 && headlineCents > plannedCents
-      ? headlineCents - plannedCents
-      : 0;
-
   return (
     <main className="mx-auto flex w-full max-w-md flex-col gap-5 px-5 pb-8 pt-8">
       <header className="flex flex-col gap-3">
@@ -266,119 +140,34 @@ export function ActivityScreen({
         <MonthScopeBar defaultAnchor={defaultAnchor} defaultScope={defaultScope} defaultMeRole={defaultMeRole} />
       </header>
 
-      <div ref={indicatorRef} className="sticky top-2 z-20">
-        <Card
-          className={`border-border/40 backdrop-blur transition-[padding,background-color,border-radius] duration-200 supports-backdrop-filter:bg-card/70 ${
-            compact
-              ? "rounded-full bg-card/90 px-4 py-2 ring-foreground/10"
-              : "bg-card/85 p-4"
-          } ${
-            tone === "over"
-              ? "ring-1 ring-destructive/40"
-              : tone === "warn"
-                ? "ring-1 ring-amber-400/40"
-                : ""
-          }`}
-        >
-          {compact ? (
-            <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-                  {headlineTitle}
-                </p>
-                <div className="num mt-0.5 flex items-baseline gap-1.5">
-                  <AnimatedNumber
-                    value={headlineCents / 100}
-                    locale={locale}
-                    currency="EUR"
-                    duration={0.25}
-                    className={`text-base font-semibold tracking-tight ${
-                      tone === "over"
-                        ? "text-destructive"
-                        : tone === "warn"
-                          ? "text-amber-500"
-                          : ""
-                    }`}
-                  />
-                  {plannedCents > 0 ? (
-                    <span className="num text-[10px] text-muted-foreground">
-                      / {formatEUR(plannedCents / 100, locale)}
-                    </span>
-                  ) : null}
-                </div>
-              </div>
-              <p
-                className="num shrink-0 text-[11px] text-muted-foreground"
-                aria-live="polite"
-              >
-                <AnimatedNumber
-                  value={headlineCount}
-                  locale={locale}
-                  duration={0.25}
-                  className="font-medium"
-                />{" "}
-                {t("txCountShort")}
+      <Card className="border-border/40 bg-card/60 p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+              {t("monthSpend")}
+            </p>
+            {isLoading ? (
+              <Skeleton className="mt-1 h-7 w-32" />
+            ) : (
+              <p className="num mt-1 text-2xl font-semibold tracking-tight">
+                {formatEUR((data?.monthSpend ?? 0) / 100, locale)}
               </p>
-            </div>
-          ) : (
-            <>
-              <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-                {headlineTitle}
-              </p>
-              {isLoading ? (
-                <Skeleton className="mt-1 h-7 w-32" />
-              ) : (
-                <div className="num mt-1 flex items-baseline gap-2">
-                  <AnimatedNumber
-                    value={headlineCents / 100}
-                    locale={locale}
-                    currency="EUR"
-                    duration={0.25}
-                    className={`text-2xl font-semibold tracking-tight ${
-                      tone === "over"
-                        ? "text-destructive"
-                        : tone === "warn"
-                          ? "text-amber-500"
-                          : ""
-                    }`}
-                  />
-                  {plannedCents > 0 ? (
-                    <span className="num text-xs text-muted-foreground">
-                      / {formatEUR(plannedCents / 100, locale)}
-                    </span>
-                  ) : null}
-                </div>
-              )}
-              {plannedCents > 0 ? (
-                <SpendProgress
-                  actualCents={headlineCents}
-                  plannedCents={plannedCents}
-                  size="sm"
-                  className="mt-2"
-                />
-              ) : null}
-              <div className="mt-1 flex items-center justify-between gap-2">
-                <p className="num text-xs text-muted-foreground">
-                  <AnimatedNumber
-                    value={headlineCount}
-                    locale={locale}
-                    duration={0.25}
-                    className="font-medium"
-                  />{" "}
-                  {t("txCountShort")}
-                </p>
-                {overByCents > 0 ? (
-                  <OverBudgetPill
-                    overByCents={overByCents}
-                    formatter={(c) => formatEUR(c / 100, locale)}
-                    label={tToday("overBy")}
-                  />
-                ) : null}
-              </div>
-            </>
-          )}
-        </Card>
-      </div>
+            )}
+            <p className="num mt-1 text-xs text-muted-foreground">
+              {t("txCount", { n: data?.txns.length ?? 0 })}
+            </p>
+          </div>
+          {data && data.txns.length > 0 ? (
+            <Link
+              href="/activity/look-back"
+              className="inline-flex shrink-0 items-center gap-1.5 self-center rounded-full border border-border/60 bg-background/40 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground transition-colors hover:bg-background/60 hover:text-foreground"
+            >
+              <Footprints className="size-3.5" strokeWidth={2.2} />
+              {t("lookBack")}
+            </Link>
+          ) : null}
+        </div>
+      </Card>
 
       {data?.forecast.charges.length ? (
         <Card className="border-border/40 bg-card/60 p-5">
@@ -441,7 +230,7 @@ export function ActivityScreen({
         <>
           {dateGroups.map((g) => (
             <section key={g.date} className="flex flex-col gap-1">
-              <p className="sticky top-24 z-10 -mx-1 bg-background/85 px-2 py-1.5 text-xs uppercase tracking-[0.14em] text-muted-foreground backdrop-blur supports-backdrop-filter:bg-background/70">
+              <p className="sticky top-0 z-10 -mx-1 bg-background/85 px-2 py-1.5 text-xs uppercase tracking-[0.14em] text-muted-foreground backdrop-blur supports-backdrop-filter:bg-background/70">
                 {g.date}
               </p>
               <Card className="border-border/40 bg-card/60 p-1">
@@ -451,15 +240,7 @@ export function ActivityScreen({
                       (o) => o.scope === r.owner,
                     );
                     return (
-                      <li
-                        key={r.id}
-                        className="px-2"
-                        data-tx-running={txRunning.get(r.id)?.runningCents ?? 0}
-                        data-tx-running-count={
-                          txRunning.get(r.id)?.runningCount ?? 0
-                        }
-                        data-tx-date={g.date}
-                      >
+                      <li key={r.id} className="px-2">
                         <ActivityRow
                           tx={{
                             id: r.id,

@@ -24,8 +24,14 @@
     "unusuallyHigh": "Acima do normal · costuma ser {mean}",
     "viewByDate": "Por data",
     "viewByAmount": "Por valor",
+    "lookBack": "Recapitular"
+  },
+  "LookBack": {
+    "title": "Recapitular",
+    "done": "Concluir",
+    "spentSoFar": "Gasto até agora",
     "spentThrough": "Gasto até {date}",
-    "txCountShort": "tx"
+    "topOfMonth": "Início do mês"
   },
   "Today": {
     "untilPayday": "{days, plural, one {# dia} other {# dias}} até o pagamento",
