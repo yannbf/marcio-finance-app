@@ -295,6 +295,34 @@ function MerchantGroups({
       <Card className="border-border/40 bg-card/60 p-2">
         <ul className="divide-y divide-border/40">
           {groups.map((g) => {
+            // Single-transaction "groups" have nothing to expand into —
+            // render the row directly so the user doesn't have to tap
+            // through a wrapper that collapses one item.
+            if (g.txns.length === 1) {
+              const r = g.txns[0];
+              const optsForScope = optionsAll.filter(
+                (o) => o.scope === r.owner,
+              );
+              return (
+                <li key={g.key} className="px-2">
+                  <ActivityRow
+                    tx={{
+                      id: r.id,
+                      counterparty: r.counterparty,
+                      description: r.description,
+                      bookingDate: r.bookingDate,
+                      amountCents: r.amountCents,
+                      matchedItemId: r.matchedItemId,
+                      matchedName: r.matchedName,
+                      owner: r.owner,
+                    }}
+                    options={optsForScope}
+                    locale={locale}
+                    sectionLabels={sectionLabels}
+                  />
+                </li>
+              );
+            }
             const isOpen = expanded.has(g.key);
             return (
               <li key={g.key} className="px-2">

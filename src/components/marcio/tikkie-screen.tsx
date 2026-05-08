@@ -99,20 +99,32 @@ export function TikkieScreen({
         <Card className="border-border/40 bg-card/60 p-2">
           <ul className="divide-y divide-border/40">
             {data.byPerson.map((b) => {
+              // Single-Tikkie people have nothing to expand into — show
+              // the topic + date inline in place of the "n splits"
+              // counter and drop the chevron.
+              const single = b.txns.length === 1 ? b.txns[0] : null;
               const isOpen = expanded.has(b.name);
               return (
                 <li key={b.name} className="px-2">
                   <button
                     type="button"
-                    onClick={() => toggle(b.name)}
-                    aria-expanded={isOpen}
-                    className="-mx-2 flex w-[calc(100%+1rem)] items-center gap-3 rounded px-2 py-3 text-left transition-colors hover:bg-card/40"
+                    onClick={single ? undefined : () => toggle(b.name)}
+                    aria-expanded={single ? undefined : isOpen}
+                    disabled={Boolean(single)}
+                    className={`-mx-2 flex w-[calc(100%+1rem)] items-center gap-3 rounded px-2 py-3 text-left transition-colors ${
+                      single ? "cursor-default" : "hover:bg-card/40"
+                    }`}
                   >
                     <CounterpartyAvatar name={b.name} />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium">{b.name}</p>
-                      <p className="num text-xs text-muted-foreground">
-                        {t("txCount", { n: b.txCount })}
+                      <p className="num truncate text-xs text-muted-foreground">
+                        {single
+                          ? `${new Date(single.bookingDate).toLocaleDateString(
+                              locale,
+                              { day: "2-digit", month: "short" },
+                            )} · ${single.topic ?? t("noTopic")}`
+                          : t("txCount", { n: b.txCount })}
                       </p>
                     </div>
                     <div className="text-right">
@@ -127,14 +139,16 @@ export function TikkieScreen({
                         </p>
                       ) : null}
                     </div>
-                    <ChevronDown
-                      className={`size-4 shrink-0 text-muted-foreground transition-transform ${
-                        isOpen ? "rotate-180" : ""
-                      }`}
-                      aria-hidden
-                    />
+                    {single ? null : (
+                      <ChevronDown
+                        className={`size-4 shrink-0 text-muted-foreground transition-transform ${
+                          isOpen ? "rotate-180" : ""
+                        }`}
+                        aria-hidden
+                      />
+                    )}
                   </button>
-                  {isOpen ? (
+                  {!single && isOpen ? (
                     <ul className="mb-2 ml-12 flex flex-col gap-1.5 border-l border-border/40 pl-3">
                       {b.txns.map((tx) => {
                         const credit = tx.amountCents > 0;
