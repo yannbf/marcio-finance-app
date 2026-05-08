@@ -26,6 +26,8 @@
   "Today": {
     "untilPayday": "{days, plural, one {# dia} other {# dias}} até o pagamento",
     "monthAnchor": "O mês abre no dia 25",
+    "lastSync": "Última sync · {at}",
+    "deployedAt": "Deploy · {at}",
     "spentSoFar": "Gasto até agora",
     "ofPlanned": "de {planned} planejado",
     "remaining": "Restante",

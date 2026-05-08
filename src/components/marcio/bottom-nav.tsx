@@ -1,6 +1,7 @@
 "use client";
 
 import { Home, ListChecks, Activity, PiggyBank, Settings as Cog } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation.ts";
 import { trpc } from "@/lib/trpc/client.ts";
@@ -22,20 +23,43 @@ const TABS: ReadonlyArray<{
 export function BottomNav() {
   const t = useTranslations("Nav");
   const pathname = usePathname();
+  const sp = useSearchParams();
   const utils = trpc.useUtils();
-  // Hide the nav on auth flows — they're full-screen, no in-app navigation.
   if (pathname === "/sign-in" || pathname.startsWith("/sign-in/")) return null;
   const isActive = (href: string) =>
     href === "/"
       ? pathname === "/"
       : pathname === href || pathname.startsWith(`${href}/`);
 
-  // Warm the tRPC cache when the user signals intent to navigate. By the
-  // time the click resolves, the data is usually already loaded. We pass
-  // the cookie-stored scope so the prefetch lines up with what the
-  // server-rendered page will read on arrival.
+  // Carry the active scope and anchor straight from the URL into
+  // every nav link's href. Once the user toggles scope anywhere, the
+  // URL gets `?scope=…` and every other tab's link picks it up too,
+  // so the next-tab page reads the value directly (no cookie race).
+  //
+  // We read ONLY the URL here, not the cookie, so the href the
+  // server renders is byte-identical to what the client renders.
+  // The cookie remains the "fresh visit, no ?scope" fallback —
+  // handled by each page's server component via readScopeCookie().
+  const scopeFromUrl = sp.get("scope");
+  const currentScope: "joint" | "yann" | "camila" =
+    scopeFromUrl === "yann" ||
+    scopeFromUrl === "camila" ||
+    scopeFromUrl === "joint"
+      ? scopeFromUrl
+      : "joint";
+  const currentAnchor = sp.get("anchor");
+  function buildQuery(): string {
+    const qs = new URLSearchParams();
+    if (currentAnchor) qs.set("anchor", currentAnchor);
+    if (scopeFromUrl) qs.set("scope", scopeFromUrl);
+    const s = qs.toString();
+    return s ? `?${s}` : "";
+  }
+
+  // Warm the tRPC cache when the user signals intent to navigate. By
+  // the time the click resolves the data is usually already in cache.
   function prefetch(key: TabKey) {
-    const scope = readScopeCookieClient();
+    const scope = currentScope;
     if (key === "today") void utils.today.get.prefetch({ scope });
     else if (key === "month") {
       void utils.month.get.prefetch({ scope });
@@ -43,13 +67,6 @@ export function BottomNav() {
       void utils.activity.get.prefetch({ scope });
     else if (key === "buckets") void utils.buckets.get.prefetch({ scope });
     else if (key === "settings") void utils.settings.get.prefetch();
-  }
-
-  function readScopeCookieClient(): "joint" | "yann" | "camila" {
-    if (typeof document === "undefined") return "joint";
-    const m = document.cookie.match(/(?:^|; )marcio-month-scope=([^;]+)/);
-    const v = m ? decodeURIComponent(m[1]) : null;
-    return v === "yann" || v === "camila" ? v : "joint";
   }
 
   return (
@@ -60,10 +77,14 @@ export function BottomNav() {
       <ul className="mx-auto grid max-w-md grid-cols-5 px-1">
         {TABS.map(({ href, icon: Icon, key }) => {
           const active = isActive(href);
+          // Settings doesn't use scope — keep its href clean.
+          const linkHref = (
+            key === "settings" ? href : `${href}${buildQuery()}`
+          ) as typeof href;
           return (
             <li key={key}>
               <Link
-                href={href}
+                href={linkHref}
                 prefetch
                 onPointerEnter={() => prefetch(key)}
                 onTouchStart={() => prefetch(key)}
@@ -89,3 +110,4 @@ export function BottomNav() {
     </nav>
   );
 }
+

@@ -57,12 +57,15 @@ export default async function SettingsPage({
     .orderBy(desc(month.importedAt))
     .limit(1);
   const lastImport = latestImport?.importedAt ?? null;
-  const lastImportLabel = lastImport
-    ? new Intl.DateTimeFormat(locale, {
-        dateStyle: "medium",
-        timeStyle: "short",
-      }).format(lastImport)
-    : null;
+  // Both timestamps render in Europe/Amsterdam. The household lives in
+  // NL and shares this app — pinning the timezone keeps both partners
+  // (and roaming travel) seeing the same wall-clock time.
+  const fmt = new Intl.DateTimeFormat(locale, {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "Europe/Amsterdam",
+  });
+  const lastImportLabel = lastImport ? fmt.format(lastImport) : null;
 
   // Build commit timestamp — captured at build time in next.config.ts.
   // Local `pnpm dev` runs without re-evaluating next.config on every request,
@@ -70,10 +73,7 @@ export default async function SettingsPage({
   const buildTimeRaw = process.env.BUILD_COMMIT_TIME;
   const buildTimeLabel =
     buildTimeRaw && !Number.isNaN(new Date(buildTimeRaw).getTime())
-      ? new Intl.DateTimeFormat(locale, {
-          dateStyle: "medium",
-          timeStyle: "short",
-        }).format(new Date(buildTimeRaw))
+      ? fmt.format(new Date(buildTimeRaw))
       : null;
 
   return (

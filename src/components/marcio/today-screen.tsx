@@ -21,6 +21,8 @@ import {
 import { Link } from "@/i18n/navigation.ts";
 import type { Section } from "@/lib/import/types.ts";
 
+type ScopeView = "joint" | "yann" | "camila";
+
 export function TodayScreen({
   locale,
   defaultAnchor,
@@ -53,53 +55,84 @@ export function TodayScreen({
   const data = mounted ? query.data : undefined;
 
   // Boot-time warm-up: as soon as Today's own query has settled, kick
-  // off the rest of the bottom-nav routes' queries in parallel so the
-  // user's first tab tap renders from cache instantly. Off-nav routes
-  // (tikkie/insights/transactions) get warmed lazily during browser
-  // idle so they don't fight the bottom-nav queries for a cold Vercel
-  // function slot.
+  // off prefetches for every other tab — and crucially for BOTH
+  // scopes (the user's current view + the opposite one). Without that
+  // second pass, toggling Joint↔Me always paid a cold-function tax
+  // because the opposite scope's cache was empty.
   //
-  // Each `prefetch` is a no-op if the cache already has fresh data, so
-  // re-mounts (locale switch, scope toggle) don't spam the server.
-  // We deliberately wait for Today's own data first — this app's
-  // Vercel functions are cold-started per request, so firing six
-  // queries at once on a fresh tab would deadlock all of them behind
-  // the same cold starts.
+  // Three staggered passes:
+  //   - Bottom-nav routes for the active scope (after first paint).
+  //   - Off-nav routes (tikkie/insights/transactions) for the active
+  //     scope on browser idle.
+  //   - All bottom-nav routes for the OPPOSITE scope on a longer
+  //     idle so they don't stampede the user's primary fetches.
+  //
+  // Each `prefetch` is a no-op if cache is fresh, so re-mounts (scope
+  // toggle, anchor change) don't double-fetch.
   useEffect(() => {
     if (!mounted || !query.data) return;
     let cancelled = false;
-    const warmNav = () => {
+
+    // The "opposite" scope is the user's role when current view is
+    // joint, and joint when current view is the user's role. We don't
+    // try to prefetch a third scope (the OTHER partner's personal),
+    // since the user can't see it anyway.
+    const oppositeScope: ScopeView | null =
+      scope === "joint"
+        ? defaultMeRole
+        : "joint";
+
+    const warmNav = (s: ScopeView) => () => {
       if (cancelled) return;
-      void utils.month.get.prefetch({ anchor, scope });
-      void utils.activity.get.prefetch({ anchor, scope });
-      void utils.buckets.get.prefetch({ anchor, scope });
+      void utils.month.get.prefetch({ anchor, scope: s });
+      void utils.activity.get.prefetch({ anchor, scope: s });
+      void utils.buckets.get.prefetch({ anchor, scope: s });
       void utils.inbox.list.prefetch();
     };
-    const warmOffNav = () => {
+    const warmOffNav = (s: ScopeView) => () => {
       if (cancelled) return;
-      void utils.tikkie.get.prefetch({ anchor, scope });
-      void utils.insights.get.prefetch({ anchor, scope });
-      void utils.transactions.list.prefetch({ scope });
+      void utils.tikkie.get.prefetch({ anchor, scope: s });
+      void utils.insights.get.prefetch({ anchor, scope: s });
+      void utils.transactions.list.prefetch({ scope: s });
     };
-    // Bottom-nav: small delay so React finishes painting Today first.
-    const navTimer = setTimeout(warmNav, 80);
-    // Off-nav: requestIdleCallback when available, fallback timeout.
+
+    // Active scope first.
+    const t1 = setTimeout(warmNav(scope), 80);
     type IdleAPI = (cb: () => void, opts?: { timeout: number }) => number;
     const ric = (window as unknown as { requestIdleCallback?: IdleAPI })
       .requestIdleCallback;
-    const offNavHandle = ric
-      ? ric(warmOffNav, { timeout: 4000 })
-      : setTimeout(warmOffNav, 1500);
+    const off1 = ric
+      ? ric(warmOffNav(scope), { timeout: 4000 })
+      : setTimeout(warmOffNav(scope), 1500);
+
+    // Opposite scope, deferred further so the active view paints
+    // first. Without prefetched opposite scope, the toggle still
+    // shows skeletons the first time per session.
+    let t2: ReturnType<typeof setTimeout> | undefined;
+    let off2: number | ReturnType<typeof setTimeout> | undefined;
+    if (oppositeScope) {
+      t2 = setTimeout(warmNav(oppositeScope), 600);
+      off2 = ric
+        ? ric(warmOffNav(oppositeScope), { timeout: 8000 })
+        : setTimeout(warmOffNav(oppositeScope), 3000);
+    }
+
     return () => {
       cancelled = true;
-      clearTimeout(navTimer);
+      clearTimeout(t1);
+      if (t2) clearTimeout(t2);
       const cic = (
         window as unknown as { cancelIdleCallback?: (h: number) => void }
       ).cancelIdleCallback;
-      if (typeof cic === "function") cic(offNavHandle as number);
-      else clearTimeout(offNavHandle as ReturnType<typeof setTimeout>);
+      if (typeof cic === "function") {
+        cic(off1 as number);
+        if (off2) cic(off2 as number);
+      } else {
+        clearTimeout(off1 as ReturnType<typeof setTimeout>);
+        if (off2) clearTimeout(off2 as ReturnType<typeof setTimeout>);
+      }
     };
-  }, [mounted, query.data, anchor, scope, utils]);
+  }, [mounted, query.data, anchor, scope, defaultMeRole, utils]);
 
   const daysUntilPayday = data?.daysUntilPayday ?? defaultDaysUntilPayday;
   const plannedOutflowCents = data?.plannedOutflowCents ?? 0;
@@ -346,8 +379,65 @@ export function TodayScreen({
       <p className="text-center text-xs text-muted-foreground">
         {t("Today.monthAnchor")}
       </p>
+
+      <DeploymentFooter
+        locale={locale}
+        deployedAtRaw={process.env.BUILD_COMMIT_TIME}
+      />
     </main>
   );
+}
+
+/**
+ * Tiny footer line: when the last sheet/bank sync ran and when this
+ * build was cut. Both pinned to Europe/Amsterdam so the household
+ * sees the same wall-clock time even if their phone is roaming.
+ */
+function DeploymentFooter({
+  locale,
+  deployedAtRaw,
+}: {
+  locale: string;
+  deployedAtRaw: string | undefined;
+}) {
+  const t = useTranslations();
+  // Same persister-vs-SSR hydration gate the screen-level queries
+  // use: hold persister-restored data back until after first paint
+  // so React doesn't see "no sync line on server, sync line on
+  // client" and tear the tree down.
+  const mounted = useMounted();
+  const lastImport = trpc.settings.lastImportAt.useQuery(undefined, {
+    staleTime: 5 * 60_000,
+  });
+  const deployedAt = formatAmsterdam(deployedAtRaw, locale);
+  const syncedAtIso = mounted ? lastImport.data?.at ?? null : null;
+  const syncedAt = formatAmsterdam(syncedAtIso, locale);
+  if (!deployedAt && !syncedAt) return null;
+  return (
+    <div className="flex flex-col items-center gap-0.5 pt-2">
+      {syncedAt ? (
+        <p className="num text-center text-[11px] text-muted-foreground/70">
+          {t("Today.lastSync", { at: syncedAt })}
+        </p>
+      ) : null}
+      {deployedAt ? (
+        <p className="num text-center text-[11px] text-muted-foreground/60">
+          {t("Today.deployedAt", { at: deployedAt })}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function formatAmsterdam(iso: string | null | undefined, locale: string): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return new Intl.DateTimeFormat(locale, {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "Europe/Amsterdam",
+  }).format(d);
 }
 
 /* -------------------------------------------------------------------------- */

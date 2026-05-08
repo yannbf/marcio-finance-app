@@ -26,6 +26,8 @@
   "Today": {
     "untilPayday": "{days, plural, one {# day} other {# days}} until payday",
     "monthAnchor": "Month opens on the 25th",
+    "lastSync": "Last sync · {at}",
+    "deployedAt": "Deployed · {at}",
     "spentSoFar": "Spent so far",
     "ofPlanned": "of {planned} planned",
     "remaining": "Remaining",
