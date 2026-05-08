@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
@@ -107,7 +108,14 @@ export default async function LocaleLayout({
               className="pointer-events-none fixed inset-x-0 top-0 z-40 bg-background"
               style={{ height: "env(safe-area-inset-top)" }}
             />
-            <BottomNav />
+            {/* BottomNav reads useSearchParams() to thread `?scope=…`
+                into its link hrefs. Next 16 demands a Suspense
+                boundary around any client component that does that —
+                without it, statically prerendered pages (the import
+                page, terms, privacy, etc.) bail out at build time. */}
+            <Suspense fallback={null}>
+              <BottomNav />
+            </Suspense>
             <IosInstallHint />
             <UpdatePrompt buildVersion={buildVersion} />
           </TrpcProvider>

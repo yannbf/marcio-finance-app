@@ -190,6 +190,31 @@ export const TEST_BUDGET_SHEET: ParsedSheet = {
       cadence: "monthly",
     },
 
+    /* ENTRADAS — personal salaries.
+       Each partner earns €5,000 gross and transfers half (€2,500) to
+       the joint account each month. The contributionRatio captures
+       that 0.5 split — the aggregator uses it to compute "personal
+       income net of joint contribution" (the actual budget personal
+       expenses come from). */
+    {
+      scope: "yann",
+      section: "ENTRADAS",
+      naturalKey: "salary-yann",
+      name: "Salário Yann",
+      plannedCents: 500000,
+      cadence: "monthly",
+      contributionRatio: 0.5,
+    },
+    {
+      scope: "camila",
+      section: "ENTRADAS",
+      naturalKey: "salary-camila",
+      name: "Salário Camila",
+      plannedCents: 500000,
+      cadence: "monthly",
+      contributionRatio: 0.5,
+    },
+
     /* VARIAVEIS — personal */
     {
       scope: "yann",

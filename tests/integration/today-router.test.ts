@@ -77,6 +77,26 @@ describe("today.get", () => {
     expect(camila.inboxCount).toBeGreaterThanOrEqual(1);
   });
 
+  it("personalChecklist surfaces salary + contribution amounts in personal scope", async () => {
+    const caller = makeAuthedCaller("yann");
+    const r = await caller.today.get({
+      anchor: { year: 2026, month: 5 },
+      scope: "yann",
+    });
+    expect(r.personalChecklist).not.toBeNull();
+    expect(r.personalChecklist?.salary?.plannedCents).toBe(500000);
+    expect(r.personalChecklist?.contribution?.plannedCents).toBe(250000);
+  });
+
+  it("personalChecklist is null in joint scope", async () => {
+    const caller = makeAuthedCaller("yann");
+    const r = await caller.today.get({
+      anchor: { year: 2026, month: 5 },
+      scope: "joint",
+    });
+    expect(r.personalChecklist).toBeNull();
+  });
+
   it("anonymous callers can only see joint", async () => {
     const { makeAnonCaller } = await import("../support/trpc-caller.ts");
     const caller = makeAnonCaller();

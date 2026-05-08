@@ -85,4 +85,47 @@ describe("getMonthlyAggregates", () => {
     // 250000 + 250000 + 30000 = 530000.
     expect(totalIncome(r.planned)).toBe(530000);
   });
+
+  /**
+   * Personal scope ENTRADAS rows can carry a `contributionRatio`
+   * (0..1) — the fraction of the salary that's transferred to the
+   * joint account. The aggregator multiplies by `(1 - ratio)` so the
+   * "income" the user sees is the take-home pay AFTER the joint
+   * contribution. This is the budget personal expenses come from;
+   * showing gross salary would inflate the perceived margin.
+   *
+   * Fixture: yann earns 500000 cents with ratio 0.5 → personal
+   * income shown = 250000.
+   */
+  it("personal ENTRADAS reflect take-home after the joint contribution", async () => {
+    const yann = await getMonthlyAggregates(["yann"], {
+      year: 2026,
+      month: 5,
+    });
+    expect(yann.planned.ENTRADAS).toBe(250000);
+  });
+
+  it("joint ENTRADAS pass through unchanged (no contribution_ratio)", async () => {
+    const joint = await getMonthlyAggregates(["joint"], {
+      year: 2026,
+      month: 5,
+    });
+    // Joint's three ENTRADAS rows have no ratio set, so each lands at
+    // its full plannedCents.
+    expect(joint.planned.ENTRADAS).toBe(530000);
+  });
+
+  it("the combined view nets out double-counting between joint contribution income and personal salary", async () => {
+    const both = await getMonthlyAggregates(["joint", "yann"], {
+      year: 2026,
+      month: 5,
+    });
+    // Joint receives 250000 from yann (contrib-yann) + 250000 from
+    // camila + 30000 refund = 530000. Yann's personal take-home (post-
+    // ratio) = 250000. Combined = 780000.
+    //
+    // Without the ratio applied to yann's 500000 salary, this would
+    // double-count the contrib-yann portion (sum would be 1030000).
+    expect(both.planned.ENTRADAS).toBe(780000);
+  });
 });

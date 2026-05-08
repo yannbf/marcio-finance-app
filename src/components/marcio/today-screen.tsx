@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
-import { Calendar, Inbox, Sparkles, ChevronRight, PieChart } from "lucide-react";
+import { Calendar, Check, Inbox, Sparkles, ChevronRight, PieChart } from "lucide-react";
 import { AnimatedNumber } from "./animated-number.tsx";
 import { MonthScopeBar, parseSearch } from "./month-scope-bar.tsx";
 import { formatEUR, formatEURPrecise, formatPercent } from "@/lib/format.ts";
@@ -144,6 +144,7 @@ export function TodayScreen({
   const sectionData = data?.sectionData ?? [];
   const inboxCount = data?.inboxCount ?? 0;
   const recentlyAddedCount = data?.recentlyAddedCount ?? 0;
+  const personalChecklist = data?.personalChecklist ?? null;
   const sectionByKey = new Map(sectionData.map((s) => [s.section, s]));
 
   return (
@@ -164,6 +165,7 @@ export function TodayScreen({
           </Badge>
         </div>
         <MonthScopeBar defaultAnchor={defaultAnchor} defaultScope={defaultScope} defaultMeRole={defaultMeRole} />
+        <PersonalChecklist data={personalChecklist} locale={locale} />
       </header>
 
       <Card className="relative overflow-hidden border-border/40 bg-card/60 p-6">
@@ -393,6 +395,98 @@ export function TodayScreen({
  * build was cut. Both pinned to Europe/Amsterdam so the household
  * sees the same wall-clock time even if their phone is roaming.
  */
+/**
+ * Two-pill confirmation strip shown only in the personal scope (Me).
+ * Quickly answers "did the salary land yet?" and "did my joint share
+ * transfer?" — both are the questions the user actually opens the app
+ * to check on the 25th. Each pill is green when the matching
+ * transaction has arrived, muted with a clock when still expected.
+ *
+ * Hidden when the user is viewing Joint, or when the budget month has
+ * no salary line / no contribution line at all (e.g. a freshly
+ * imported month before either is configured).
+ */
+function PersonalChecklist({
+  data,
+  locale,
+}: {
+  data: {
+    salary: { plannedCents: number; actualCents: number } | null;
+    contribution: { plannedCents: number; actualCents: number } | null;
+  } | null;
+  locale: string;
+}) {
+  const t = useTranslations("Today");
+  if (!data) return null;
+  if (!data.salary && !data.contribution) return null;
+
+  // Treat as "received" once at least 90% of the planned amount has
+  // landed. Salaries occasionally arrive net-of-tax-adjustment and
+  // come in slightly under the planned figure; an exact match would
+  // force the pill to stay yellow forever for those.
+  const RECEIVED_THRESHOLD = 0.9;
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 pt-1">
+      {data.salary ? (
+        <ChecklistPill
+          label={t("salary")}
+          plannedCents={Math.abs(data.salary.plannedCents)}
+          actualCents={Math.abs(data.salary.actualCents)}
+          threshold={RECEIVED_THRESHOLD}
+          locale={locale}
+        />
+      ) : null}
+      {data.contribution ? (
+        <ChecklistPill
+          label={t("contribution")}
+          plannedCents={Math.abs(data.contribution.plannedCents)}
+          actualCents={Math.abs(data.contribution.actualCents)}
+          threshold={RECEIVED_THRESHOLD}
+          locale={locale}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function ChecklistPill({
+  label,
+  plannedCents,
+  actualCents,
+  threshold,
+  locale,
+}: {
+  label: string;
+  plannedCents: number;
+  actualCents: number;
+  threshold: number;
+  locale: string;
+}) {
+  const ratio = plannedCents > 0 ? actualCents / plannedCents : 0;
+  const arrived = ratio >= threshold;
+  const display = arrived ? actualCents : plannedCents;
+  return (
+    <span
+      className={
+        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-medium " +
+        (arrived
+          ? "bg-primary/15 text-primary"
+          : "border border-border/60 text-muted-foreground")
+      }
+    >
+      {arrived ? (
+        <Check className="size-3" strokeWidth={3} />
+      ) : (
+        <Calendar className="size-3" strokeWidth={2.4} />
+      )}
+      <span>{label}</span>
+      <span className="num">·</span>
+      <span className="num">{formatEUR(display / 100, locale)}</span>
+    </span>
+  );
+}
+
 function DeploymentFooter({
   locale,
   deployedAtRaw,

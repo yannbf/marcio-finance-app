@@ -59,9 +59,16 @@ export async function getMonthlyAggregates(
     };
   }
 
-  // Sum of planned amounts per section. SAZONAIS items are stored yearly
-  // in the sheet; divide them by 12 in SQL so the monthly screens get
-  // the right contribution-per-month figure.
+  // Sum of planned amounts per section, with two transformations:
+  //  - SAZONAIS items are stored as yearly cents in the sheet; divide
+  //    by 12 so monthly screens see the right per-month contribution.
+  //  - ENTRADAS items can carry a `contribution_ratio` (0..1) that
+  //    represents the fraction of personal salary that is transferred
+  //    to the joint account. We multiply by `(1 - ratio)` so personal
+  //    "income" reflects the take-home pay AFTER the joint
+  //    contribution — which is the budget personal expenses come from.
+  //    Joint-scope ENTRADAS rows have no ratio and pass through
+  //    unchanged.
   const plannedRows = await db
     .select({
       section: budgetItem.section,
@@ -69,6 +76,8 @@ export async function getMonthlyAggregates(
         CASE
           WHEN ${budgetItem.section} = 'SAZONAIS'
             THEN ROUND(${budgetItem.plannedCents}::numeric / 12)
+          WHEN ${budgetItem.section} = 'ENTRADAS'
+            THEN ROUND(${budgetItem.plannedCents}::numeric * (1 - COALESCE(${budgetItem.contributionRatio}, 0)))
           ELSE ${budgetItem.plannedCents}
         END
       ), 0)`,
@@ -82,16 +91,27 @@ export async function getMonthlyAggregates(
     )
     .groupBy(budgetItem.section);
 
-  // Movements between Yann/Camila personal accounts and the joint account
-  // aren't spending — they're a transfer. Strip them from the actual sum
-  // so headline "spent" figures don't conflate moving money with using it.
-  // The matching transactions on the joint side land in ENTRADAS (income),
-  // which totalOutflow already ignores; on the personal side they would
-  // otherwise inflate any outflow section the user assigned them to.
+  // Actual amounts per section.
+  //  - Internal-transfer transactions (yann/camila ↔ joint account)
+  //    are NOT spend — strip them out so headline "spent" figures
+  //    don't conflate moving money with using it. The matching
+  //    transactions on the joint side land in ENTRADAS (income),
+  //    which totalOutflow already ignores; on the personal side they
+  //    would otherwise inflate any outflow section the user assigned
+  //    them to.
+  //  - For ENTRADAS rows, multiply by `(1 - contribution_ratio)` so
+  //    actual personal income reflects take-home pay (gross salary
+  //    received, minus the share that's being transferred away).
   const actualRows = await db
     .select({
       section: budgetItem.section,
-      sum: sql<string>`COALESCE(SUM(${txMatch.allocatedCents}), 0)`,
+      sum: sql<string>`COALESCE(SUM(
+        CASE
+          WHEN ${budgetItem.section} = 'ENTRADAS'
+            THEN ROUND(${txMatch.allocatedCents}::numeric * (1 - COALESCE(${budgetItem.contributionRatio}, 0)))
+          ELSE ${txMatch.allocatedCents}
+        END
+      ), 0)`,
     })
     .from(txMatch)
     .innerJoin(budgetItem, eq(budgetItem.id, txMatch.budgetItemId))

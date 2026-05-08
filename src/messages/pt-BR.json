@@ -28,6 +28,8 @@
     "monthAnchor": "O mês abre no dia 25",
     "lastSync": "Última sync · {at}",
     "deployedAt": "Deploy · {at}",
+    "salary": "Salário",
+    "contribution": "Cota conjunta",
     "spentSoFar": "Gasto até agora",
     "ofPlanned": "de {planned} planejado",
     "remaining": "Restante",
