@@ -21,7 +21,9 @@
     "upcomingTitle": "A pagar ainda",
     "empty": "Nenhuma transação neste mês ainda — suba um CSV em Ajustes.",
     "seeAllHistory": "Ver histórico completo",
-    "unusuallyHigh": "Acima do normal · costuma ser {mean}"
+    "unusuallyHigh": "Acima do normal · costuma ser {mean}",
+    "viewByDate": "Por data",
+    "viewByAmount": "Por valor"
   },
   "Today": {
     "untilPayday": "{days, plural, one {# dia} other {# dias}} até o pagamento",

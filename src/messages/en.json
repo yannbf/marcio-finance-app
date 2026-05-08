@@ -21,7 +21,9 @@
     "upcomingTitle": "Still to pay",
     "empty": "No transactions this month yet — upload a CSV in Settings.",
     "seeAllHistory": "See full history",
-    "unusuallyHigh": "Unusual · usually {mean}"
+    "unusuallyHigh": "Unusual · usually {mean}",
+    "viewByDate": "By date",
+    "viewByAmount": "By amount"
   },
   "Today": {
     "untilPayday": "{days, plural, one {# day} other {# days}} until payday",

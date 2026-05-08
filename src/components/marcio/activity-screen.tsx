@@ -1,18 +1,28 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { ChevronDown } from "lucide-react";
 import { Card } from "@/components/ui/card.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { Link } from "@/i18n/navigation.ts";
 import { ActivityRow } from "./activity-row.tsx";
+import { CounterpartyAvatar } from "./counterparty-avatar.tsx";
 import { MonthScopeBar, parseSearch } from "./month-scope-bar.tsx";
 import { trpc } from "@/lib/trpc/client.ts";
 import { useMounted } from "@/lib/use-mounted.ts";
 import { formatEUR, formatEURPrecise } from "@/lib/format.ts";
+import { fingerprintCounterparty } from "@/lib/matching/fingerprint.ts";
 import { SECTION_ORDER, SECTION_TR_KEY } from "@/lib/import/sections.ts";
 import type { Section } from "@/lib/import/types.ts";
+import type { inferRouterOutputs } from "@trpc/server";
+import type { AppRouter } from "@/server/routers/_app.ts";
+
+type ActivityView = "date" | "amount";
+type ActivityData = inferRouterOutputs<AppRouter>["activity"]["get"];
+type Txn = ActivityData["txns"][number];
+type OptionsAll = ActivityData["optionsAll"];
 
 export function ActivityScreen({
   locale,
@@ -37,6 +47,12 @@ export function ActivityScreen({
   const data = mounted ? query.data : undefined;
   const isLoading = mounted ? query.isLoading : true;
 
+  // The active view (date timeline vs. merchant grouping) lives in
+  // the URL so it survives reloads and can be shared. Default is the
+  // chronological "by date" view that the user sees first.
+  const viewRaw = sp.get("view");
+  const view: ActivityView = viewRaw === "amount" ? "amount" : "date";
+
   const sectionLabels = useMemo(
     () =>
       SECTION_ORDER.reduce(
@@ -49,9 +65,9 @@ export function ActivityScreen({
     [tSections],
   );
 
-  const groups = useMemo(() => {
-    if (!data) return [];
-    const out: { date: string; rows: typeof data.txns }[] = [];
+  const dateGroups = useMemo(() => {
+    if (!data || view !== "date") return [];
+    const out: { date: string; rows: Txn[] }[] = [];
     for (const r of data.txns) {
       const key = formatGroupDate(new Date(r.bookingDate), locale);
       const last = out[out.length - 1];
@@ -59,7 +75,45 @@ export function ActivityScreen({
       else out.push({ date: key, rows: [r] });
     }
     return out;
-  }, [data, locale]);
+  }, [data, locale, view]);
+
+  // Merchant groups: collapse same-counterparty rows (after stripping
+  // city tails / terminal IDs / trailing digits) into one bucket so
+  // "AH AMSTERDAM" and "AH UTRECHT" land together. Sort by the bigger
+  // of total spend / total received so the heaviest impact bubbles to
+  // the top.
+  const merchantGroups = useMemo(() => {
+    if (!data || view !== "amount") return [];
+    type Bucket = {
+      key: string;
+      displayName: string;
+      txns: Txn[];
+      paidCents: number;
+      receivedCents: number;
+    };
+    const groups = new Map<string, Bucket>();
+    for (const tx of data.txns) {
+      const cp = (tx.counterparty ?? "").trim() || "—";
+      const fp = fingerprintCounterparty(cp) || cp.toLowerCase();
+      const key = fp;
+      const bucket = groups.get(key) ?? {
+        key,
+        displayName: cp,
+        txns: [],
+        paidCents: 0,
+        receivedCents: 0,
+      };
+      bucket.txns.push(tx);
+      if (tx.amountCents < 0) bucket.paidCents += -tx.amountCents;
+      else bucket.receivedCents += tx.amountCents;
+      groups.set(key, bucket);
+    }
+    return [...groups.values()].sort((a, b) => {
+      const aMax = Math.max(a.paidCents, a.receivedCents);
+      const bMax = Math.max(b.paidCents, b.receivedCents);
+      return bMax - aMax;
+    });
+  }, [data, view]);
 
   return (
     <main className="mx-auto flex w-full max-w-md flex-col gap-5 px-5 pb-8 pt-8">
@@ -125,6 +179,17 @@ export function ActivityScreen({
         </Card>
       ) : null}
 
+      {data && data.txns.length > 0 ? (
+        <div className="-mt-2 flex gap-1 self-start rounded-full border border-border/60 bg-card/50 p-1 text-[11px]">
+          <ViewPill href={makeViewHref(sp, "date")} active={view === "date"}>
+            {t("viewByDate")}
+          </ViewPill>
+          <ViewPill href={makeViewHref(sp, "amount")} active={view === "amount"}>
+            {t("viewByAmount")}
+          </ViewPill>
+        </div>
+      ) : null}
+
       {isLoading ? (
         <Card className="flex flex-col gap-3 border-border/40 bg-card/40 p-4">
           <Skeleton className="h-12 w-full" />
@@ -135,9 +200,9 @@ export function ActivityScreen({
         <Card className="border-border/40 bg-card/40 p-6 text-center text-sm text-muted-foreground">
           {t("empty")}
         </Card>
-      ) : (
+      ) : view === "date" ? (
         <>
-          {groups.map((g) => (
+          {dateGroups.map((g) => (
             <section key={g.date} className="flex flex-col gap-1">
               <p className="sticky top-0 z-10 -mx-1 bg-background/85 px-2 py-1.5 text-xs uppercase tracking-[0.14em] text-muted-foreground backdrop-blur supports-backdrop-filter:bg-background/70">
                 {g.date}
@@ -179,9 +244,170 @@ export function ActivityScreen({
             {t("seeAllHistory")}
           </Link>
         </>
+      ) : (
+        <MerchantGroups
+          groups={merchantGroups}
+          optionsAll={data.optionsAll}
+          locale={locale}
+          sectionLabels={sectionLabels}
+          txCountLabel={(n: number) => t("txCount", { n })}
+          seeAllHref="/transactions"
+          seeAllLabel={t("seeAllHistory")}
+        />
       )}
     </main>
   );
+}
+
+function MerchantGroups({
+  groups,
+  optionsAll,
+  locale,
+  sectionLabels,
+  txCountLabel,
+  seeAllHref,
+  seeAllLabel,
+}: {
+  groups: Array<{
+    key: string;
+    displayName: string;
+    txns: Txn[];
+    paidCents: number;
+    receivedCents: number;
+  }>;
+  optionsAll: OptionsAll;
+  locale: string;
+  sectionLabels: Record<Section, string>;
+  txCountLabel: (n: number) => string;
+  seeAllHref: "/transactions";
+  seeAllLabel: string;
+}) {
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const toggle = (key: string) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  return (
+    <>
+      <Card className="border-border/40 bg-card/60 p-2">
+        <ul className="divide-y divide-border/40">
+          {groups.map((g) => {
+            const isOpen = expanded.has(g.key);
+            return (
+              <li key={g.key} className="px-2">
+                <button
+                  type="button"
+                  onClick={() => toggle(g.key)}
+                  aria-expanded={isOpen}
+                  className="-mx-2 flex w-[calc(100%+1rem)] items-center gap-3 rounded px-2 py-3 text-left transition-colors hover:bg-card/40"
+                >
+                  <CounterpartyAvatar name={g.displayName} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">
+                      {g.displayName}
+                    </p>
+                    <p className="num text-xs text-muted-foreground">
+                      {txCountLabel(g.txns.length)}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    {g.paidCents > 0 ? (
+                      <p className="num whitespace-nowrap text-sm font-semibold">
+                        −{formatEURPrecise(g.paidCents / 100, locale)}
+                      </p>
+                    ) : null}
+                    {g.receivedCents > 0 ? (
+                      <p className="num whitespace-nowrap text-sm font-semibold text-primary">
+                        +{formatEURPrecise(g.receivedCents / 100, locale)}
+                      </p>
+                    ) : null}
+                  </div>
+                  <ChevronDown
+                    className={`size-4 shrink-0 text-muted-foreground transition-transform ${
+                      isOpen ? "rotate-180" : ""
+                    }`}
+                    aria-hidden
+                  />
+                </button>
+                {isOpen ? (
+                  <ul className="mb-2 ml-1 divide-y divide-border/40 border-l border-border/40 pl-2">
+                    {g.txns.map((r) => {
+                      const optsForScope = optionsAll.filter(
+                        (o) => o.scope === r.owner,
+                      );
+                      return (
+                        <li key={r.id} className="px-1">
+                          <ActivityRow
+                            tx={{
+                              id: r.id,
+                              counterparty: r.counterparty,
+                              description: r.description,
+                              bookingDate: r.bookingDate,
+                              amountCents: r.amountCents,
+                              matchedItemId: r.matchedItemId,
+                              matchedName: r.matchedName,
+                              owner: r.owner,
+                            }}
+                            options={optsForScope}
+                            locale={locale}
+                            sectionLabels={sectionLabels}
+                          />
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : null}
+              </li>
+            );
+          })}
+        </ul>
+      </Card>
+      <Link
+        href={seeAllHref}
+        className="text-center text-xs text-primary underline-offset-2 hover:underline"
+      >
+        {seeAllLabel}
+      </Link>
+    </>
+  );
+}
+
+function ViewPill({
+  href,
+  active,
+  children,
+}: {
+  href: string;
+  active: boolean;
+  children: React.ReactNode;
+}) {
+  // Plain anchor (not next-intl Link) so we can pass a relative
+  // query-string-only href cheaply. Same-page nav, scope/anchor
+  // already in `sp`.
+  return (
+    <a
+      href={href}
+      aria-current={active ? "page" : undefined}
+      className={`rounded-full px-2.5 py-1 uppercase tracking-[0.08em] transition-colors ${
+        active
+          ? "bg-primary text-primary-foreground"
+          : "text-muted-foreground hover:text-foreground"
+      }`}
+    >
+      {children}
+    </a>
+  );
+}
+
+function makeViewHref(sp: URLSearchParams, view: ActivityView): string {
+  const next = new URLSearchParams(sp.toString());
+  if (view === "date") next.delete("view");
+  else next.set("view", view);
+  const s = next.toString();
+  return s ? `?${s}` : "?";
 }
 
 function formatGroupDate(d: Date, locale: string): string {
