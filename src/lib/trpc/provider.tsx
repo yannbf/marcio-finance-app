@@ -33,9 +33,16 @@ export function TrpcProvider({ children }: { children: ReactNode }) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            staleTime: 30_000,
+            // Source data refreshes once a day via Vercel cron at 06:00
+            // UTC (Google Sheet + Enable Banking). Real-time mutations
+            // by either partner invalidate the relevant queries
+            // explicitly, so a stale window of an hour is safe and
+            // dramatically reduces cold-function calls. The
+            // refetch-on-focus below catches the cross-partner case
+            // (Camila assigns a tx → Yann opens his tab) for free.
+            staleTime: 60 * 60_000, // 1 hour
             gcTime: 1000 * 60 * 60 * 24, // 24h — kept around for persister
-            refetchOnWindowFocus: false,
+            refetchOnWindowFocus: true,
             retry: 1,
           },
         },

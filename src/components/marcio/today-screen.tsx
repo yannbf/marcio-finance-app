@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card.tsx";
@@ -150,14 +151,14 @@ export function TodayScreen({
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col gap-5 px-5 pb-32 pt-8">
       <header className="flex flex-col gap-3">
         <div className="flex items-baseline justify-between">
-          <div>
+          <CachePurgeHandle>
             <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
               {t("Brand.name")}
             </p>
             <h1 className="mt-1 text-2xl font-semibold tracking-tight">
               {t("Today.spentSoFar")}
             </h1>
-          </div>
+          </CachePurgeHandle>
           <Badge variant="secondary" className="gap-1.5 px-2.5 py-1">
             <Calendar className="size-3" />
             {t("Today.untilPayday", { days: daysUntilPayday })}
@@ -385,6 +386,83 @@ export function TodayScreen({
         deployedAtRaw={process.env.BUILD_COMMIT_TIME}
       />
     </main>
+  );
+}
+
+/**
+ * Wraps the Today header brand+heading and turns it into a long-press
+ * "nuke the cache" handle. On a 700 ms hold, drop every TanStack
+ * Query entry, wipe the persister's sessionStorage key, and refetch
+ * everything from scratch. Useful when the cron just landed new sheet
+ * data and the user wants to skip the staleTime wait.
+ *
+ * Visual feedback during the hold so the gesture is discoverable: a
+ * subtle ring + scale that grows over the duration, plus a brief
+ * "Refreshed" badge after the purge fires.
+ */
+const PURGE_HOLD_MS = 700;
+const PERSISTER_KEY = "marcio-query-cache-v3";
+
+function CachePurgeHandle({ children }: { children: React.ReactNode }) {
+  const queryClient = useQueryClient();
+  const [holding, setHolding] = useState(false);
+  const [flash, setFlash] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function start() {
+    setHolding(true);
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => {
+      try {
+        window.sessionStorage.removeItem(PERSISTER_KEY);
+      } catch {
+        // sessionStorage may be disabled; the QueryClient.clear() below
+        // is enough on its own.
+      }
+      queryClient.clear();
+      void queryClient.invalidateQueries();
+      setFlash(true);
+      setTimeout(() => setFlash(false), 1200);
+      // Light haptic if the browser supports it — confirms the
+      // gesture without needing visual focus.
+      if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+        try {
+          (navigator as Navigator).vibrate?.(30);
+        } catch {
+          // Vibration may be permission-gated; not critical.
+        }
+      }
+    }, PURGE_HOLD_MS);
+  }
+  function cancel() {
+    setHolding(false);
+    if (timer.current) {
+      clearTimeout(timer.current);
+      timer.current = null;
+    }
+  }
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+
+  return (
+    <div
+      onPointerDown={start}
+      onPointerUp={cancel}
+      onPointerLeave={cancel}
+      onPointerCancel={cancel}
+      onContextMenu={(e) => e.preventDefault()}
+      className={
+        "-m-2 select-none rounded-lg p-2 transition-[transform,background-color,box-shadow] duration-200 " +
+        (flash
+          ? "scale-[1.01] bg-primary/10 ring-1 ring-primary/40"
+          : holding
+            ? "scale-[0.99] bg-card/60 ring-1 ring-primary/20"
+            : "")
+      }
+      style={{ touchAction: "manipulation" }}
+      aria-label="Long-press to refresh data"
+    >
+      {children}
+    </div>
   );
 }
 
