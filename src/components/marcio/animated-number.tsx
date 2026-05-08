@@ -8,6 +8,11 @@ type Props = {
   /** Intl options. */
   locale: string;
   currency?: string;
+  /**
+   * Defaults to 2 when a `currency` is set (cents), 0 otherwise. The app
+   * keeps cents in every currency display — pass an explicit override
+   * only when rendering a non-monetary count.
+   */
   fractionDigits?: number;
   className?: string;
   /** Animation duration in seconds. */
@@ -31,21 +36,25 @@ export function AnimatedNumber({
   value,
   locale,
   currency,
-  fractionDigits = 0,
+  fractionDigits,
   className,
   duration = 0.7,
   cacheKey,
 }: Props) {
+  // Currency formatting defaults to cents — the household wants the
+  // exact value everywhere, no rounding. Plain-decimal stays at 0
+  // unless a count needs decimals.
+  const digits = fractionDigits ?? (currency ? 2 : 0);
   const formatter = useMemo(
     () =>
       new Intl.NumberFormat(locale, {
         ...(currency
           ? { style: "currency", currency }
           : { style: "decimal" }),
-        minimumFractionDigits: fractionDigits,
-        maximumFractionDigits: fractionDigits,
+        minimumFractionDigits: digits,
+        maximumFractionDigits: digits,
       }),
-    [locale, currency, fractionDigits],
+    [locale, currency, digits],
   );
 
   const cacheKeyFull = cacheKey ? `${CACHE_PREFIX}${cacheKey}` : null;
