@@ -1,11 +1,8 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import {
-  PersistQueryClientProvider,
-  type Persister,
-} from "@tanstack/react-query-persist-client";
+import { persistQueryClient } from "@tanstack/query-persist-client-core";
 import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
 import { httpBatchLink } from "@trpc/client";
 import superjson from "superjson";
@@ -16,11 +13,19 @@ import { trpc } from "./client.ts";
  * shell. Stale-time defaults are tuned for "freshness within a session":
  * 30s before refetching on focus, infinite for the per-session cache.
  *
- * The cache is mirrored into sessionStorage (per-tab) via
- * PersistQueryClientProvider so a hard reload of the same tab restores
- * the previous data instantly while the network request fires in the
- * background. localStorage would survive cross-tab but also survives
- * sign-out, which we don't want.
+ * The cache is mirrored into sessionStorage (per-tab) so a hard reload of
+ * the same tab restores the previous data instantly. localStorage would
+ * survive cross-tab but also survives sign-out, which we don't want.
+ *
+ * The persister attaches via `persistQueryClient` in a layout effect
+ * AFTER the first render, instead of going through
+ * `PersistQueryClientProvider`. The provider gates every query behind
+ * `isRestoring` until the async persister's restoreClient resolves —
+ * that gate never lifted in our fresh-tab traces (the queries simply
+ * never fired), which produced empty pages in headless browsers and
+ * recurring "stuck on skeleton" reports. Detaching the persister from
+ * the provider keeps the cache mirroring behaviour while letting
+ * queries fire on the very first paint.
  */
 export function TrpcProvider({ children }: { children: ReactNode }) {
   const [queryClient] = useState(
@@ -37,40 +42,6 @@ export function TrpcProvider({ children }: { children: ReactNode }) {
       }),
   );
 
-  const [persister] = useState<Persister | null>(() => {
-    if (typeof window === "undefined") return null;
-    try {
-      // One-time cleanup of the pre-superjson cache key so it doesn't sit
-      // in sessionStorage forever. Cheap, idempotent, no-op once it's gone.
-      try {
-        window.sessionStorage.removeItem("marcio-query-cache-v1");
-      } catch {
-        // sessionStorage might be disabled (private mode, quota) — ignore.
-      }
-      return createAsyncStoragePersister({
-        // sessionStorage is sync, but the async persister accepts it — the
-        // get/set methods are awaited regardless and `Promise.resolve` of a
-        // sync return value is a no-op. The sync persister was deprecated
-        // in @tanstack/query 5.x.
-        storage: window.sessionStorage,
-        // Bumped from v1 → v2 because the serializer changed shape (plain
-        // JSON → superjson). Old entries become unreadable; bumping the key
-        // sidesteps that by starting fresh on first load post-deploy.
-        key: "marcio-query-cache-v2",
-        // superjson preserves Date / Set / Map / BigInt / undefined across a
-        // round-trip, which plain JSON.stringify silently drops to strings
-        // (or omits). Without this, code that calls Date methods on a
-        // restored cache value crashes — see the BankConnections regression
-        // where `expiresAt.getTime()` threw because the restored value was
-        // an ISO string.
-        serialize: (data) => superjson.stringify(data),
-        deserialize: (s) => superjson.parse(s),
-      });
-    } catch {
-      return null;
-    }
-  });
-
   const [client] = useState(() =>
     trpc.createClient({
       links: [
@@ -82,29 +53,54 @@ export function TrpcProvider({ children }: { children: ReactNode }) {
     }),
   );
 
-  // SSR has no window → no persister → fall back to a plain
-  // QueryClientProvider. Hydration creates the persister via the
-  // useState init and renders the persistent variant from then on.
+  // Attach the sessionStorage persister after first paint. Subsequent
+  // cache events flow through `persistQueryClientSubscribe` (started by
+  // `persistQueryClient`'s restorePromise.then(...)). Restoring on a
+  // fresh tab is a no-op (sessionStorage starts empty), so the small
+  // delay is invisible to the user. On a hard reload the previous
+  // dehydrated state lands once the effect resolves.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      window.sessionStorage.removeItem("marcio-query-cache-v1");
+    } catch {
+      // sessionStorage may be disabled (private mode / quota) — ignore.
+    }
+    let storage: Storage | null;
+    try {
+      storage = window.sessionStorage;
+    } catch {
+      return;
+    }
+    const persister = createAsyncStoragePersister({
+      storage,
+      // Bumped to v2 when the serializer changed to superjson; bumping
+      // the key starts everyone fresh post-deploy. Bumped to v3 when we
+      // detached from PersistQueryClientProvider — entries written by
+      // the old code path were never restored under the new flow, so a
+      // version bump avoids stale reads on first load.
+      key: "marcio-query-cache-v3",
+      // superjson preserves Date / Set / Map / BigInt / undefined across
+      // a round-trip; plain JSON would drop them.
+      serialize: (data) => superjson.stringify(data),
+      deserialize: (s) => superjson.parse(s),
+    });
+    const [unsubscribe] = persistQueryClient({
+      queryClient,
+      persister,
+      maxAge: 1000 * 60 * 30, // 30 min — older entries refetch
+      dehydrateOptions: {
+        shouldDehydrateQuery: (q) => q.state.status === "success",
+      },
+    });
+    return () => unsubscribe();
+  }, [queryClient]);
+
   return (
     <trpc.Provider client={client} queryClient={queryClient}>
-      {persister ? (
-        <PersistQueryClientProvider
-          client={queryClient}
-          persistOptions={{
-            persister,
-            maxAge: 1000 * 60 * 30, // 30 min — older entries refetch
-            dehydrateOptions: {
-              shouldDehydrateQuery: (q) => q.state.status === "success",
-            },
-          }}
-        >
-          {children}
-        </PersistQueryClientProvider>
-      ) : (
-        <QueryClientProvider client={queryClient}>
-          {children}
-        </QueryClientProvider>
-      )}
+      <QueryClientProvider client={queryClient}>
+        {children}
+      </QueryClientProvider>
     </trpc.Provider>
   );
 }

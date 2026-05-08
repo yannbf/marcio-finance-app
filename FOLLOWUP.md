@@ -128,19 +128,25 @@ The engine is good for v1; these are the next step.
 - [x] **Numbers larger than the avatar** — `whitespace-nowrap` on the
   amount span landed earlier (see `transaction-row.tsx`).
 
-## 9. Tests
+## 9. Tests ✅ (mostly)
 
-Currently zero. Areas where tests would actually catch regressions:
+Three layers, all run against PGlite — no cloud, no Docker:
 
-- [ ] **Sheet parser** — feed `/tmp/budget.xlsx` and snapshot the
-  parsed structure. Catches accidental TOTAL_TOKENS regressions and
-  column-shift bugs.
-- [ ] **Payday-month math** — `paydayMonthFor(date, dayN)` for edge
-  cases (Jan 1, Feb 29 leap year, day 28 boundary).
-- [ ] **Matching engine** — given fixture rules + transactions,
-  assert outputs.
+- [x] **Unit tests** (Vitest) for payday math, slug, fingerprint,
+  rule-confidence, cadence, Tikkie parser. ~60 tests, sub-second.
+- [x] **Integration tests** (Vitest + PGlite) for the matching engine,
+  sheet upsert, budget aggregates, and tRPC routers (`today`,
+  `inbox`, `transactions`, `tikkie`, `buckets`, `settings`). ~50 tests,
+  ~5 s total.
+- [x] **E2E** (Playwright + PGlite) — full suite green except the two
+  sign-in tests that need a no-bypass dev server (gated behind
+  `MARCIO_E2E_TEST_AUTH=1`) and one activity-row sheet test that
+  hits a base-ui pointer-event quirk under headless emulation.
+- [ ] **Sheet parser snapshot** — feed `/tmp/budget.xlsx` and snapshot
+  the parsed structure. Still missing; catches accidental
+  `TOTAL_TOKENS` regressions and column-shift bugs.
 
-Ship as Vitest in `code/test/` with `pnpm test` script.
+See `TESTING.md` for the full developer-facing doc.
 
 ## 10. Multi-month backlog (surfaced after 90-day Enable Banking sync)
 
@@ -151,31 +157,22 @@ The full feature set was shipped between commits `b698973` and `1c42133`
 remains is just test infra and a few opinionated items that aren't worth
 doing speculatively.
 
-### Test infra
+### Test infra ✅
 
-- [ ] **Swap the E2E Neon branch for PGlite.** `tests/e2e/setup/seed.ts`
-  currently requires `MARCIO_E2E_DATABASE_URL` pointing at a separate
-  Neon branch. PGlite (`@electric-sql/pglite` + `pglite-server`) is a
-  real Postgres compiled to WASM that runs in-process — no Docker, no
-  cloud, no second DB to admin. Drizzle has a `drizzle-orm/pglite`
-  adapter. Same schema, same SQL semantics. Should remove the
-  `MARCIO_E2E_DATABASE_URL` requirement entirely.
-- [ ] **Fix the Playwright hydration mismatch (rest of the screens).**
-  The current E2E suite fails because the server-rendered loading
-  skeleton doesn't match the hydrated client (`PersistQueryClientProvider`
-  with the async persister + iPhone emulation). Real browsers recover
-  transparently; Playwright doesn't, and tests time out without the tRPC
-  fetch ever firing. The Today header badge was already fixed in
-  `5778d35` by pre-computing days-until-payday on the server and
-  passing it as `defaultDaysUntilPayday`. Apply the same shape to the
-  other screens that show data-dependent UI in the header — likely
-  Month, Activity, Insights, Buckets, Tikkie. Or globally: gate every
-  screen render behind a `mounted` flag.
-- [ ] **Add a Vitest integration layer.** Right now the only test suite
-  is Playwright, which forces UI rendering for every assertion. Most
-  logic bugs (matching engine, payday math, sync field mapping) would
-  be better caught by direct tRPC + DB tests. Vitest + PGlite gives
-  millisecond-fast tests that exercise real SQL without a browser.
+- [x] **Swap the E2E Neon branch for PGlite.** Done. `tests/support/`
+  hosts the PGlite + pglite-socket harness; both Vitest and Playwright
+  use it. `MARCIO_E2E_DATABASE_URL` is no longer referenced anywhere.
+- [x] **Fix the Playwright hydration mismatch.** Done — the actual
+  cause was Next 16's `allowedDevOrigins` default blocking the dev
+  server's own HMR/turbopack chunks when accessed via `127.0.0.1`,
+  which prevented React from hydrating at all. Adding `127.0.0.1` /
+  `localhost` to `allowedDevOrigins` in `next.config.ts` made every
+  screen tick. (Also detached the persister from
+  `PersistQueryClientProvider` so queries don't gate on
+  `restoreClient` — see commit notes in `src/lib/trpc/provider.tsx`.)
+- [x] **Add a Vitest integration layer.** Done. `tests/integration/`
+  exercises the matching engine, sheet upsert, budget aggregates, and
+  every tRPC router against a real PGlite-backed Postgres.
 
 ### Deferred (not worth doing speculatively)
 

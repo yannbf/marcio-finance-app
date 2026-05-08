@@ -43,25 +43,23 @@ export function ActivityRow({ tx, options, locale, sectionLabels }: Props) {
   return (
     <BudgetItemPicker
       trigger={
-        <div className="rounded transition-colors hover:bg-card/40">
-          <TransactionRow
-            counterparty={tx.counterparty}
-            description={tx.description}
-            bookingDate={new Date(tx.bookingDate)}
-            amountCents={tx.amountCents}
-            locale={locale}
-            matchedLabel={tx.matchedName}
-            unmatched={!tx.matchedName}
-            anomaly={tx.anomaly}
-            unusualLabel={
-              tx.anomaly
-                ? tActivity("unusuallyHigh", {
-                    mean: formatEURPrecise(tx.anomaly.meanCents / 100, locale),
-                  })
-                : undefined
-            }
-          />
-        </div>
+        <TransactionRow
+          counterparty={tx.counterparty}
+          description={tx.description}
+          bookingDate={new Date(tx.bookingDate)}
+          amountCents={tx.amountCents}
+          locale={locale}
+          matchedLabel={tx.matchedName}
+          unmatched={!tx.matchedName}
+          anomaly={tx.anomaly}
+          unusualLabel={
+            tx.anomaly
+              ? tActivity("unusuallyHigh", {
+                  mean: formatEURPrecise(tx.anomaly.meanCents / 100, locale),
+                })
+              : undefined
+          }
+        />
       }
       options={options}
       sectionLabels={sectionLabels}

@@ -29,6 +29,20 @@ function captureBuildCommitTime(): string {
 
 const nextConfig: NextConfig = {
   typedRoutes: true,
+  // Use a separate `.next-e2e` build dir for the Playwright dev server so
+  // its dev-server lockfile (Next 16) doesn't collide with a `pnpm dev`
+  // preview running in parallel — Next hard-exits the second `next dev`
+  // when both share the same `.next/dev/lock`. Activated only by the
+  // Playwright harness via MARCIO_E2E=1.
+  ...(process.env.MARCIO_E2E === "1" ? { distDir: ".next-e2e" } : {}),
+  // Next 16 blocks cross-origin requests to `_next/*` dev resources by
+  // default. When the dev server binds to `0.0.0.0`/`127.0.0.1` and the
+  // browser hits it via `127.0.0.1` (Playwright's default), the HMR /
+  // turbopack client modules are blocked, which prevents the React tree
+  // from hydrating and queries never fire. Allow-list 127.0.0.1 so the
+  // E2E suite (and anyone running `next dev` against a non-`localhost`
+  // host) can fetch its own dev assets.
+  allowedDevOrigins: ["127.0.0.1", "localhost"],
   experimental: {
     // Enable React's <ViewTransition> hooks so the locale layout can wrap
     // the page tree and get free cross-fades on every nav.

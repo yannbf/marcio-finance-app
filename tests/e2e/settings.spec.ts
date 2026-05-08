@@ -8,11 +8,11 @@ test.describe("Settings", () => {
     await expect(
       page.getByRole("heading", { name: /Configuration/ }),
     ).toBeVisible();
-    await expect(page.getByText("Banks & accounts")).toBeVisible();
-    await expect(page.getByText("Savings accounts")).toBeVisible();
+    await expect(page.getByText("Banks & accounts").first()).toBeVisible();
+    await expect(page.getByText("Savings accounts").first()).toBeVisible();
     await expect(page.getByText("Inbox").first()).toBeVisible();
     await expect(page.getByText(/Month rollover/)).toBeVisible();
-    await expect(page.getByText(/Theme/)).toBeVisible();
+    await expect(page.getByText(/Theme/).first()).toBeVisible();
     // Sign-out present because dev user is signed in.
     await expect(
       page.getByRole("button", { name: /Sign out/ }),

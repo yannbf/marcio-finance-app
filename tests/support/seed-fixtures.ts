@@ -323,26 +323,28 @@ export const TEST_TRANSACTIONS: Array<{
     amountCents: -800,
   },
 
-  /* JOINT — Tikkie-shaped split-the-bill rows */
+  /* JOINT — Tikkie-shaped split-the-bill rows. The descriptions follow
+     ING's "Tikkie ID …, <topic>, Van <Name>, <iban>" format so
+     parseTikkiePerson can pull a friendly name out of them. */
   {
     accountKey: "joint",
     bookingDate: "2026-05-03",
     counterparty: "AAB INZ TIKKIE",
-    description: "Tikkie split with friend Alpha",
+    description: "Tikkie ID 100001, Drinks, Van Alpha, NL00ABNA",
     amountCents: -1200,
   },
   {
     accountKey: "joint",
     bookingDate: "2026-05-04",
     counterparty: "AAB INZ TIKKIE",
-    description: "Tikkie split with friend Alpha 2",
+    description: "Tikkie ID 100002, Drinks, Van Alpha, NL00ABNA",
     amountCents: -800,
   },
   {
     accountKey: "joint",
     bookingDate: "2026-05-04",
     counterparty: "AAB INZ TIKKIE",
-    description: "Tikkie payback from friend Beta",
+    description: "Tikkie ID 100003, Movies, Van Beta, NL00ABNA",
     amountCents: 1500,
   },
 

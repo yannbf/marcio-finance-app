@@ -40,6 +40,10 @@ export function IosInstallHint() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (alreadyDismissed()) return;
+    // Browsers under automation (Playwright, Puppeteer, Selenium) set
+    // `navigator.webdriver` to true. Suppress the hint there so the
+    // overlay doesn't intercept clicks on the buttons being tested.
+    if (navigator.webdriver) return;
 
     const ua = navigator.userAgent;
     const isIos = /iPhone|iPad|iPod/.test(ua);

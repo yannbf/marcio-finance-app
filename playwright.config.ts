@@ -1,54 +1,54 @@
 import { defineConfig, devices } from "@playwright/test";
 import { config as loadEnv } from "dotenv";
 
-// Read MARCIO_E2E_DATABASE_URL from .env.test.local first (preferred for CI
-// or split setups), then .env.local (typical local dev setup). Without this
-// the config inlines an empty TEST_DB into the webServer env block and the
-// dev server crashes during boot with "DATABASE_URL is not set".
+// Load whatever the developer has in `.env.test.local` first (lets you
+// override the PGlite port for debugging), then fall back to `.env.local`.
+// Neither file is required.
 loadEnv({ path: ".env.test.local" });
 loadEnv({ path: ".env.local" });
 
 /**
  * Playwright config for Marcio's E2E tests.
  *
- * Setup expectations:
- *   - MARCIO_E2E_DATABASE_URL must point at a Postgres you're happy to wipe
- *     (a dedicated Neon branch is the intended setup). Required.
- *   - MARCIO_DEV_AS=yann is forced for the dev server so tests bypass real
- *     OAuth.
+ * Test infrastructure:
+ *   - The DB is an in-process PGlite instance exposed over a TCP socket via
+ *     `pglite-socket`. globalSetup boots it, pushes the schema, runs the
+ *     seed, then leaves the socket alive for the duration of the test
+ *     run. The Next.js dev server connects to it through DATABASE_URL like
+ *     it would any real Postgres — no driver swap, no second branch to
+ *     babysit, no cloud dependency.
+ *   - Auth: `MARCIO_DEV_AS=yann` short-circuits OAuth in non-prod builds.
+ *
+ * Override `MARCIO_E2E_PG_PORT` if 5544 collides with something else on
+ * the host. Otherwise everything is zero-config.
  *
  * Run:
  *   pnpm test:e2e             headless
  *   pnpm test:e2e:ui          interactive
- *   pnpm test:e2e:seed        wipe + reseed only
  */
 
 const PORT = Number(process.env.E2E_PORT ?? 3100);
 const BASE_URL = `http://127.0.0.1:${PORT}`;
 
-const TEST_DB = process.env.MARCIO_E2E_DATABASE_URL;
-if (!TEST_DB) {
-  // Don't crash here — let the global-setup print a clean message. Just
-  // warn loudly so CI noise points at the right thing.
-  // eslint-disable-next-line no-console
-  console.warn(
-    "[playwright] MARCIO_E2E_DATABASE_URL is not set. The test run will fail in globalSetup.",
-  );
-}
+const PG_PORT = Number(process.env.MARCIO_E2E_PG_PORT ?? 5544);
+const PG_URL = `postgres://postgres:postgres@127.0.0.1:${PG_PORT}/postgres?sslmode=disable`;
 
 export default defineConfig({
   testDir: "./tests/e2e",
   testMatch: /.*\.spec\.ts$/,
-  // Per-test cap (60s default + buffer for cold Neon pooler on first hit).
-  timeout: 90_000,
-  // Per-assertion timeout. Cold-start tRPC round-trips against the e2e
-  // Neon branch can run 10–20s on the first query of a session.
-  expect: { timeout: 30_000 },
-  fullyParallel: false,        // share one DB → sequential is safer
+  // Per-test cap. PGlite is fast (sub-second cold start) so the previous
+  // 90 s buffer for a cold Neon pooler is overkill — but Next 16's first
+  // compile of an unvisited route still costs ~10 s, so leave headroom.
+  timeout: 60_000,
+  // Per-assertion timeout. PGlite + warm Next dev = single-digit ms; keep
+  // 15 s for the very first request of a route while Next compiles it.
+  expect: { timeout: 15_000 },
+  fullyParallel: false, // share one DB → sequential is safer
   workers: 1,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [["github"], ["list"]] : "list",
   globalSetup: "./tests/e2e/setup/global-setup.ts",
+  globalTeardown: "./tests/e2e/setup/global-teardown.ts",
   use: {
     baseURL: BASE_URL,
     trace: "retain-on-failure",
@@ -68,21 +68,10 @@ export default defineConfig({
       },
     },
   ],
-  webServer: {
-    command: `pnpm dev -p ${PORT}`,
-    url: `${BASE_URL}/en/sign-in`,
-    reuseExistingServer: false,
-    stdout: "pipe",
-    stderr: "pipe",
-    timeout: 120_000,
-    env: {
-      // Bypass Google OAuth for the test run — middleware sees this and
-      // skips the redirect, getCurrentUser returns the synthetic user.
-      MARCIO_DEV_AS: "yann",
-      DATABASE_URL: TEST_DB ?? "",
-      // i18n cookie etc. don't carry between server restarts; tests set
-      // their own cookies/state where needed.
-      NODE_ENV: "development",
-    },
-  },
+  // The dev server is spawned manually inside globalSetup (after PGlite
+  // is ready). Playwright's built-in `webServer` would race the DB:
+  // `MARCIO_DEV_AS=yann` makes every request hit the user table, and
+  // Playwright reaches the readiness URL before globalSetup ever runs.
 });
+
+export { PORT, PG_PORT, PG_URL, BASE_URL };

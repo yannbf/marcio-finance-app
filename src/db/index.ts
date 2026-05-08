@@ -15,7 +15,18 @@ function client() {
     );
   }
   if (!globalThis.__marcioPg) {
-    globalThis.__marcioPg = postgres(url, { prepare: false });
+    // PGlite-backed test setups expose Postgres over a socket but the
+    // wire layer is single-threaded — concurrent connections from
+    // postgres-js trigger ECONNRESET under load. The Playwright/Vitest
+    // harnesses set MARCIO_E2E=1; in that mode we cap the pool at one
+    // connection so queries serialise. Production keeps the default.
+    const pgliteMode = process.env.MARCIO_E2E === "1";
+    globalThis.__marcioPg = postgres(url, {
+      prepare: false,
+      ...(pgliteMode
+        ? { max: 1, idle_timeout: 0, max_lifetime: 0 }
+        : {}),
+    });
   }
   return globalThis.__marcioPg;
 }

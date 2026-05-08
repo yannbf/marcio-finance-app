@@ -10,9 +10,10 @@ test.describe("Insights", () => {
     ).toBeVisible();
     // Top categories card.
     await expect(page.getByText("Top categories")).toBeVisible();
-    // Top merchants card. Foobar Market is the most-frequent merchant in
-    // the seed (two grocery txns) so it should land in the list.
+    // Top merchants card. Albert Heijn is the most-frequent merchant in
+    // the seed (two grocery txns under different city tails) so it
+    // should collapse to one row in the list.
     await expect(page.getByText("Top merchants")).toBeVisible();
-    await expect(page.getByText("Foobar Market")).toBeVisible();
+    await expect(page.getByText(/Albert Heijn/).first()).toBeVisible();
   });
 });

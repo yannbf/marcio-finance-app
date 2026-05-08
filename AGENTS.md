@@ -106,7 +106,15 @@ scripts/
 vercel.json                       Cron config: 0 6 * * * → /api/cron/import-sheet
 public/theme-init.js              Pre-paint theme bootstrap (loaded from <head>)
 
-tests/e2e/                        Playwright suite — see TESTING.md
+tests/
+  unit/                           Vitest — pure logic, sub-second
+  integration/                    Vitest + PGlite — DB-backed router/engine tests
+  e2e/                            Playwright + PGlite — see TESTING.md
+  support/
+    pglite-server.ts              Boots PGlite + pglite-socket + pushes schema
+    test-db.ts                    `withTestDb()` helper for Vitest suites
+    seed.ts + seed-fixtures.ts    Synthetic fixtures (no PII), shared by all layers
+    trpc-caller.ts                makeAuthedCaller(role) for in-process tRPC tests
 
 public/logos/                     23 brand SVGs/PNGs for the counterparty avatar
 public/manifest.webmanifest       PWA manifest + icons
@@ -343,25 +351,33 @@ for list/CRUD work (Banks, Savings).
 - **base-ui Popover/Sheet** uses `render` props for asChild-style behavior;
   it doesn't accept `asChild`. Don't try to port radix patterns directly.
 
-## Verifying changes (when Playwright is broken or too slow)
+## Verifying changes
 
-The Playwright suite is currently unreliable (cold Neon pooler + a
-hydration mismatch in mobile emulation — see `FOLLOWUP.md` §10). Until
-the test infra is fixed, the workflow that catches the most real bugs
-fastest is:
+Three layers, ordered by speed (run them in this order):
 
 1. **`pnpm typecheck`** before every commit. Cheap, catches contract
    drift between routers and screens. Non-negotiable.
 
-2. **Run `pnpm dev` locally pointing at a real DB.** The `.env.local`
-   `DATABASE_URL` is the production Neon branch by default — running
-   `pnpm dev` reads that and gives you the actual prod data to verify
-   against. Read-only flows (most screens) are safe to test this way;
-   anything that mutates (assigning transactions, sync triggers,
-   disconnect) should be done against the e2e branch by overriding
-   `DATABASE_URL=$MARCIO_E2E_DATABASE_URL pnpm dev` first.
+2. **`pnpm test`** — Vitest unit + integration suites against PGlite.
+   ~5 s end-to-end. The integration layer exercises real SQL through
+   the same Drizzle/postgres-js path production uses, so most logic
+   regressions (matching engine, payday math, sheet upsert, every
+   tRPC router) surface here without firing up a browser.
 
-3. **Drive the dev server with the Chrome MCP**, not just curl:
+3. **`pnpm test:e2e`** — Playwright + PGlite. ~25 s. The dev server
+   spins up against an in-process Postgres seeded with the synthetic
+   fixtures in `tests/support/seed-fixtures.ts`. No cloud dependency,
+   no Neon branch to maintain. See `TESTING.md` for the developer
+   walk-through.
+
+4. **Run `pnpm dev` locally pointing at a real DB** when you need to
+   eyeball something against production-shaped data. The `.env.local`
+   `DATABASE_URL` is the production Neon branch by default — read-only
+   flows are safe to verify this way; anything that mutates should be
+   done against the test PGlite instead (`pnpm test:e2e:ui` will give
+   you an interactive Playwright session against the seeded DB).
+
+5. **Drive the dev server with the Chrome MCP**, not just curl:
    - `mcp__Claude_in_Chrome__navigate` to load the page in a real
      browser (TanStack Query, persister, view-transitions, hydration —
      the whole client runtime).
@@ -376,7 +392,7 @@ fastest is:
      directly on a button when the CDP click action times out (it
      intermittently does in long sessions).
 
-4. **Probe tRPC endpoints directly** as a sanity check the data is
+6. **Probe tRPC endpoints directly** as a sanity check the data is
    actually flowing:
    ```sh
    curl -s "http://localhost:3100/api/rpc/today.get?batch=1&input=%7B%220%22%3A%7B%22json%22%3A%7B%22scope%22%3A%22joint%22%7D%7D%7D" \
@@ -388,16 +404,18 @@ fastest is:
    bugs in the multi-month series — most importantly the sign-flipped
    sync rows that were cancelling spend totals to ~€0.
 
-5. **Don't trust SSR-rendered HTML** to verify client-fetched data.
+7. **Don't trust SSR-rendered HTML** to verify client-fetched data.
    `useQuery` returns `{data: undefined, isLoading: true}` server-side,
    so the SSR HTML is always the loading skeleton. The data only
    arrives after hydration runs in a real browser.
 
-6. **Spot-check both with and without the persister cache.** Open the
-   page once to populate `marcio-query-cache-v2` in sessionStorage, then
-   reload to exercise the restore-from-cache path. The
-   `expiresAt.getTime is not a function` regression only fired on the
-   second load, not the first.
+8. **Spot-check both with and without the persister cache.** Open the
+   page once to populate `marcio-query-cache-v3` in sessionStorage, then
+   reload to exercise the restore-from-cache path. The persister now
+   attaches in a `useEffect` (no longer through
+   `PersistQueryClientProvider`), so the first paint always fires
+   queries — but the second load still needs to read the cached
+   superjson payload back successfully.
 
 If you make a UI-touching change and you don't take a screenshot or read
 the console after it landed in a real browser, the change isn't really
