@@ -24,7 +24,7 @@
     "unusuallyHigh": "Unusual · usually {mean}",
     "viewByDate": "By date",
     "viewByAmount": "By amount",
-    "runningSpentAria": "Spent through {date}: {amount}"
+    "spentThrough": "Spent through {date}"
   },
   "Today": {
     "untilPayday": "{days, plural, one {# day} other {# days}} until payday",

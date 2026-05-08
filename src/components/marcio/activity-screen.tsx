@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { ChevronDown } from "lucide-react";
@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { Link } from "@/i18n/navigation.ts";
 import { ActivityRow } from "./activity-row.tsx";
+import { AnimatedNumber } from "./animated-number.tsx";
 import { CounterpartyAvatar } from "./counterparty-avatar.tsx";
 import { MonthScopeBar, parseSearch } from "./month-scope-bar.tsx";
 import { trpc } from "@/lib/trpc/client.ts";
@@ -67,45 +68,37 @@ export function ActivityScreen({
     [tSections],
   );
 
+  // Per-transaction running spend: cumulative qualifying outflow from the
+  // start of the payday-month up to and INCLUDING this txn. Same filter
+  // monthSpend uses (negative amount, internal transfers excluded).
+  // Powers the single animated "spent so far" indicator that ticks as
+  // each row scrolls past — mirrors ING's running-balance UX.
+  const txRunning = useMemo(() => {
+    if (!data) return new Map<string, number>();
+    const map = new Map<string, number>();
+    let running = data.monthSpend;
+    for (const r of data.txns) {
+      // Each txn is annotated with the cumulative INCLUDING itself; we
+      // then subtract its own contribution before moving to the next
+      // (older) row.
+      map.set(r.id, running);
+      if (r.amountCents < 0 && !isInternalTransferTx(r)) {
+        running -= -r.amountCents;
+      }
+    }
+    return map;
+  }, [data]);
+
   const dateGroups = useMemo(() => {
     if (!data || view !== "date") return [];
-    type DateGroup = {
-      date: string;
-      rows: Txn[];
-      // Cumulative qualifying outflow from the start of the payday-month
-      // up to and INCLUDING this date — same filter monthSpend uses
-      // (negative amount, internal transfers excluded). Mirrors ING's
-      // "spent so far" indicator pinned to the running date as the user
-      // scrolls.
-      runningSpentCents: number;
-    };
-    const out: (DateGroup & { spentTodayCents: number })[] = [];
+    const out: { date: string; rows: Txn[] }[] = [];
     for (const r of data.txns) {
       const key = formatGroupDate(new Date(r.bookingDate), locale);
       const last = out[out.length - 1];
-      const spend =
-        r.amountCents < 0 && !isInternalTransferTx(r) ? -r.amountCents : 0;
-      if (last && last.date === key) {
-        last.rows.push(r);
-        last.spentTodayCents += spend;
-      } else {
-        out.push({
-          date: key,
-          rows: [r],
-          spentTodayCents: spend,
-          runningSpentCents: 0,
-        });
-      }
+      if (last && last.date === key) last.rows.push(r);
+      else out.push({ date: key, rows: [r] });
     }
-    // Txns are returned newest-first. The newest visible group's running
-    // total IS the full month spend; each older group subtracts the
-    // newer days that scrolled past above it.
-    let running = data.monthSpend;
-    for (const g of out) {
-      g.runningSpentCents = running;
-      running -= g.spentTodayCents;
-    }
-    return out as DateGroup[];
+    return out;
   }, [data, locale, view]);
 
   // Merchant groups: collapse same-counterparty rows (after stripping
@@ -158,6 +151,78 @@ export function ActivityScreen({
     });
   }, [data, view]);
 
+  // The single animated "spent so far" indicator. As the user scrolls,
+  // we track which row sits at the indicator line just below the sticky
+  // headline card and feed its per-txn running cumulative into the
+  // headline's AnimatedNumber. ING-style — the headline ticks as every
+  // transaction crosses the line.
+  const indicatorRef = useRef<HTMLDivElement | null>(null);
+  const [scrolledRunningCents, setScrolledRunningCents] = useState<
+    number | null
+  >(null);
+  const [scrolledDateLabel, setScrolledDateLabel] = useState<string | null>(
+    null,
+  );
+
+  useEffect(() => {
+    if (view !== "date" || !data || data.txns.length === 0) {
+      setScrolledRunningCents(null);
+      setScrolledDateLabel(null);
+      return;
+    }
+    let raf: number | null = null;
+    const tick = () => {
+      raf = null;
+      const indicatorEl = indicatorRef.current;
+      if (!indicatorEl) return;
+      const rect = indicatorEl.getBoundingClientRect();
+      // Use a line just below the sticky headline. Rows whose top is at
+      // or above this line have already scrolled "past" the indicator;
+      // the most recently-passed one drives the displayed value.
+      const lineY = rect.bottom + 8;
+      const rows = document.querySelectorAll<HTMLElement>(
+        "[data-tx-running]",
+      );
+      let chosen: HTMLElement | null = null;
+      for (const row of rows) {
+        const r = row.getBoundingClientRect();
+        if (r.top <= lineY) chosen = row;
+        // Newest-first DOM order: once a row sits below the line, every
+        // subsequent (older) row is also below — bail out early.
+        else break;
+      }
+      if (!chosen) {
+        setScrolledRunningCents(null);
+        setScrolledDateLabel(null);
+        return;
+      }
+      const cents = Number(chosen.dataset.txRunning ?? "0");
+      const date = chosen.dataset.txDate ?? null;
+      setScrolledRunningCents(Number.isFinite(cents) ? cents : null);
+      setScrolledDateLabel(date);
+    };
+    const onScroll = () => {
+      if (raf == null) raf = requestAnimationFrame(tick);
+    };
+    tick();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (raf != null) cancelAnimationFrame(raf);
+    };
+  }, [view, data]);
+
+  // Indicator value: while in date view and a row has crossed the line,
+  // show the per-txn cumulative; otherwise show the headline month total.
+  const headlineCents =
+    view === "date" && scrolledRunningCents != null
+      ? scrolledRunningCents
+      : (data?.monthSpend ?? 0);
+  const headlineTitle =
+    view === "date" && scrolledDateLabel
+      ? t("spentThrough", { date: scrolledDateLabel })
+      : t("monthSpend");
+
   return (
     <main className="mx-auto flex w-full max-w-md flex-col gap-5 px-5 pb-8 pt-8">
       <header className="flex flex-col gap-3">
@@ -170,21 +235,27 @@ export function ActivityScreen({
         <MonthScopeBar defaultAnchor={defaultAnchor} defaultScope={defaultScope} defaultMeRole={defaultMeRole} />
       </header>
 
-      <Card className="border-border/40 bg-card/60 p-5">
-        <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-          {t("monthSpend")}
-        </p>
-        {isLoading ? (
-          <Skeleton className="mt-1 h-7 w-32" />
-        ) : (
-          <p className="num mt-1 text-2xl font-semibold tracking-tight">
-            {formatEUR((data?.monthSpend ?? 0) / 100, locale)}
+      <div ref={indicatorRef} className="sticky top-2 z-20">
+        <Card className="border-border/40 bg-card/85 p-4 backdrop-blur supports-backdrop-filter:bg-card/70">
+          <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+            {headlineTitle}
           </p>
-        )}
-        <p className="num mt-1 text-xs text-muted-foreground">
-          {t("txCount", { n: data?.txns.length ?? 0 })}
-        </p>
-      </Card>
+          {isLoading ? (
+            <Skeleton className="mt-1 h-7 w-32" />
+          ) : (
+            <AnimatedNumber
+              value={headlineCents / 100}
+              locale={locale}
+              currency="EUR"
+              duration={0.25}
+              className="mt-1 block text-2xl font-semibold tracking-tight"
+            />
+          )}
+          <p className="num mt-1 text-xs text-muted-foreground">
+            {t("txCount", { n: data?.txns.length ?? 0 })}
+          </p>
+        </Card>
+      </div>
 
       {data?.forecast.charges.length ? (
         <Card className="border-border/40 bg-card/60 p-5">
@@ -247,23 +318,9 @@ export function ActivityScreen({
         <>
           {dateGroups.map((g) => (
             <section key={g.date} className="flex flex-col gap-1">
-              <div
-                className="sticky top-0 z-10 -mx-1 flex items-baseline justify-between gap-3 bg-background/85 px-2 py-1.5 backdrop-blur supports-backdrop-filter:bg-background/70"
-                aria-label={t("runningSpentAria", {
-                  date: g.date,
-                  amount: formatEUR(g.runningSpentCents / 100, locale),
-                })}
-              >
-                <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-                  {g.date}
-                </p>
-                <p
-                  className="num text-[11px] tabular-nums text-muted-foreground/70"
-                  aria-hidden
-                >
-                  {formatEUR(g.runningSpentCents / 100, locale)}
-                </p>
-              </div>
+              <p className="sticky top-24 z-10 -mx-1 bg-background/85 px-2 py-1.5 text-xs uppercase tracking-[0.14em] text-muted-foreground backdrop-blur supports-backdrop-filter:bg-background/70">
+                {g.date}
+              </p>
               <Card className="border-border/40 bg-card/60 p-1">
                 <ul className="divide-y divide-border/40">
                   {g.rows.map((r) => {
@@ -271,7 +328,12 @@ export function ActivityScreen({
                       (o) => o.scope === r.owner,
                     );
                     return (
-                      <li key={r.id} className="px-2">
+                      <li
+                        key={r.id}
+                        className="px-2"
+                        data-tx-running={txRunning.get(r.id) ?? 0}
+                        data-tx-date={g.date}
+                      >
                         <ActivityRow
                           tx={{
                             id: r.id,

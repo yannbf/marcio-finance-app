@@ -24,7 +24,7 @@
     "unusuallyHigh": "Acima do normal · costuma ser {mean}",
     "viewByDate": "Por data",
     "viewByAmount": "Por valor",
-    "runningSpentAria": "Gasto até {date}: {amount}"
+    "spentThrough": "Gasto até {date}"
   },
   "Today": {
     "untilPayday": "{days, plural, one {# dia} other {# dias}} até o pagamento",
