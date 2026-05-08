@@ -52,31 +52,50 @@ export const todayRouter = router({
         ? await getPersonalChecklist(personalRole, agg.monthId)
         : null;
 
-      // The headline answers a different question depending on the
-      // view:
+      // The headline answers different questions per view:
       //
-      // - Joint view ("how is the household budget doing?"): the
+      // - Joint view: "how is the household budget doing?" — the
       //   denominator is total planned outflow on the joint account.
-      //   "Spent X of €Y planned" reads as a budget-vs-spend ratio.
       //
-      // - Me view ("how much of my personal cash is left?"): the
-      //   denominator is take-home pay (salary minus the joint
-      //   contribution share, already applied via contribution_ratio
-      //   inside getMonthlyAggregates). The transfer to joint is
-      //   *not* spending — it's how the household pays for joint
-      //   stuff — so it doesn't belong in the "planned outflow"
-      //   number for the Me view.
+      // - Me view: "how much of my personal expenses budget is
+      //   left?" — the denominator is **personal expenses only**, NOT
+      //   gross salary, NOT take-home, and crucially NOT the
+      //   transfer-to-joint line. Transfers aren't spending; they're
+      //   how the household funds joint stuff.
       //
-      //   `incomeCents` is already the post-contribution take-home
-      //   because the SQL applies (1 - contribution_ratio). So we
-      //   can swap the headline denominator to it directly.
+      // Two ways the user's sheet might encode the joint
+      // contribution, both supported here:
+      //
+      //   (a) `contribution_ratio` is set on the personal salary
+      //       row. The aggregator already nets ENTRADAS by
+      //       (1 - ratio), so gross outflow on the personal scope
+      //       contains only real personal expenses.
+      //
+      //   (b) An explicit "transfer to joint" budget line lives in
+      //       one of the personal outflow sections (DIVIDAS, FIXAS,
+      //       etc.), with the salary row's ratio left at 0. Then
+      //       gross outflow inflates by the transfer amount.
+      //
+      // Heuristic: when gross outflow > the joint contribution
+      // amount, we assume case (b) and subtract the contribution to
+      // recover personal expenses. Otherwise we trust gross outflow
+      // as already-personal-expenses (case a). Both produce the
+      // right number for the headline without requiring the user to
+      // touch their sheet.
       const grossPlannedOutflowCents = Math.abs(totalOutflow(agg.planned));
       const spentOutflowCents = Math.abs(totalOutflow(agg.actual));
       const incomeCents = totalIncome(agg.planned);
       const marginCents = incomeCents + totalOutflow(agg.planned);
-      const plannedOutflowCents = personalRole
-        ? incomeCents
-        : grossPlannedOutflowCents;
+
+      let plannedOutflowCents = grossPlannedOutflowCents;
+      if (personalRole) {
+        const transferOutCents =
+          personalChecklist?.contribution?.plannedCents ?? 0;
+        if (grossPlannedOutflowCents > transferOutCents) {
+          plannedOutflowCents = grossPlannedOutflowCents - transferOutCents;
+        }
+      }
+
       const progress =
         plannedOutflowCents > 0 ? spentOutflowCents / plannedOutflowCents : 0;
       const remainingCents = Math.max(

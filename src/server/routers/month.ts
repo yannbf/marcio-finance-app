@@ -128,35 +128,26 @@ export const monthRouter = router({
         matchCounts.map((r) => [r.itemId, Number.parseInt(r.count, 10)]),
       );
 
-      // ENTRADAS rows can carry a `contribution_ratio` in personal
-      // scopes — the fraction of that income that's transferred to
-      // the joint account. The Today router already nets these out
-      // in its SQL aggregate; we mirror it here so Month's per-item
-      // and per-section totals show take-home pay instead of gross.
-      // Transferring money isn't spending, so the gross figure was
-      // misleading on the personal Month view.
-      const items = rawItems.map((it) => {
-        const baseCents = monthlyContributionCents(
+      // Per-item planned amounts pass through at their full sheet
+      // value (only SAZONAIS yearly → monthly division applies).
+      // Income rows show gross salary, outflow rows show whatever
+      // the user has in their sheet — the user wants to see those
+      // numbers as-typed, even when a transfer-to-joint line is in
+      // outflow. Headline-level math (Today's "of €Y planned"
+      // denominator) handles the transfer-vs-personal-expenses
+      // distinction without rewriting the per-item display.
+      const items = rawItems.map((it) => ({
+        id: it.id,
+        name: it.name,
+        section: it.section as Section,
+        plannedCents: monthlyContributionCents(
           it.plannedCents,
           it.section as Section,
-        );
-        const ratio = it.contributionRatio
-          ? Number.parseFloat(it.contributionRatio)
-          : 0;
-        const plannedCents =
-          it.section === "ENTRADAS" && ratio > 0
-            ? Math.round(baseCents * (1 - ratio))
-            : baseCents;
-        return {
-          id: it.id,
-          name: it.name,
-          section: it.section as Section,
-          plannedCents,
-          dueDay: it.dueDay,
-          sazonalKind: it.sazonalKind as "O" | "L" | null,
-          matchCount: matchByItem.get(it.id) ?? 0,
-        };
-      });
+        ),
+        dueDay: it.dueDay,
+        sazonalKind: it.sazonalKind as "O" | "L" | null,
+        matchCount: matchByItem.get(it.id) ?? 0,
+      }));
 
       let income = 0;
       let outflow = 0;

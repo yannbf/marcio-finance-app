@@ -77,19 +77,89 @@ describe("today.get", () => {
     expect(camila.inboxCount).toBeGreaterThanOrEqual(1);
   });
 
-  it("personal-scope headline uses take-home pay as the planned denominator", async () => {
+  it("personal-scope headline uses personal expenses (not gross outflow, not take-home)", async () => {
     const caller = makeAuthedCaller("yann");
     const r = await caller.today.get({
       anchor: { year: 2026, month: 5 },
       scope: "yann",
     });
-    // Yann's salary is 500_000 cents at ratio 0.5 → take-home is
-    // 250_000. The "of €Y planned" the user sees on the Today
-    // headline must be the take-home (250_000), NOT gross outflow
-    // (which the user expects to also exclude the joint contribution
-    // line, since transfers aren't spending).
-    expect(r.plannedOutflowCents).toBe(250000);
+    // Fixture yann has only one personal outflow line: VARIAVEIS
+    // saidas at -10_000 (€100). No explicit transfer-to-joint line.
+    // The salary row uses contributionRatio 0.5 (case A), so the
+    // joint contribution is NOT in outflow. Heuristic: gross
+    // outflow (10_000) <= contribution (250_000) → leave alone.
+    expect(r.plannedOutflowCents).toBe(10000);
+    // The salary row's contributionRatio is applied inside
+    // getMonthlyAggregates so income reflects take-home (€2,500).
+    // The displayed gross salary lives separately on
+    // personalChecklist.salary.plannedCents (= 500_000).
     expect(r.incomeCents).toBe(250000);
+  });
+
+  it("personal-scope headline subtracts an explicit transfer-to-joint line", async () => {
+    // Simulate the "case B" sheet shape: salary with NO ratio set
+    // and a separate "transfer to joint" outflow line. The headline
+    // must subtract the transfer so it shows personal expenses
+    // only.
+    const { db } = await import("../../src/db/index.ts");
+    const schema = await import("../../src/db/schema.ts");
+    const { eq, and } = await import("drizzle-orm");
+
+    const [monthRow] = await db
+      .select({ id: schema.month.id })
+      .from(schema.month)
+      .where(
+        and(
+          eq(schema.month.anchorYear, 2026),
+          eq(schema.month.anchorMonth, 5),
+        ),
+      );
+
+    // Drop yann's ratio + add a fat transfer-to-joint outflow line
+    // and a few other personal expenses so gross outflow > the
+    // contribution.
+    await db
+      .insert(schema.budgetItem)
+      .values([
+        {
+          monthId: monthRow!.id,
+          scope: "yann",
+          section: "ENTRADAS",
+          naturalKey: "salary",
+          name: "Salário Yann",
+          plannedCents: 500000,
+          cadence: "monthly",
+        },
+        {
+          monthId: monthRow!.id,
+          scope: "yann",
+          section: "DIVIDAS",
+          naturalKey: "transferencia-conjunta",
+          name: "Transferência conjunta",
+          plannedCents: -250000,
+          cadence: "monthly",
+        },
+        {
+          monthId: monthRow!.id,
+          scope: "yann",
+          section: "FIXAS",
+          naturalKey: "personal-internet",
+          name: "Internet pessoal",
+          plannedCents: -50000,
+          cadence: "monthly",
+        },
+      ]);
+
+    const caller = makeAuthedCaller("yann");
+    const r = await caller.today.get({
+      anchor: { year: 2026, month: 5 },
+      scope: "yann",
+    });
+    // Gross outflow now: 10_000 (saidas) + 250_000 (transfer) +
+    // 50_000 (internet) = 310_000. Joint contribution = 250_000.
+    // Heuristic fires (310k > 250k) → subtract → personal expenses
+    // = 60_000 (saidas + internet, the actual expenses).
+    expect(r.plannedOutflowCents).toBe(60000);
   });
 
   it("joint-scope headline keeps the gross planned-outflow denominator", async () => {
