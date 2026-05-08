@@ -31,7 +31,7 @@
     "done": "Concluir",
     "spentSoFar": "Gasto até agora",
     "spentThrough": "Gasto até {date}",
-    "topOfMonth": "Início do mês"
+    "upToToday": "Até hoje"
   },
   "Today": {
     "untilPayday": "{days, plural, one {# dia} other {# dias}} até o pagamento",

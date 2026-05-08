@@ -31,7 +31,7 @@
     "done": "Done",
     "spentSoFar": "Spent so far",
     "spentThrough": "Spent through {date}",
-    "topOfMonth": "Start of the month"
+    "upToToday": "Up to today"
   },
   "Today": {
     "untilPayday": "{days, plural, one {# day} other {# days}} until payday",

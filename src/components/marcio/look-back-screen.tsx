@@ -29,15 +29,17 @@ type Txn = ActivityData["txns"][number];
 
 /**
  * Look Back: a full-screen "walk through the month" view inspired by
- * ING's Look Ahead. Transactions render with the OLDEST at the top
- * and the NEWEST at the bottom, the page opens scrolled all the way
- * down (so the most recent activity is in view next to the sticky
- * footer indicator), and as the user scrolls UP the footer's
- * "spent so far" total decreases — each row that crosses the footer
- * line shrinks the cumulative because we're stepping further into the
- * past. A decorative spacer above the oldest txn guarantees there's
- * enough scrollable content for the user to actually walk every
- * transaction past the footer, even on a sparse month.
+ * ING's Look Ahead. Transactions render with the NEWEST at the top
+ * and the OLDEST at the bottom (router order — desc by booking date),
+ * and the page opens scrolled all the way DOWN so the very first
+ * thing the user sees is the start-of-month activity sitting next to
+ * the sticky footer indicator. As the user scrolls UP the bottommost
+ * txn at the footer line gets chronologically NEWER, the footer's
+ * "Spent through {date}" cumulative grows accordingly, and the
+ * tall decorative spacer at the top of the doc — labelled with the
+ * "today" end of the timeline — guarantees there's always enough
+ * scrollable content for every transaction to cross the indicator,
+ * even on a sparse month.
  */
 export function LookBackScreen({
   locale,
@@ -71,23 +73,23 @@ export function LookBackScreen({
     [tSections],
   );
 
-  // Reverse the desc-ordered txns (router returns newest-first) so we
-  // can render oldest-at-top, and compute each row's chronological
-  // running cumulative (qualifying outflow from start-of-month through
-  // and INCLUDING that txn — same filter as monthSpend). The newest
-  // txn ends with running == data.monthSpend; the oldest ends with
-  // just its own contribution.
+  // Render the txns newest-at-top, oldest-at-bottom (router already
+  // returns desc(bookingDate)). Each row carries a chronological
+  // cumulative spend INCLUDING itself (same filter as monthSpend) —
+  // so the newest txn's running == data.monthSpend and the oldest
+  // txn's running == just its own contribution. Walk newest-first
+  // and subtract each row's contribution AFTER assigning its running,
+  // which gives "running through this point in time".
   const dateGroups = useMemo(() => {
     if (!data) return [];
-    const reversed = [...data.txns].reverse();
     type Row = Txn & { runningCents: number };
-    let running = 0;
+    let running = data.monthSpend;
     const annotated: Row[] = [];
-    for (const r of reversed) {
-      if (r.amountCents < 0 && !isInternalTransferTx(r)) {
-        running += -r.amountCents;
-      }
+    for (const r of data.txns) {
       annotated.push({ ...r, runningCents: running });
+      if (r.amountCents < 0 && !isInternalTransferTx(r)) {
+        running -= -r.amountCents;
+      }
     }
     const groups: { date: string; rows: Row[] }[] = [];
     for (const r of annotated) {
@@ -206,16 +208,20 @@ export function LookBackScreen({
         </div>
       ) : (
         <>
-          {/* Decorative top-of-page spacer. Fills any leftover vertical
-              room so the user always has enough to scroll, no matter
-              how few txns there are this month. */}
-          <div className="grid flex-1 place-items-center px-6 py-10 text-muted-foreground/60">
+          {/* Decorative top-of-doc spacer. Sits ABOVE the newest txn
+              and represents the "now / today" end of the timeline:
+              with the list ordered newest-at-top and oldest-at-bottom,
+              the user reaches this spacer after scrolling all the way
+              UP through the month. The min-h gives plenty of scroll
+              travel even on a sparse month so every transaction can
+              cross the footer indicator. */}
+          <div className="grid min-h-[100dvh] flex-1 place-items-center px-6 py-10 text-muted-foreground/60">
             <div className="flex flex-col items-center gap-3 text-center">
               <Sparkles
-                className="size-10 text-muted-foreground/40"
+                className="size-12 text-muted-foreground/40"
                 strokeWidth={1.4}
               />
-              <p className="text-sm">{t("topOfMonth")}</p>
+              <p className="text-sm">{t("upToToday")}</p>
             </div>
           </div>
 

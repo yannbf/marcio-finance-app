@@ -10,6 +10,11 @@ import { Link } from "@/i18n/navigation.ts";
 import { ActivityRow } from "./activity-row.tsx";
 import { CounterpartyAvatar } from "./counterparty-avatar.tsx";
 import { MonthScopeBar, parseSearch } from "./month-scope-bar.tsx";
+import {
+  OverBudgetPill,
+  SpendProgress,
+  progressTone,
+} from "./spend-progress.tsx";
 import { trpc } from "@/lib/trpc/client.ts";
 import { useMounted } from "@/lib/use-mounted.ts";
 import { formatEUR, formatEURPrecise } from "@/lib/format.ts";
@@ -128,6 +133,16 @@ export function ActivityScreen({
     });
   }, [data, view]);
 
+  // Headline tone: spent / planned ratio drives the same tone-coloured
+  // ring + over-budget pill the Today card uses.
+  const spentCents = data?.monthSpend ?? 0;
+  const plannedCents = data?.plannedOutflowCents ?? 0;
+  const tone = progressTone(spentCents, plannedCents);
+  const overByCents =
+    plannedCents > 0 && spentCents > plannedCents
+      ? spentCents - plannedCents
+      : 0;
+
   return (
     <main className="mx-auto flex w-full max-w-md flex-col gap-5 px-5 pb-8 pt-8">
       <header className="flex flex-col gap-3">
@@ -140,31 +155,58 @@ export function ActivityScreen({
         <MonthScopeBar defaultAnchor={defaultAnchor} defaultScope={defaultScope} defaultMeRole={defaultMeRole} />
       </header>
 
-      <Card className="border-border/40 bg-card/60 p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-              {t("monthSpend")}
-            </p>
-            {isLoading ? (
-              <Skeleton className="mt-1 h-7 w-32" />
-            ) : (
-              <p className="num mt-1 text-2xl font-semibold tracking-tight">
-                {formatEUR((data?.monthSpend ?? 0) / 100, locale)}
-              </p>
-            )}
-            <p className="num mt-1 text-xs text-muted-foreground">
-              {t("txCount", { n: data?.txns.length ?? 0 })}
-            </p>
-          </div>
-          {data && data.txns.length > 0 ? (
-            <Link
-              href="/activity/look-back"
-              className="inline-flex shrink-0 items-center gap-1.5 self-center rounded-full border border-border/60 bg-background/40 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground transition-colors hover:bg-background/60 hover:text-foreground"
+      <Card
+        className={`border-border/40 bg-card/60 p-5 ${
+          tone === "over"
+            ? "ring-1 ring-destructive/40"
+            : tone === "warn"
+              ? "ring-1 ring-amber-400/40"
+              : ""
+        }`}
+      >
+        <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+          {t("monthSpend")}
+        </p>
+        {isLoading ? (
+          <Skeleton className="mt-1 h-7 w-32" />
+        ) : (
+          <div className="num mt-1 flex items-baseline gap-2">
+            <p
+              className={`text-2xl font-semibold tracking-tight ${
+                tone === "over"
+                  ? "text-destructive"
+                  : tone === "warn"
+                    ? "text-amber-500"
+                    : ""
+              }`}
             >
-              <Footprints className="size-3.5" strokeWidth={2.2} />
-              {t("lookBack")}
-            </Link>
+              {formatEUR(spentCents / 100, locale)}
+            </p>
+            {plannedCents > 0 ? (
+              <span className="text-xs text-muted-foreground">
+                / {formatEUR(plannedCents / 100, locale)}
+              </span>
+            ) : null}
+          </div>
+        )}
+        {plannedCents > 0 ? (
+          <SpendProgress
+            actualCents={spentCents}
+            plannedCents={plannedCents}
+            size="sm"
+            className="mt-2"
+          />
+        ) : null}
+        <div className="mt-1 flex items-center justify-between gap-2">
+          <p className="num text-xs text-muted-foreground">
+            {t("txCount", { n: data?.txns.length ?? 0 })}
+          </p>
+          {overByCents > 0 ? (
+            <OverBudgetPill
+              overByCents={overByCents}
+              formatter={(c) => formatEUR(c / 100, locale)}
+              label={tToday("overBy")}
+            />
           ) : null}
         </div>
       </Card>
@@ -206,13 +248,25 @@ export function ActivityScreen({
       ) : null}
 
       {data && data.txns.length > 0 ? (
-        <div className="-mt-2 flex gap-1 self-start rounded-full border border-border/60 bg-card/50 p-1 text-[11px]">
-          <ViewPill href={makeViewHref(sp, "date")} active={view === "date"}>
-            {t("viewByDate")}
-          </ViewPill>
-          <ViewPill href={makeViewHref(sp, "amount")} active={view === "amount"}>
-            {t("viewByAmount")}
-          </ViewPill>
+        <div className="-mt-2 flex flex-wrap items-center gap-2">
+          <div className="flex gap-1 rounded-full border border-border/60 bg-card/50 p-1 text-[11px]">
+            <ViewPill href={makeViewHref(sp, "date")} active={view === "date"}>
+              {t("viewByDate")}
+            </ViewPill>
+            <ViewPill
+              href={makeViewHref(sp, "amount")}
+              active={view === "amount"}
+            >
+              {t("viewByAmount")}
+            </ViewPill>
+          </div>
+          <Link
+            href="/activity/look-back"
+            className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-card/50 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground transition-colors hover:bg-background/60 hover:text-foreground"
+          >
+            <Footprints className="size-3.5" strokeWidth={2.2} />
+            {t("lookBack")}
+          </Link>
         </div>
       ) : null}
 
