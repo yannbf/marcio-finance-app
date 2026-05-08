@@ -4,6 +4,10 @@ import {
   isInternalTransferTx,
   isSavingsTransferTx,
 } from "@/lib/matching/seed-rules.ts";
+import {
+  cleanSavingsDescription,
+  extractSavingsPurpose,
+} from "@/lib/savings-detection.ts";
 
 describe("detectSavingsBucketRef", () => {
   it("extracts a Dutch ING-style ref from a spaarrekening transfer", () => {
@@ -67,5 +71,60 @@ describe("isSavingsTransferTx", () => {
     };
     expect(isInternalTransferTx(row)).toBe(true);
     expect(isSavingsTransferTx(row)).toBe(false);
+  });
+});
+
+describe("extractSavingsPurpose", () => {
+  it("pulls the user-typed label between the ref and 'Value date:'", () => {
+    expect(
+      extractSavingsPurpose(
+        "To Oranje spaarrekening V12602730 Afronding Value date: 05/05/2026",
+        "V12602730",
+      ),
+    ).toBe("Afronding");
+    expect(
+      extractSavingsPurpose(
+        "From Oranje spaarrekening V12602730 Impostos Value date: 28/04/2026",
+        "V12602730",
+      ),
+    ).toBe("Impostos");
+    expect(
+      extractSavingsPurpose(
+        "To Oranje spaarrekening N14631597 Maio Value date: 28/04/2026",
+        "N14631597",
+      ),
+    ).toBe("Maio");
+  });
+
+  it("returns null when the description doesn't follow the canonical shape", () => {
+    expect(extractSavingsPurpose("random text", "V12602730")).toBeNull();
+    expect(extractSavingsPurpose(null, "V12602730")).toBeNull();
+  });
+
+  it("rejects oversized purposes (likely garbage parses)", () => {
+    const long = "x".repeat(60);
+    expect(
+      extractSavingsPurpose(
+        `Oranje spaarrekening V12602730 ${long} Value date: 1/1/2026`,
+        "V12602730",
+      ),
+    ).toBeNull();
+  });
+});
+
+describe("cleanSavingsDescription", () => {
+  it("strips the trailing 'Value date: ...' suffix", () => {
+    expect(
+      cleanSavingsDescription(
+        "To Oranje spaarrekening V12602730 Afronding Value date: 05/05/2026",
+      ),
+    ).toBe("To Oranje spaarrekening V12602730 Afronding");
+  });
+
+  it("returns the input unchanged when there's nothing to strip", () => {
+    expect(cleanSavingsDescription("Plain description")).toBe(
+      "Plain description",
+    );
+    expect(cleanSavingsDescription(null)).toBe("");
   });
 });
