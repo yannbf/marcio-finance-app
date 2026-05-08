@@ -9,6 +9,13 @@ import { SECTION_ORDER } from "@/lib/import/sections.ts";
 import type { Section } from "@/lib/import/types.ts";
 import type { BudgetItemOption } from "@/components/marcio/inbox-row.tsx";
 
+/**
+ * "Apply to" — controls whether the assignment hits a single transaction,
+ * fans out to similar past unmatched transactions, or also creates a
+ * learned rule for future ones.
+ */
+export type ApplyTo = "this" | "similar" | "future";
+
 type Props = {
   trigger: ReactNode;
   options: BudgetItemOption[];
@@ -23,10 +30,13 @@ type Props = {
    * user can see at a glance where it landed (and reassign if it's wrong).
    */
   currentItemId?: string | null;
-  /** When true, picker shows the "remember rule" footer toggle. */
-  showRemember?: boolean;
+  /**
+   * When true, picker shows the "Apply to" footer (this/similar/future).
+   * Bulk-assign hides this — it only makes sense for single-tx flows.
+   */
+  showApplyTo?: boolean;
   /** Called when the user picks a budget item; should resolve before close. */
-  onPick: (budgetItemId: string, remember: boolean) => Promise<void> | void;
+  onPick: (budgetItemId: string, applyTo: ApplyTo) => Promise<void> | void;
   /** Optional: notification of open state changes (used to clear selections). */
   onOpenChange?: (open: boolean) => void;
 };
@@ -46,14 +56,14 @@ export function BudgetItemPicker({
   title,
   subtitle,
   currentItemId = null,
-  showRemember = true,
+  showApplyTo = true,
   onPick,
   onOpenChange,
 }: Props) {
   const t = useTranslations("Inbox");
   const [open, setOpen] = useState(false);
   const [section, setSection] = useState<Section | null>(null);
-  const [remember, setRemember] = useState(true);
+  const [applyTo, setApplyTo] = useState<ApplyTo>("this");
   const [pending, startTransition] = useTransition();
   // Track whether the user has manually changed sections during this open
   // session — once they navigate, we stop auto-drilling on subsequent opens
@@ -84,9 +94,12 @@ export function BudgetItemPicker({
 
   function pick(itemId: string) {
     startTransition(async () => {
-      await onPick(itemId, remember);
+      await onPick(itemId, applyTo);
       setOpen(false);
       setSection(null);
+      // Reset apply-to to "this" so the next open doesn't accidentally
+      // apply a rule the user didn't ask for again.
+      setApplyTo("this");
     });
   }
 
@@ -222,19 +235,48 @@ export function BudgetItemPicker({
             )}
           </div>
 
-          {showRemember ? (
-            <footer className="flex items-center justify-between border-t border-border/60 px-4 py-3">
-              <Label className="flex items-center gap-2 text-sm text-muted-foreground">
-                <input
-                  type="checkbox"
-                  checked={remember}
-                  onChange={(e) => setRemember(e.currentTarget.checked)}
-                  className="size-4"
-                />
-                {t("remember")}
+          {showApplyTo ? (
+            <footer className="flex flex-col gap-2 border-t border-border/60 px-4 py-3">
+              <Label className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                {t("applyToLabel")}
               </Label>
+              <div
+                role="radiogroup"
+                aria-label={t("applyToLabel")}
+                className="grid grid-cols-3 gap-1 rounded-full border border-border/60 bg-background/40 p-0.5"
+              >
+                {(
+                  [
+                    ["this", t("applyToThis")],
+                    ["similar", t("applyToSimilar")],
+                    ["future", t("applyToFuture")],
+                  ] as const
+                ).map(([value, label]) => {
+                  const active = applyTo === value;
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      role="radio"
+                      aria-checked={active}
+                      disabled={pending}
+                      onClick={() => setApplyTo(value)}
+                      className={
+                        "rounded-full px-2 py-1.5 text-[11px] font-medium uppercase tracking-[0.08em] transition-colors " +
+                        (active
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:text-foreground")
+                      }
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
               {pending ? (
-                <Loader2 className="size-4 animate-spin text-muted-foreground" />
+                <div className="flex justify-end">
+                  <Loader2 className="size-4 animate-spin text-muted-foreground" />
+                </div>
               ) : null}
             </footer>
           ) : null}

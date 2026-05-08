@@ -67,11 +67,11 @@ export function InboxRow({ tx, options, locale, sectionLabels }: Props) {
       sectionLabels={sectionLabels}
       title={t("assignTo")}
       subtitle={tx.counterparty || tx.description || ""}
-      onPick={async (budgetItemId, remember) => {
+      onPick={async (budgetItemId, applyTo) => {
         await assign.mutateAsync({
           transactionId: tx.id,
           budgetItemId,
-          rememberRule: remember,
+          applyTo,
         });
       }}
     />

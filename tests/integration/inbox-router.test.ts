@@ -129,7 +129,7 @@ describe("inbox.assign", () => {
     expect(after[0]!.confirmedByUserId).toBe("test-user-yann");
   });
 
-  it("rememberRule creates a learned match_rule row", async () => {
+  it("applyTo='future' creates a learned match_rule row", async () => {
     const caller = makeAuthedCaller("yann");
     const tx = await findUnmatchedTxn("Mystery Vendor One");
     const target = await findItemByKey("mercado", "joint");
@@ -137,7 +137,7 @@ describe("inbox.assign", () => {
     await caller.inbox.assign({
       transactionId: tx.id,
       budgetItemId: target.id,
-      rememberRule: true,
+      applyTo: "future",
     });
 
     const rules = await db
@@ -222,6 +222,280 @@ describe("inbox.assign", () => {
       .where(eq(schema.matchRule.id, rule.id));
     expect(after!.overriddenHits).toBe(1);
     expect(Number.parseFloat(after!.confidence!)).toBeLessThan(0.95);
+  });
+});
+
+describe("inbox.assign — month-bound resolution", () => {
+  it("a transaction from a previous month lands in THAT month's budget item, not the picker's month", async () => {
+    // Build a previous payday-month with the same natural keys, then
+    // wire an unmatched txn dated inside it. The user picks a budget
+    // item from the *current* (May 2026) month — the assignment must
+    // still land on the previous month's matching item.
+    const { upsertParsedMonth } = await import(
+      "../../src/lib/import/upsert.ts"
+    );
+    const { TEST_BUDGET_SHEET } = await import(
+      "../support/seed-fixtures.ts"
+    );
+    await upsertParsedMonth({
+      ...TEST_BUDGET_SHEET,
+      anchorYear: 2026,
+      anchorMonth: 4,
+    });
+
+    const aprilTarget = await db
+      .select()
+      .from(schema.budgetItem)
+      .innerJoin(
+        schema.month,
+        eq(schema.month.id, schema.budgetItem.monthId),
+      )
+      .where(
+        and(
+          eq(schema.budgetItem.naturalKey, "mercado"),
+          eq(schema.budgetItem.scope, "joint"),
+          eq(schema.month.anchorYear, 2026),
+          eq(schema.month.anchorMonth, 4),
+        ),
+      );
+    expect(aprilTarget.length).toBe(1);
+    const aprilTargetId = aprilTarget[0]!.budget_item.id;
+
+    const mayMercado = await findItemByKey("mercado", "joint");
+    expect(mayMercado.id).not.toBe(aprilTargetId);
+
+    // Insert a txn dated in the April payday-month
+    // (Mar 25 → Apr 24 with paydayDay=25).
+    const [account] = await db
+      .select()
+      .from(schema.bankAccount)
+      .where(eq(schema.bankAccount.owner, "joint"));
+    const [oldTx] = await db
+      .insert(schema.transaction)
+      .values({
+        bankAccountId: account!.id,
+        bookingDate: new Date("2026-04-10T12:00:00Z"),
+        counterparty: "Mystery March Vendor",
+        description: "old unmatched",
+        amountCents: -700,
+        dedupeKey: "march-test-fixture",
+      })
+      .returning();
+
+    const caller = makeAuthedCaller("yann");
+    await caller.inbox.assign({
+      transactionId: oldTx.id,
+      // The user picks the May version of "Mercado" from the picker.
+      budgetItemId: mayMercado.id,
+      applyTo: "this",
+    });
+
+    const [m] = await db
+      .select()
+      .from(schema.txMatch)
+      .where(eq(schema.txMatch.transactionId, oldTx.id));
+    expect(m).toBeDefined();
+    // Critical: lands on April's mercado, not May's.
+    expect(m!.budgetItemId).toBe(aprilTargetId);
+    expect(m!.budgetItemId).not.toBe(mayMercado.id);
+  });
+
+  it("skips when the destination month has no imported sheet", async () => {
+    const [account] = await db
+      .select()
+      .from(schema.bankAccount)
+      .where(eq(schema.bankAccount.owner, "joint"));
+    // 2025-08 is not seeded — assign should fail-soft, not crash.
+    const [orphanTx] = await db
+      .insert(schema.transaction)
+      .values({
+        bankAccountId: account!.id,
+        bookingDate: new Date("2025-08-10T12:00:00Z"),
+        counterparty: "Time-Travel Vendor",
+        description: "no sheet for this month",
+        amountCents: -500,
+        dedupeKey: "orphan-tz-test",
+      })
+      .returning();
+
+    const target = await findItemByKey("mercado", "joint");
+    const caller = makeAuthedCaller("yann");
+    const result = await caller.inbox.assign({
+      transactionId: orphanTx.id,
+      budgetItemId: target.id,
+      applyTo: "this",
+    });
+    expect(result.assigned).toBe(0);
+    expect(result.skippedNoBudget).toBe(1);
+
+    const matches = await db
+      .select()
+      .from(schema.txMatch)
+      .where(eq(schema.txMatch.transactionId, orphanTx.id));
+    expect(matches).toHaveLength(0);
+  });
+});
+
+describe("inbox.assign — applyTo='similar'", () => {
+  it("fans out across other unmatched transactions with the same fingerprint", async () => {
+    const caller = makeAuthedCaller("yann");
+    const target = await findItemByKey("mercado", "joint");
+
+    // Insert a few extra "Mystery Vendor One" rows so the fanout has
+    // peers to pick up. Use slightly different formatting that the
+    // fingerprint should still collapse to the same key.
+    const [account] = await db
+      .select()
+      .from(schema.bankAccount)
+      .where(eq(schema.bankAccount.owner, "joint"));
+    for (const [i, suffix] of [
+      [0, " AMSTERDAM"],
+      [1, " UTRECHT"],
+      [2, " 9999"],
+    ] as const) {
+      await db.insert(schema.transaction).values({
+        bankAccountId: account!.id,
+        bookingDate: new Date(`2026-05-1${i}T12:00:00Z`),
+        counterparty: `Mystery Vendor One${suffix}`,
+        description: `peer ${i}`,
+        amountCents: -100 - i,
+        dedupeKey: `peer-${i}`,
+      });
+    }
+
+    const sourceTx = await findUnmatchedTxn("Mystery Vendor One");
+    const r = await caller.inbox.assign({
+      transactionId: sourceTx.id,
+      budgetItemId: target.id,
+      applyTo: "similar",
+    });
+
+    // 1 source + 3 peers = 4 assigned.
+    expect(r.assigned).toBeGreaterThanOrEqual(4);
+
+    // All Mystery Vendor One rows are now matched to Mercado.
+    const allMVO = await db
+      .select()
+      .from(schema.transaction)
+      .where(eq(schema.transaction.bankAccountId, account!.id));
+    const mvoIds = allMVO
+      .filter((t) =>
+        (t.counterparty ?? "").startsWith("Mystery Vendor One"),
+      )
+      .map((t) => t.id);
+    expect(mvoIds.length).toBeGreaterThanOrEqual(4);
+    for (const id of mvoIds) {
+      const [m] = await db
+        .select()
+        .from(schema.txMatch)
+        .where(eq(schema.txMatch.transactionId, id));
+      expect(m).toBeDefined();
+      expect(m!.budgetItemId).toBe(target.id);
+    }
+  });
+
+  it("does not fan out into transactions of a different scope", async () => {
+    const caller = makeAuthedCaller("yann");
+    const yannTarget = await findItemByKey("saidas", "yann");
+
+    // The seed has a Mystery Vendor One on joint and a Mystery Yann
+    // Vendor on yann personal. Assigning Mystery Yann Vendor with
+    // applyTo="similar" must not pull in the joint mystery rows.
+    const yannTx = await findUnmatchedTxn("Mystery Yann Vendor");
+    const r = await caller.inbox.assign({
+      transactionId: yannTx.id,
+      budgetItemId: yannTarget.id,
+      applyTo: "similar",
+    });
+    expect(r.assigned).toBe(1);
+
+    // Joint mystery vendors stay unmatched.
+    const jointMystery = await findUnmatchedTxn("Mystery Vendor One");
+    const matches = await db
+      .select()
+      .from(schema.txMatch)
+      .where(eq(schema.txMatch.transactionId, jointMystery.id));
+    expect(matches).toHaveLength(0);
+  });
+});
+
+describe("inbox.assignMany — month-bound resolution", () => {
+  it("each transaction lands in its own payday-month's budget item", async () => {
+    const { upsertParsedMonth } = await import(
+      "../../src/lib/import/upsert.ts"
+    );
+    const { TEST_BUDGET_SHEET } = await import(
+      "../support/seed-fixtures.ts"
+    );
+    await upsertParsedMonth({
+      ...TEST_BUDGET_SHEET,
+      anchorYear: 2026,
+      anchorMonth: 4,
+    });
+
+    const [account] = await db
+      .select()
+      .from(schema.bankAccount)
+      .where(eq(schema.bankAccount.owner, "joint"));
+
+    const [aprilTx] = await db
+      .insert(schema.transaction)
+      .values({
+        bankAccountId: account!.id,
+        bookingDate: new Date("2026-04-08T12:00:00Z"),
+        counterparty: "Old Vendor April",
+        description: "april",
+        amountCents: -300,
+        dedupeKey: "bulk-april",
+      })
+      .returning();
+    const [mayTx] = await db
+      .insert(schema.transaction)
+      .values({
+        bankAccountId: account!.id,
+        bookingDate: new Date("2026-05-08T12:00:00Z"),
+        counterparty: "New Vendor May",
+        description: "may",
+        amountCents: -400,
+        dedupeKey: "bulk-may",
+      })
+      .returning();
+
+    const mayMercado = await findItemByKey("mercado", "joint");
+    const aprilRow = await db
+      .select({ id: schema.budgetItem.id })
+      .from(schema.budgetItem)
+      .innerJoin(
+        schema.month,
+        eq(schema.month.id, schema.budgetItem.monthId),
+      )
+      .where(
+        and(
+          eq(schema.budgetItem.naturalKey, "mercado"),
+          eq(schema.budgetItem.scope, "joint"),
+          eq(schema.month.anchorYear, 2026),
+          eq(schema.month.anchorMonth, 4),
+        ),
+      );
+
+    const caller = makeAuthedCaller("yann");
+    const r = await caller.inbox.assignMany({
+      transactionIds: [aprilTx.id, mayTx.id],
+      budgetItemId: mayMercado.id,
+      applyTo: "this",
+    });
+    expect(r.assigned).toBe(2);
+
+    const [aMatch] = await db
+      .select()
+      .from(schema.txMatch)
+      .where(eq(schema.txMatch.transactionId, aprilTx.id));
+    const [mMatch] = await db
+      .select()
+      .from(schema.txMatch)
+      .where(eq(schema.txMatch.transactionId, mayTx.id));
+    expect(aMatch!.budgetItemId).toBe(aprilRow[0]!.id);
+    expect(mMatch!.budgetItemId).toBe(mayMercado.id);
   });
 });
 

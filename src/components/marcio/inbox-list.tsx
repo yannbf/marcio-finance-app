@@ -94,12 +94,15 @@ export function InboxList({
     setSelected(new Set());
   }
 
-  async function bulkPick(budgetItemId: string, remember: boolean) {
+  async function bulkPick(
+    budgetItemId: string,
+    applyTo: "this" | "similar" | "future",
+  ) {
     const ids = [...selected];
     const r = await bulk.mutateAsync({
       transactionIds: ids,
       budgetItemId,
-      rememberRule: remember,
+      applyTo,
     });
     if (r.ok) clear();
   }
