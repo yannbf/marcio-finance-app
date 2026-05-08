@@ -130,16 +130,44 @@ function BottomSheetDraggable({
   const controls = useDragControls()
   const [dragging, setDragging] = React.useState(false)
 
-  // Lock the body while the sheet is open so iOS doesn't scroll the page
-  // underneath when a vertical drag escapes the sheet.
+  // Lock the body while the sheet is open. iOS Safari ignores plain
+  // `overflow: hidden` for touch scrolling, so we save the current
+  // scroll Y and pin the body via position:fixed — the standard
+  // iOS-PWA scroll-lock trick. On unmount we restore both the inline
+  // styles and the scroll position so closing the sheet doesn't
+  // shoot the user back to the top of the page.
+  //
+  // We're careful NOT to interfere with base-ui's modal handling: we
+  // only touch body/html style; we don't add any event listeners
+  // here.
   React.useEffect(() => {
     const body = document.body
-    const prev = body.style.overflow
+    const html = document.documentElement
+    const scrollY = window.scrollY
+    const prev = {
+      bodyPosition: body.style.position,
+      bodyTop: body.style.top,
+      bodyLeft: body.style.left,
+      bodyRight: body.style.right,
+      bodyOverflow: body.style.overflow,
+      htmlOverflow: html.style.overflow,
+    }
+    body.style.position = "fixed"
+    body.style.top = `-${scrollY}px`
+    body.style.left = "0"
+    body.style.right = "0"
     body.style.overflow = "hidden"
+    html.style.overflow = "hidden"
     body.dataset.sheetOpen = "true"
     return () => {
-      body.style.overflow = prev
+      body.style.position = prev.bodyPosition
+      body.style.top = prev.bodyTop
+      body.style.left = prev.bodyLeft
+      body.style.right = prev.bodyRight
+      body.style.overflow = prev.bodyOverflow
+      html.style.overflow = prev.htmlOverflow
       delete body.dataset.sheetOpen
+      window.scrollTo(0, scrollY)
     }
   }, [])
 
@@ -161,16 +189,60 @@ function BottomSheetDraggable({
     animate(y, 0, { type: "spring", stiffness: 420, damping: 36 })
   }
 
-  // Conditional drag start. We want to drag the sheet from anywhere
-  // (header, body, scrollable list at scrollTop=0). But if the user
-  // started the gesture inside an inner scroll container that's
-  // already scrolled, let that container scroll instead.
+  // Drag-vs-scroll handoff for inner scrollable lists.
+  //
+  // When a touch starts inside an inner scroller, we can't tell yet
+  // whether the user wants to scroll the list or drag the sheet — we
+  // only know once we see the first pointermove. So we defer the
+  // decision: arm a one-shot pointermove listener that decides based
+  // on the gesture's direction and the scroller's current scrollTop.
+  //
+  //   - scrollTop > 0  AND any direction: native scroll wins. The
+  //     user is somewhere in the middle of the list.
+  //   - scrollTop = 0  AND moving DOWN: hand off to the sheet drag —
+  //     classic pull-to-close.
+  //   - scrollTop = 0  AND moving UP: native scroll wins (no-op since
+  //     the list is at the top, but lets iOS render its rubber band
+  //     inside the scroller, contained by overscroll-behavior).
+  //
+  // Touches outside any inner scroller (header, footer pills, the
+  // drag handle area) start dragging immediately — no ambiguity
+  // there.
   const startDrag = React.useCallback(
     (e: React.PointerEvent) => {
       const target = e.target as HTMLElement | null;
       const scroller = target?.closest<HTMLElement>("[data-sheet-scroll]");
-      if (scroller && scroller.scrollTop > 0) return;
-      controls.start(e);
+      if (!scroller) {
+        controls.start(e);
+        return;
+      }
+      const startScrollTop = scroller.scrollTop;
+      const startY = e.clientY;
+      // Avoid hijacking gestures that start inside the list while it
+      // is already scrolled — the user is mid-list and wants to keep
+      // scrolling.
+      if (startScrollTop > 0) return;
+      // At scrollTop=0, wait for direction. The first move tells us.
+      const onMove = (moveEvent: PointerEvent) => {
+        const dy = moveEvent.clientY - startY;
+        // Need a few px of motion before deciding so a stationary tap
+        // doesn't accidentally arm a drag.
+        if (Math.abs(dy) < 4) return;
+        cleanup();
+        if (dy > 0) {
+          // Downward at top of list → drag the sheet.
+          controls.start(moveEvent as unknown as React.PointerEvent);
+        }
+        // Upward → do nothing; native scroll handles it.
+      };
+      const cleanup = () => {
+        document.removeEventListener("pointermove", onMove);
+        document.removeEventListener("pointerup", cleanup);
+        document.removeEventListener("pointercancel", cleanup);
+      };
+      document.addEventListener("pointermove", onMove, { passive: true });
+      document.addEventListener("pointerup", cleanup);
+      document.addEventListener("pointercancel", cleanup);
     },
     [controls],
   )
