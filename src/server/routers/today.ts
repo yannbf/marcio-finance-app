@@ -1,9 +1,8 @@
 import { z } from "zod";
-import { and, eq, inArray, isNotNull, notExists, sql } from "drizzle-orm";
+import { and, eq, inArray, notExists, sql } from "drizzle-orm";
 import { db } from "@/db/index.ts";
 import {
   bankAccount,
-  budgetItem,
   transaction,
   txMatch,
 } from "@/db/schema.ts";
@@ -22,6 +21,7 @@ import {
 } from "@/lib/budget-aggregates.ts";
 import { getUpcomingCharges } from "@/lib/forecast.ts";
 import { getSectionsForToday } from "@/lib/today-data.ts";
+import { getPersonalChecklist } from "@/lib/personal-checklist.ts";
 import { AFRONDING_PG_PATTERN } from "@/lib/matching/seed-rules.ts";
 
 export const todayRouter = router({
@@ -131,82 +131,6 @@ export const todayRouter = router({
  * before the window slides past.
  */
 const RECENTLY_ADDED_HOURS = 36;
-
-/**
- * Confirmation indicators for the Me view: did this person's salary
- * arrive yet, and did their share of the joint contribution actually
- * transfer? Both are visible in the budget already (yann ENTRADAS
- * salary row, joint ENTRADAS:contrib-yann row), but having a yes/no
- * surface on Today saves a drill-in.
- *
- * Returns null fields when the corresponding budget item doesn't exist
- * for the active month — e.g. the user has a payday-month with no
- * salary line yet.
- */
-async function getPersonalChecklist(
-  role: "yann" | "camila",
-  monthId: string | null,
-): Promise<{
-  salary: { plannedCents: number; actualCents: number } | null;
-  contribution: { plannedCents: number; actualCents: number } | null;
-}> {
-  if (!monthId) return { salary: null, contribution: null };
-
-  // Personal salary: any ENTRADAS row in the user's own scope with a
-  // contribution_ratio set (the marker for "this is the salary line"
-  // — it's the only personal ENTRADAS row that has a ratio).
-  const [salary] = await db
-    .select({
-      plannedCents: sql<string>`COALESCE(SUM(${budgetItem.plannedCents}), 0)`,
-      actualCents: sql<string>`COALESCE(SUM(${txMatch.allocatedCents}), 0)`,
-    })
-    .from(budgetItem)
-    .leftJoin(txMatch, eq(txMatch.budgetItemId, budgetItem.id))
-    .where(
-      and(
-        eq(budgetItem.monthId, monthId),
-        eq(budgetItem.scope, role),
-        eq(budgetItem.section, "ENTRADAS"),
-        isNotNull(budgetItem.contributionRatio),
-      ),
-    );
-
-  // Joint contribution from this person: ENTRADAS:contrib-{role} on
-  // the joint scope. We only consider the canonical natural keys —
-  // any custom rename of those rows would need to keep the same key.
-  const [contribution] = await db
-    .select({
-      plannedCents: sql<string>`COALESCE(SUM(${budgetItem.plannedCents}), 0)`,
-      actualCents: sql<string>`COALESCE(SUM(${txMatch.allocatedCents}), 0)`,
-    })
-    .from(budgetItem)
-    .leftJoin(txMatch, eq(txMatch.budgetItemId, budgetItem.id))
-    .where(
-      and(
-        eq(budgetItem.monthId, monthId),
-        eq(budgetItem.scope, "joint"),
-        eq(budgetItem.section, "ENTRADAS"),
-        eq(budgetItem.naturalKey, `contrib-${role}`),
-      ),
-    );
-
-  return {
-    salary:
-      salary && Number.parseInt(salary.plannedCents, 10) !== 0
-        ? {
-            plannedCents: Number.parseInt(salary.plannedCents, 10),
-            actualCents: Number.parseInt(salary.actualCents, 10),
-          }
-        : null,
-    contribution:
-      contribution && Number.parseInt(contribution.plannedCents, 10) !== 0
-        ? {
-            plannedCents: Number.parseInt(contribution.plannedCents, 10),
-            actualCents: Number.parseInt(contribution.actualCents, 10),
-          }
-        : null,
-  };
-}
 
 async function unmatchedCount(
   scopes: ("joint" | "yann" | "camila")[],

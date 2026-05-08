@@ -11,6 +11,11 @@ import { ActivityRow } from "./activity-row.tsx";
 import { AnimatedNumber } from "./animated-number.tsx";
 import { CounterpartyAvatar } from "./counterparty-avatar.tsx";
 import { MonthScopeBar, parseSearch } from "./month-scope-bar.tsx";
+import {
+  OverBudgetPill,
+  SpendProgress,
+  progressTone,
+} from "./spend-progress.tsx";
 import { trpc } from "@/lib/trpc/client.ts";
 import { useMounted } from "@/lib/use-mounted.ts";
 import { formatEUR, formatEURPrecise } from "@/lib/format.ts";
@@ -68,22 +73,23 @@ export function ActivityScreen({
     [tSections],
   );
 
-  // Per-transaction running spend: cumulative qualifying outflow from the
-  // start of the payday-month up to and INCLUDING this txn. Same filter
-  // monthSpend uses (negative amount, internal transfers excluded).
-  // Powers the single animated "spent so far" indicator that ticks as
-  // each row scrolls past — mirrors ING's running-balance UX.
+  // Per-transaction running totals: cumulative qualifying outflow AND
+  // cumulative txn count, both from the start of the payday-month up to
+  // and INCLUDING this txn. Same filter monthSpend uses (negative
+  // amount, internal transfers excluded). Powers the single animated
+  // "spent so far" headline that ticks as each row scrolls past —
+  // mirrors ING's running-balance UX.
   const txRunning = useMemo(() => {
-    if (!data) return new Map<string, number>();
-    const map = new Map<string, number>();
-    let running = data.monthSpend;
+    type Cumulative = { runningCents: number; runningCount: number };
+    if (!data) return new Map<string, Cumulative>();
+    const map = new Map<string, Cumulative>();
+    let runningCents = data.monthSpend;
+    let runningCount = data.txns.length;
     for (const r of data.txns) {
-      // Each txn is annotated with the cumulative INCLUDING itself; we
-      // then subtract its own contribution before moving to the next
-      // (older) row.
-      map.set(r.id, running);
+      map.set(r.id, { runningCents, runningCount });
+      runningCount -= 1;
       if (r.amountCents < 0 && !isInternalTransferTx(r)) {
-        running -= -r.amountCents;
+        runningCents -= -r.amountCents;
       }
     }
     return map;
@@ -160,14 +166,24 @@ export function ActivityScreen({
   const [scrolledRunningCents, setScrolledRunningCents] = useState<
     number | null
   >(null);
+  const [scrolledRunningCount, setScrolledRunningCount] = useState<
+    number | null
+  >(null);
   const [scrolledDateLabel, setScrolledDateLabel] = useState<string | null>(
     null,
   );
+  // True once any tx row has crossed the headline indicator line.
+  // Drives the compact / opaque-header presentation — the headline
+  // shrinks to a single thin row while the user is actively
+  // scrolling through the month's transactions.
+  const [compact, setCompact] = useState(false);
 
   useEffect(() => {
     if (view !== "date" || !data || data.txns.length === 0) {
       setScrolledRunningCents(null);
+      setScrolledRunningCount(null);
       setScrolledDateLabel(null);
+      setCompact(false);
       return;
     }
     let raf: number | null = null;
@@ -193,13 +209,18 @@ export function ActivityScreen({
       }
       if (!chosen) {
         setScrolledRunningCents(null);
+        setScrolledRunningCount(null);
         setScrolledDateLabel(null);
+        setCompact(false);
         return;
       }
       const cents = Number(chosen.dataset.txRunning ?? "0");
+      const count = Number(chosen.dataset.txRunningCount ?? "0");
       const date = chosen.dataset.txDate ?? null;
       setScrolledRunningCents(Number.isFinite(cents) ? cents : null);
+      setScrolledRunningCount(Number.isFinite(count) ? count : null);
       setScrolledDateLabel(date);
+      setCompact(true);
     };
     const onScroll = () => {
       if (raf == null) raf = requestAnimationFrame(tick);
@@ -218,10 +239,20 @@ export function ActivityScreen({
     view === "date" && scrolledRunningCents != null
       ? scrolledRunningCents
       : (data?.monthSpend ?? 0);
+  const headlineCount =
+    view === "date" && scrolledRunningCount != null
+      ? scrolledRunningCount
+      : (data?.txns.length ?? 0);
   const headlineTitle =
     view === "date" && scrolledDateLabel
       ? t("spentThrough", { date: scrolledDateLabel })
       : t("monthSpend");
+  const plannedCents = data?.plannedOutflowCents ?? 0;
+  const tone = progressTone(headlineCents, plannedCents);
+  const overByCents =
+    plannedCents > 0 && headlineCents > plannedCents
+      ? headlineCents - plannedCents
+      : 0;
 
   return (
     <main className="mx-auto flex w-full max-w-md flex-col gap-5 px-5 pb-8 pt-8">
@@ -236,24 +267,116 @@ export function ActivityScreen({
       </header>
 
       <div ref={indicatorRef} className="sticky top-2 z-20">
-        <Card className="border-border/40 bg-card/85 p-4 backdrop-blur supports-backdrop-filter:bg-card/70">
-          <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-            {headlineTitle}
-          </p>
-          {isLoading ? (
-            <Skeleton className="mt-1 h-7 w-32" />
+        <Card
+          className={`border-border/40 backdrop-blur transition-[padding,background-color,border-radius] duration-200 supports-backdrop-filter:bg-card/70 ${
+            compact
+              ? "rounded-full bg-card/90 px-4 py-2 ring-foreground/10"
+              : "bg-card/85 p-4"
+          } ${
+            tone === "over"
+              ? "ring-1 ring-destructive/40"
+              : tone === "warn"
+                ? "ring-1 ring-amber-400/40"
+                : ""
+          }`}
+        >
+          {compact ? (
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                  {headlineTitle}
+                </p>
+                <div className="num mt-0.5 flex items-baseline gap-1.5">
+                  <AnimatedNumber
+                    value={headlineCents / 100}
+                    locale={locale}
+                    currency="EUR"
+                    duration={0.25}
+                    className={`text-base font-semibold tracking-tight ${
+                      tone === "over"
+                        ? "text-destructive"
+                        : tone === "warn"
+                          ? "text-amber-500"
+                          : ""
+                    }`}
+                  />
+                  {plannedCents > 0 ? (
+                    <span className="num text-[10px] text-muted-foreground">
+                      / {formatEUR(plannedCents / 100, locale)}
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+              <p
+                className="num shrink-0 text-[11px] text-muted-foreground"
+                aria-live="polite"
+              >
+                <AnimatedNumber
+                  value={headlineCount}
+                  locale={locale}
+                  duration={0.25}
+                  className="font-medium"
+                />{" "}
+                {t("txCountShort")}
+              </p>
+            </div>
           ) : (
-            <AnimatedNumber
-              value={headlineCents / 100}
-              locale={locale}
-              currency="EUR"
-              duration={0.25}
-              className="mt-1 block text-2xl font-semibold tracking-tight"
-            />
+            <>
+              <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                {headlineTitle}
+              </p>
+              {isLoading ? (
+                <Skeleton className="mt-1 h-7 w-32" />
+              ) : (
+                <div className="num mt-1 flex items-baseline gap-2">
+                  <AnimatedNumber
+                    value={headlineCents / 100}
+                    locale={locale}
+                    currency="EUR"
+                    duration={0.25}
+                    className={`text-2xl font-semibold tracking-tight ${
+                      tone === "over"
+                        ? "text-destructive"
+                        : tone === "warn"
+                          ? "text-amber-500"
+                          : ""
+                    }`}
+                  />
+                  {plannedCents > 0 ? (
+                    <span className="num text-xs text-muted-foreground">
+                      / {formatEUR(plannedCents / 100, locale)}
+                    </span>
+                  ) : null}
+                </div>
+              )}
+              {plannedCents > 0 ? (
+                <SpendProgress
+                  actualCents={headlineCents}
+                  plannedCents={plannedCents}
+                  size="sm"
+                  className="mt-2"
+                />
+              ) : null}
+              <div className="mt-1 flex items-center justify-between gap-2">
+                <p className="num text-xs text-muted-foreground">
+                  <AnimatedNumber
+                    value={headlineCount}
+                    locale={locale}
+                    duration={0.25}
+                    className="font-medium"
+                  />{" "}
+                  {t("txCountShort")}
+                </p>
+                {overByCents > 0 ? (
+                  <OverBudgetPill
+                    overByCents={overByCents}
+                    formatter={(c) => formatEUR(c / 100, locale)}
+                    label={tToday("overBy")}
+                  />
+                ) : null}
+              </div>
+            </>
           )}
-          <p className="num mt-1 text-xs text-muted-foreground">
-            {t("txCount", { n: data?.txns.length ?? 0 })}
-          </p>
         </Card>
       </div>
 
@@ -331,7 +454,10 @@ export function ActivityScreen({
                       <li
                         key={r.id}
                         className="px-2"
-                        data-tx-running={txRunning.get(r.id) ?? 0}
+                        data-tx-running={txRunning.get(r.id)?.runningCents ?? 0}
+                        data-tx-running-count={
+                          txRunning.get(r.id)?.runningCount ?? 0
+                        }
                         data-tx-date={g.date}
                       >
                         <ActivityRow

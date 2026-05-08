@@ -19,6 +19,11 @@ import { paydayMonthFor, paydayMonthForAnchor } from "@/lib/payday.ts";
 import { getUpcomingCharges } from "@/lib/forecast.ts";
 import { detectAmountAnomalies } from "@/lib/anomaly.ts";
 import {
+  getMonthlyAggregates,
+  totalOutflow,
+} from "@/lib/budget-aggregates.ts";
+import { getPersonalChecklist } from "@/lib/personal-checklist.ts";
+import {
   AFRONDING_PG_PATTERN,
   isInternalTransferTx,
 } from "@/lib/matching/seed-rules.ts";
@@ -120,6 +125,32 @@ export const activityRouter = router({
         .filter((r) => r.amountCents < 0 && !isInternalTransferTx(r))
         .reduce((s, r) => s + Math.abs(r.amountCents), 0);
 
+      // Planned outflow for the active scope/month — same shape Today
+      // uses for its headline progress. We piggyback on the monthly
+      // aggregator and apply the personal-scope contribution-line
+      // heuristic so the Activity headline can render
+      // "spent X / planned Y" alongside a SpendProgress bar without
+      // requiring the user to fetch /today first.
+      const personalRole =
+        allowed.length === 1 && allowed[0] !== "joint" ? allowed[0] : null;
+      const [agg, checklist] = await Promise.all([
+        getMonthlyAggregates(allowed, input?.anchor),
+        personalRole
+          ? getPersonalChecklist(
+              personalRole,
+              monthRow?.id ?? null,
+            )
+          : Promise.resolve(null),
+      ]);
+      const grossPlannedOutflowCents = Math.abs(totalOutflow(agg.planned));
+      let plannedOutflowCents = grossPlannedOutflowCents;
+      if (personalRole) {
+        const transferOutCents = checklist?.contribution?.plannedCents ?? 0;
+        if (grossPlannedOutflowCents > transferOutCents) {
+          plannedOutflowCents = grossPlannedOutflowCents - transferOutCents;
+        }
+      }
+
       // Anomaly check — only outflows that already auto-matched to a
       // recurring budget item are candidates.
       const anomalyCandidates = txns
@@ -156,6 +187,7 @@ export const activityRouter = router({
         }),
         forecast,
         monthSpend,
+        plannedOutflowCents,
         optionsAll,
       };
     }),
