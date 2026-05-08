@@ -27,7 +27,11 @@ export function progressTone(
 ): SpendProgressTone {
   if (plannedAbs <= 0) return "ok";
   const ratio = actualAbs / plannedAbs;
-  if (ratio >= 1) return "over";
+  // Strictly greater — spending exactly the planned amount is "on
+  // budget", not over. Hitting the planned amount should feel like a
+  // success (Check icon, no red treatment), not an alert. Red is
+  // reserved for genuine overspend.
+  if (ratio > 1) return "over";
   if (ratio >= 0.75) return "warn";
   return "ok";
 }

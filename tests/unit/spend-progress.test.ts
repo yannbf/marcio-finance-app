@@ -18,8 +18,13 @@ describe("progressTone", () => {
     expect(progressTone(99, 100)).toBe("warn");
   });
 
-  it("flips to over at exactly 100%", () => {
-    expect(progressTone(100, 100)).toBe("over");
+  it("stays warn (not over) at exactly 100%", () => {
+    // Spending exactly the planned amount is on budget, not over —
+    // the row should render with a checkmark, never the red alert.
+    expect(progressTone(100, 100)).toBe("warn");
+  });
+
+  it("flips to over only when actual exceeds planned", () => {
     expect(progressTone(101, 100)).toBe("over");
     expect(progressTone(500, 100)).toBe("over");
   });
