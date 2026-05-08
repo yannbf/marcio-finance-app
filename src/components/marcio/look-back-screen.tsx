@@ -118,8 +118,12 @@ export function LookBackScreen({
   const footerRef = useRef<HTMLDivElement | null>(null);
   const [running, setRunning] = useState<{
     cents: number;
-    dateLabel: string | null;
-  }>({ cents: data?.monthSpend ?? 0, dateLabel: null });
+    // ISO booking date of the row currently at the footer line. We
+    // store ISO (not the friendly "Today / Yesterday" label) so the
+    // footer's "From X until Y" range can format both ends with the
+    // same short month + day style regardless of how recent the row is.
+    dateIso: string | null;
+  }>({ cents: data?.monthSpend ?? 0, dateIso: null });
 
   // On first render with txns, jump straight to the bottom of the
   // page so the most recent activity is the first thing the user
@@ -168,14 +172,14 @@ export function LookBackScreen({
         if (first) {
           setRunning({
             cents: Number(first.dataset.txRunning ?? "0"),
-            dateLabel: first.dataset.txDate ?? null,
+            dateIso: first.dataset.txDateIso ?? null,
           });
         }
         return;
       }
       setRunning({
         cents: Number(chosen.dataset.txRunning ?? "0"),
-        dateLabel: chosen.dataset.txDate ?? null,
+        dateIso: chosen.dataset.txDateIso ?? null,
       });
     };
     const onScroll = () => {
@@ -284,7 +288,7 @@ export function LookBackScreen({
                             key={r.id}
                             className="px-2"
                             data-tx-running={r.runningCents}
-                            data-tx-date={g.date}
+                            data-tx-date-iso={r.bookingDate}
                           >
                             <ActivityRow
                               tx={{
@@ -332,8 +336,11 @@ export function LookBackScreen({
         <div className="mx-auto flex max-w-md flex-col gap-2">
           <div className="flex items-center justify-between gap-3">
             <p className="text-[11px] uppercase tracking-[0.14em] text-primary">
-              {running.dateLabel
-                ? t("spentThrough", { date: running.dateLabel })
+              {data && running.dateIso
+                ? t("dateRange", {
+                    from: formatShortDate(data.rangeStartsOn, locale),
+                    until: formatShortDate(running.dateIso, locale),
+                  })
                 : t("spentSoFar")}
             </p>
             <AnimatedNumber
@@ -386,6 +393,18 @@ function formatGroupDate(d: Date, locale: string): string {
   return d.toLocaleDateString(locale, {
     weekday: "short",
     day: "2-digit",
+    month: "short",
+  });
+}
+
+/**
+ * "May 14" — short month + day, no weekday or "Today / Yesterday"
+ * shortcuts. Used inside the footer "From X until Y" range so both
+ * ends format the same way regardless of how recent the row is.
+ */
+function formatShortDate(iso: string, locale: string): string {
+  return new Date(iso).toLocaleDateString(locale, {
+    day: "numeric",
     month: "short",
   });
 }

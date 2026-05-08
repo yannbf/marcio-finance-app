@@ -30,7 +30,7 @@
     "title": "Recapitular",
     "done": "Concluir",
     "spentSoFar": "Gasto até agora",
-    "spentThrough": "Gasto até {date}",
+    "dateRange": "De {from} até {until}",
     "upToToday": "Até hoje"
   },
   "Today": {
@@ -233,7 +233,17 @@
         "noCandidates": "Nenhum item SAZONAIS no mês — importe a planilha primeiro.",
         "notesLabel": "Notas",
         "notesPlaceholder": "ex: depósitos mensais para impostos anuais",
-        "optional": "opcional"
+        "optional": "opcional",
+        "unidentifiedTitle": "Cofres não identificados",
+        "unidentifiedSubtitle": "{n, plural, one {# referência de spaarrekening vista nas suas transações ainda não reivindicada} other {# referências de spaarrekening vistas nas suas transações ainda não reivindicadas}}",
+        "unidentifiedBadge": "Não identificado",
+        "unidentifiedActivity": "{count, plural, one {# transferência} other {# transferências}} · vista pela última vez em {date}",
+        "unidentifiedFlow": "Fluxo total {amount}",
+        "unidentifiedIdentify": "Identificar",
+        "unidentifiedClaimTitle": "Reivindicar {ref}",
+        "unidentifiedClaimHint": "Dê um nome a esta referência para o Marcio rotear transferências passadas e futuras para ela.",
+        "unidentifiedSaved": "Recategorizadas {n, plural, =0 {nenhuma transação} one {# transação} other {# transações}}.",
+        "unidentifiedFailure": "Não foi possível reivindicar — {error}"
       }
     },
     "inline": {

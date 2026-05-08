@@ -170,6 +170,12 @@ export const activityRouter = router({
 
       return {
         anchor: { year: range.anchorYear, month: range.anchorMonth },
+        // Inclusive payday-month range (April 25 → May 24 for "May 2026"
+        // when paydayDay = 25). Surfaced so client screens can show the
+        // start/end dates inline without recomputing — e.g. Look Back's
+        // footer reads "From {startsOn} until {current row date}".
+        rangeStartsOn: range.startsOn.toISOString(),
+        rangeEndsOn: range.endsOn.toISOString(),
         txns: txns.map((r) => {
           const a = anomalies.get(r.id);
           return {

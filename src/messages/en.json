@@ -30,7 +30,7 @@
     "title": "Look back",
     "done": "Done",
     "spentSoFar": "Spent so far",
-    "spentThrough": "Spent through {date}",
+    "dateRange": "From {from} until {until}",
     "upToToday": "Up to today"
   },
   "Today": {
@@ -233,7 +233,17 @@
         "noCandidates": "No SAZONAIS items in this month — import the sheet first.",
         "notesLabel": "Notes",
         "notesPlaceholder": "e.g. monthly deposits for annual taxes",
-        "optional": "optional"
+        "optional": "optional",
+        "unidentifiedTitle": "Unidentified savings accounts",
+        "unidentifiedSubtitle": "{n, plural, one {# spaarrekening reference seen in your transactions but not yet claimed} other {# spaarrekening references seen in your transactions but not yet claimed}}",
+        "unidentifiedBadge": "Not identified",
+        "unidentifiedActivity": "{count, plural, one {# transfer} other {# transfers}} · last seen {date}",
+        "unidentifiedFlow": "Total flow {amount}",
+        "unidentifiedIdentify": "Identify",
+        "unidentifiedClaimTitle": "Claim {ref}",
+        "unidentifiedClaimHint": "Give this savings reference a name so Marcio can route past and future transfers to it.",
+        "unidentifiedSaved": "Reclaimed {n, plural, =0 {no transactions} one {# transaction} other {# transactions}}.",
+        "unidentifiedFailure": "Could not claim — {error}"
       }
     },
     "inline": {

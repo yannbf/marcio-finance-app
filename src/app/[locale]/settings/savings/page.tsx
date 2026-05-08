@@ -10,6 +10,8 @@ import {
   type BudgetSuggestion,
   type SavingsRow,
 } from "@/components/marcio/savings-form.tsx";
+import { UnidentifiedSavingsList } from "@/components/marcio/unidentified-savings-list.tsx";
+import { detectUnidentifiedSavingsRefs } from "@/lib/savings-detection.ts";
 import { getCurrentUser } from "@/lib/auth/current-user.ts";
 import { getHouseholdSettings } from "@/lib/settings.ts";
 import { paydayMonthFor } from "@/lib/payday.ts";
@@ -114,6 +116,8 @@ export default async function SavingsSettingsPage({
         ]
       : [{ value: "joint", label: tConn("ownerJoint") }];
 
+  const unidentified = await detectUnidentifiedSavingsRefs(allowed);
+
   return (
     <main className="mx-auto flex w-full max-w-md flex-col gap-5 px-5 pb-8 pt-8">
       <header className="flex items-center gap-3">
@@ -136,6 +140,13 @@ export default async function SavingsSettingsPage({
       <Card className="border-border/40 bg-card/40 p-4 text-xs text-muted-foreground">
         {t("about")}
       </Card>
+
+      <UnidentifiedSavingsList
+        refs={unidentified}
+        ownerOptions={ownerOptions}
+        budgetItemSuggestions={suggestions}
+        locale={locale}
+      />
 
       <SavingsForm
         rows={rows}
