@@ -149,7 +149,6 @@
     "applyToSimilar": "Todas iguais",
     "applyToFuture": "Esta + futuras",
     "currentlyAssigned": "Categoria atual",
-    "back": "Voltar",
     "selectAll": "Selecionar tudo",
     "selected": "{n, plural, one {# selecionada} other {# selecionadas}}",
     "clearSelection": "Limpar",

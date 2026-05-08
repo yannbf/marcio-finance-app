@@ -149,7 +149,6 @@
     "applyToSimilar": "All similar",
     "applyToFuture": "This + future",
     "currentlyAssigned": "Currently assigned",
-    "back": "Back",
     "selectAll": "Select all",
     "selected": "{n, plural, one {# selected} other {# selected}}",
     "clearSelection": "Clear",
