@@ -20,7 +20,10 @@ import { SpendProgress, progressTone } from "./spend-progress.tsx";
 import { trpc } from "@/lib/trpc/client.ts";
 import { useMounted } from "@/lib/use-mounted.ts";
 import { formatEUR } from "@/lib/format.ts";
-import { isInternalTransferTx } from "@/lib/matching/seed-rules.ts";
+import {
+  isInternalTransferTx,
+  isSavingsTransferTx,
+} from "@/lib/matching/seed-rules.ts";
 import { SECTION_ORDER, SECTION_TR_KEY } from "@/lib/import/sections.ts";
 import type { Section } from "@/lib/import/types.ts";
 import type { inferRouterOutputs } from "@trpc/server";
@@ -90,7 +93,11 @@ export function LookBackScreen({
     const annotated: Row[] = [];
     for (const r of data.txns) {
       annotated.push({ ...r, runningCents: running });
-      if (r.amountCents < 0 && !isInternalTransferTx(r)) {
+      if (
+        r.amountCents < 0 &&
+        !isInternalTransferTx(r) &&
+        !isSavingsTransferTx(r)
+      ) {
         running -= -r.amountCents;
       }
     }
@@ -193,10 +200,23 @@ export function LookBackScreen({
       ? running.cents - plannedCents
       : 0;
 
+  // Heights of the fixed chrome — used to pad the scroll content so
+  // it doesn't slide underneath the header/footer. Approximate but
+  // they're the only sizes the layout cares about, and keeping them
+  // here next to the markup makes the relationship obvious. The
+  // chrome itself sits in fixed position so it's pinned from the
+  // very first paint, not after the user has scrolled enough for
+  // sticky thresholds to kick in.
+  const HEADER_PX = 52;
+  const FOOTER_PX = 112;
+
   return (
-    <div className="flex min-h-dvh flex-col">
+    <div className="min-h-dvh">
       {/* Top chrome — Done button + title. Mirrors ING's "Done | Look Ahead | (i)". */}
-      <header className="sticky top-0 z-20 flex items-center gap-2 border-b border-border/40 bg-background/85 px-4 py-3 backdrop-blur supports-backdrop-filter:bg-background/70">
+      <header
+        className="fixed inset-x-0 top-0 z-30 flex items-center gap-2 border-b border-border/40 bg-background/85 px-4 py-3 backdrop-blur supports-backdrop-filter:bg-background/70"
+        style={{ height: HEADER_PX }}
+      >
         <Link
           href="/activity"
           className="-m-1 inline-flex items-center gap-1 rounded p-1 text-sm font-medium text-foreground/80 hover:text-foreground"
@@ -211,87 +231,97 @@ export function LookBackScreen({
         <span className="w-12" aria-hidden />
       </header>
 
-      {isLoading || !data ? (
-        <div className="flex flex-1 flex-col gap-3 p-5">
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
-        </div>
-      ) : data.txns.length === 0 ? (
-        <div className="flex flex-1 items-center justify-center px-6 text-center">
-          <p className="text-sm text-muted-foreground">{tActivity("empty")}</p>
-        </div>
-      ) : (
-        <>
-          {/* Decorative top-of-doc spacer. Sits ABOVE the newest txn
-              and represents the "now / today" end of the timeline:
-              with the list ordered newest-at-top and oldest-at-bottom,
-              the user reaches this spacer after scrolling all the way
-              UP through the month. The min-h gives plenty of scroll
-              travel even on a sparse month so every transaction can
-              cross the footer indicator. */}
-          <div className="grid min-h-[100dvh] flex-1 place-items-center px-6 py-10 text-muted-foreground/60">
-            <div className="flex flex-col items-center gap-3 text-center">
-              <Sparkles
-                className="size-12 text-muted-foreground/40"
-                strokeWidth={1.4}
-              />
-              <p className="text-sm">{t("upToToday")}</p>
+      {/* Scroll content — clears both fixed bars via padding. */}
+      <div
+        className="flex flex-col"
+        style={{ paddingTop: HEADER_PX, paddingBottom: FOOTER_PX }}
+      >
+        {isLoading || !data ? (
+          <div className="flex flex-col gap-3 p-5">
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+          </div>
+        ) : data.txns.length === 0 ? (
+          <div className="flex flex-1 items-center justify-center px-6 text-center">
+            <p className="text-sm text-muted-foreground">
+              {tActivity("empty")}
+            </p>
+          </div>
+        ) : (
+          <>
+            {/* Decorative top-of-doc spacer. Sits ABOVE the newest txn
+                and represents the "now / today" end of the timeline:
+                with the list ordered newest-at-top and oldest-at-bottom,
+                the user reaches this spacer after scrolling all the way
+                UP through the month. The min-h gives plenty of scroll
+                travel even on a sparse month so every transaction can
+                cross the footer indicator. */}
+            <div className="grid min-h-[100dvh] place-items-center px-6 py-10 text-muted-foreground/60">
+              <div className="flex flex-col items-center gap-3 text-center">
+                <Sparkles
+                  className="size-12 text-muted-foreground/40"
+                  strokeWidth={1.4}
+                />
+                <p className="text-sm">{t("upToToday")}</p>
+              </div>
             </div>
-          </div>
 
-          <div className="flex flex-col gap-2 px-5 pb-32">
-            {dateGroups.map((g) => (
-              <section key={g.date} className="flex flex-col gap-1">
-                <p className="px-2 py-1.5 text-xs uppercase tracking-[0.14em] text-muted-foreground">
-                  {g.date}
-                </p>
-                <Card className="border-border/40 bg-card/60 p-1">
-                  <ul className="divide-y divide-border/40">
-                    {g.rows.map((r) => {
-                      const optsForScope = data.optionsAll.filter(
-                        (o) => o.scope === r.owner,
-                      );
-                      return (
-                        <li
-                          key={r.id}
-                          className="px-2"
-                          data-tx-running={r.runningCents}
-                          data-tx-date={g.date}
-                        >
-                          <ActivityRow
-                            tx={{
-                              id: r.id,
-                              counterparty: r.counterparty,
-                              description: r.description,
-                              bookingDate: r.bookingDate,
-                              amountCents: r.amountCents,
-                              matchedItemId: r.matchedItemId,
-                              matchedName: r.matchedName,
-                              owner: r.owner,
-                            }}
-                            options={optsForScope}
-                            locale={locale}
-                            sectionLabels={sectionLabels}
-                          />
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </Card>
-              </section>
-            ))}
-          </div>
-        </>
-      )}
+            <div className="flex flex-col gap-2 px-5">
+              {dateGroups.map((g) => (
+                <section key={g.date} className="flex flex-col gap-1">
+                  <p className="px-2 py-1.5 text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                    {g.date}
+                  </p>
+                  <Card className="border-border/40 bg-card/60 p-1">
+                    <ul className="divide-y divide-border/40">
+                      {g.rows.map((r) => {
+                        const optsForScope = data.optionsAll.filter(
+                          (o) => o.scope === r.owner,
+                        );
+                        return (
+                          <li
+                            key={r.id}
+                            className="px-2"
+                            data-tx-running={r.runningCents}
+                            data-tx-date={g.date}
+                          >
+                            <ActivityRow
+                              tx={{
+                                id: r.id,
+                                counterparty: r.counterparty,
+                                description: r.description,
+                                bookingDate: r.bookingDate,
+                                amountCents: r.amountCents,
+                                matchedItemId: r.matchedItemId,
+                                matchedName: r.matchedName,
+                                owner: r.owner,
+                              }}
+                              options={optsForScope}
+                              locale={locale}
+                              sectionLabels={sectionLabels}
+                            />
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </Card>
+                </section>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
 
-      {/* Sticky footer — the running indicator that ticks as each
+      {/* Fixed footer — the running indicator that ticks as each
           transaction crosses its top edge. The progress bar fills as
           the cumulative grows past the planned outflow goal, sharing
-          the same tone treatment Today and the Activity headline use. */}
+          the same tone treatment Today and the Activity headline use.
+          Pinned with position: fixed so it's at the bottom from the
+          very first paint, no sticky-threshold quirk. */}
       <div
         ref={footerRef}
-        className={`sticky bottom-0 z-20 border-t bg-background/90 px-5 py-4 backdrop-blur supports-backdrop-filter:bg-background/75 ${
+        className={`fixed inset-x-0 bottom-0 z-30 border-t bg-background/90 px-5 py-4 backdrop-blur supports-backdrop-filter:bg-background/75 ${
           footerTone === "over"
             ? "border-destructive/40"
             : footerTone === "warn"
