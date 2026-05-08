@@ -14,6 +14,7 @@ import { insightsRouter } from "./insights.ts";
 import { bucketsRouter } from "./buckets.ts";
 import { tikkieRouter } from "./tikkie.ts";
 import { transactionsRouter } from "./transactions.ts";
+import { savingsRouter } from "./savings.ts";
 
 export const appRouter = router({
   session: sessionRouter,
@@ -26,6 +27,7 @@ export const appRouter = router({
   buckets: bucketsRouter,
   tikkie: tikkieRouter,
   transactions: transactionsRouter,
+  savings: savingsRouter,
 });
 
 export type AppRouter = typeof appRouter;
