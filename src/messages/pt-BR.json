@@ -29,6 +29,8 @@
     "spentSoFar": "Gasto até agora",
     "ofPlanned": "de {planned} planejado",
     "remaining": "Restante",
+    "overBy": "Estourou em",
+    "overBudget": "Acima do limite",
     "onTrack": "No ritmo",
     "ahead": "Adiantado em {amount}",
     "behind": "Atrasado em {amount}",

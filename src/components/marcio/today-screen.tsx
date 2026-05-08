@@ -12,6 +12,11 @@ import { formatEUR, formatEURPrecise, formatPercent } from "@/lib/format.ts";
 import { trpc } from "@/lib/trpc/client.ts";
 import { useMounted } from "@/lib/use-mounted.ts";
 import { SectionDrillSheet } from "./section-drill-sheet.tsx";
+import {
+  OverBudgetPill,
+  SpendProgress,
+  progressTone,
+} from "./spend-progress.tsx";
 import { Link } from "@/i18n/navigation.ts";
 import type { Section } from "@/lib/import/types.ts";
 
@@ -102,21 +107,39 @@ export function TodayScreen({
           )}
         </p>
 
-        <div className="mt-6 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-          <div
-            className="h-full rounded-full bg-primary transition-[width] duration-700 ease-out"
-            style={{
-              width: `${Math.min(100, progress * 100).toFixed(2)}%`,
-            }}
+        <div className="mt-6">
+          <SpendProgress
+            actualCents={spentOutflowCents}
+            plannedCents={plannedOutflowCents}
           />
         </div>
-        <div className="num mt-3 flex items-center justify-between text-xs text-muted-foreground">
+        <div className="num mt-3 flex items-center justify-between text-xs">
           {data ? (
             <>
-              <span>{formatPercent(progress, locale)}</span>
-              <span>
-                {t("Today.remaining")}: {formatEUR(remainingCents / 100, locale)}
+              <span
+                className={(() => {
+                  const tone = progressTone(
+                    spentOutflowCents,
+                    plannedOutflowCents,
+                  );
+                  if (tone === "over") return "font-medium text-destructive";
+                  if (tone === "warn") return "font-medium text-amber-500";
+                  return "text-muted-foreground";
+                })()}
+              >
+                {formatPercent(progress, locale)}
               </span>
+              {spentOutflowCents > plannedOutflowCents && plannedOutflowCents > 0 ? (
+                <OverBudgetPill
+                  overByCents={spentOutflowCents - plannedOutflowCents}
+                  formatter={(c) => formatEUR(c / 100, locale)}
+                  label={t("Today.overBy")}
+                />
+              ) : (
+                <span className="text-muted-foreground">
+                  {t("Today.remaining")}: {formatEUR(remainingCents / 100, locale)}
+                </span>
+              )}
             </>
           ) : (
             <>

@@ -29,6 +29,8 @@
     "spentSoFar": "Spent so far",
     "ofPlanned": "of {planned} planned",
     "remaining": "Remaining",
+    "overBy": "Over by",
+    "overBudget": "Over budget",
     "onTrack": "On track",
     "ahead": "Ahead by {amount}",
     "behind": "Behind by {amount}",
