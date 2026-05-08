@@ -28,6 +28,11 @@ import {
   INTERNAL_TRANSFER_PG_PATTERN,
   SAVINGS_TRANSFER_PG_PATTERN,
 } from "@/lib/matching/seed-rules.ts";
+import {
+  CATEGORY_DISPLAY_ORDER,
+  categorizeTx,
+  type Category,
+} from "@/lib/categorization.ts";
 
 export const insightsRouter = router({
   get: publicProcedure
@@ -115,6 +120,48 @@ export const insightsRouter = router({
         .groupBy(transaction.counterparty)
         .orderBy(asc(sql`SUM(${transaction.amountCents})`))
         .limit(10);
+
+      // Auto-subcategory breakdown ("groceries", "restaurants", etc.).
+      // We can't reliably do this in SQL — patterns are JS regexes —
+      // so pull the raw qualifying outflows (same filters as
+      // topMerchants) and bucket in Node. This is bounded by month
+      // size; a few hundred rows tops.
+      const categoryRows = await db
+        .select({
+          counterparty: transaction.counterparty,
+          description: transaction.description,
+          amountCents: transaction.amountCents,
+        })
+        .from(transaction)
+        .innerJoin(bankAccount, eq(bankAccount.id, transaction.bankAccountId))
+        .where(
+          and(
+            inArray(bankAccount.owner, scopes),
+            gte(transaction.bookingDate, range.startsOn),
+            lte(transaction.bookingDate, range.endsOn),
+            sql`${transaction.amountCents} < 0`,
+            sql`NOT (${transaction.counterparty} ~* ${AFRONDING_PG_PATTERN})`,
+            sql`NOT (COALESCE(${transaction.counterparty}, '') || ' ' || COALESCE(${transaction.description}, '') ~* ${INTERNAL_TRANSFER_PG_PATTERN})`,
+            sql`NOT (COALESCE(${transaction.counterparty}, '') || ' ' || COALESCE(${transaction.description}, '') ~* ${SAVINGS_TRANSFER_PG_PATTERN})`,
+          ),
+        );
+      const categoryBuckets = new Map<
+        Category,
+        { sumCents: number; count: number }
+      >();
+      for (const r of categoryRows) {
+        const cat = categorizeTx(r);
+        const cur = categoryBuckets.get(cat) ?? { sumCents: 0, count: 0 };
+        cur.sumCents += Math.abs(r.amountCents);
+        cur.count += 1;
+        categoryBuckets.set(cat, cur);
+      }
+      const byCategory = CATEGORY_DISPLAY_ORDER.filter((c) =>
+        categoryBuckets.has(c),
+      ).map((c) => {
+        const b = categoryBuckets.get(c)!;
+        return { category: c, sumCents: b.sumCents, count: b.count };
+      });
 
       const topCategories = await db
         .select({
@@ -247,6 +294,7 @@ export const insightsRouter = router({
           sum: c.sum,
           naturalKey: naturalKeyByItemId.get(c.itemId) ?? null,
         })),
+        byCategory,
       };
     }),
 });

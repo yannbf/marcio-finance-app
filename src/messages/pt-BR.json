@@ -188,6 +188,8 @@
     "totalSpent": "Total gasto neste mês",
     "bySectionTitle": "Por seção",
     "bySectionHint": "% do total gasto.",
+    "byCategoryTitle": "Por categoria",
+    "byCategoryHint": "Detectada automaticamente — supermercado, restaurantes, transporte, lazer, …",
     "topCategoriesTitle": "Top categorias",
     "topMerchantsTitle": "Top estabelecimentos",
     "emptyHint": "Sem dados ainda — categorize transações na Caixa.",
@@ -195,6 +197,20 @@
     "vsLastMonth": "vs mês passado",
     "roundupTitle": "Arredondamento p/ poupança",
     "roundupHint": "{n, plural, one {# transferência} other {# transferências}} para Oranje spaarrekening"
+  },
+  "Categories": {
+    "groceries": "Mercado",
+    "restaurants": "Restaurantes & cafés",
+    "transport": "Transporte",
+    "shopping": "Compras",
+    "leisure": "Lazer & viagens",
+    "utilities": "Contas (luz, internet)",
+    "healthcare": "Saúde",
+    "subscriptions": "Assinaturas",
+    "housing": "Moradia",
+    "taxes": "Impostos & governo",
+    "finance": "Tarifas bancárias",
+    "other": "Outros"
   },
   "Settings": {
     "title": "Ajustes",

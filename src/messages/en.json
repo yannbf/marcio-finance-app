@@ -188,6 +188,8 @@
     "totalSpent": "Total spent this month",
     "bySectionTitle": "By section",
     "bySectionHint": "% of total spend.",
+    "byCategoryTitle": "By category",
+    "byCategoryHint": "Auto-tagged from the merchant — supermarket, restaurants, transport, leisure, …",
     "topCategoriesTitle": "Top categories",
     "topMerchantsTitle": "Top merchants",
     "emptyHint": "Nothing yet — categorize a few transactions in Caixa.",
@@ -195,6 +197,20 @@
     "vsLastMonth": "vs last month",
     "roundupTitle": "Round-up to savings",
     "roundupHint": "{n, plural, one {# sweep} other {# sweeps}} to Oranje spaarrekening"
+  },
+  "Categories": {
+    "groceries": "Groceries",
+    "restaurants": "Restaurants & cafes",
+    "transport": "Transport",
+    "shopping": "Shopping",
+    "leisure": "Leisure & travel",
+    "utilities": "Utilities",
+    "healthcare": "Healthcare",
+    "subscriptions": "Subscriptions",
+    "housing": "Housing",
+    "taxes": "Taxes & gov.",
+    "finance": "Bank fees",
+    "other": "Other"
   },
   "Settings": {
     "title": "Settings",

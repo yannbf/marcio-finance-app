@@ -26,6 +26,7 @@ export function InsightsScreen({
 }) {
   const t = useTranslations("Insights");
   const tSections = useTranslations("Sections");
+  const tCategories = useTranslations("Categories");
   const tTikkie = useTranslations("Tikkie");
   const sp = useSearchParams();
   const { anchor, scope } = parseSearch(sp, defaultAnchor, defaultScope);
@@ -120,6 +121,46 @@ export function InsightsScreen({
             );
           })}
         </ul>
+      </Card>
+
+      <Card className="border-border/40 bg-card/60 p-5">
+        <h2 className="text-sm font-medium">{t("byCategoryTitle")}</h2>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          {t("byCategoryHint")}
+        </p>
+        {(data?.byCategory.length ?? 0) === 0 ? (
+          <p className="mt-3 text-xs text-muted-foreground">
+            {t("emptyHint")}
+          </p>
+        ) : (
+          <ul className="mt-4 flex flex-col gap-3">
+            {data!.byCategory.map((row) => {
+              const total = data!.totalOutCents;
+              const pct = total > 0 ? (row.sumCents / total) * 100 : 0;
+              return (
+                <li key={row.category} className="flex flex-col gap-1.5">
+                  <div className="flex items-baseline justify-between gap-2 text-sm">
+                    <span className="capitalize">
+                      {tCategories(row.category as never)}
+                    </span>
+                    <span className="num text-muted-foreground">
+                      {formatEUR(row.sumCents / 100, locale)} · {pct.toFixed(0)}%
+                    </span>
+                  </div>
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full bg-primary"
+                      style={{ width: `${pct.toFixed(2)}%` }}
+                    />
+                  </div>
+                  <p className="num text-[10px] text-muted-foreground/70">
+                    {t("hits", { n: row.count })}
+                  </p>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </Card>
 
       <Card className="border-border/40 bg-card/60 p-5">
