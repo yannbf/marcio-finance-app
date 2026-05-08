@@ -14,6 +14,7 @@ import { trpc } from "@/lib/trpc/client.ts";
 import { useMounted } from "@/lib/use-mounted.ts";
 import { formatEUR, formatEURPrecise } from "@/lib/format.ts";
 import { fingerprintCounterparty } from "@/lib/matching/fingerprint.ts";
+import { isTikkie } from "@/lib/tikkie.ts";
 import { SECTION_ORDER, SECTION_TR_KEY } from "@/lib/import/sections.ts";
 import type { Section } from "@/lib/import/types.ts";
 import type { inferRouterOutputs } from "@trpc/server";
@@ -94,11 +95,23 @@ export function ActivityScreen({
     const groups = new Map<string, Bucket>();
     for (const tx of data.txns) {
       const cp = (tx.counterparty ?? "").trim() || "—";
-      const fp = fingerprintCounterparty(cp) || cp.toLowerCase();
-      const key = fp;
+      // Tikkies surface in two ING shapes: "AAB INZ TIKKIE" (topic +
+      // sender baked into description) and "<Name> via Tikkie" (counter-
+      // party already names the sender). Plain counterparty fingerprinting
+      // would split those — collapse them into one canonical Tikkie
+      // bucket so the "by amount" view doesn't fragment. The dedicated
+      // /tikkie screen already breaks them out per person.
+      const tikkieRow = isTikkie({
+        counterparty: tx.counterparty,
+        description: tx.description,
+      });
+      const key = tikkieRow
+        ? "tikkie"
+        : fingerprintCounterparty(cp) || cp.toLowerCase();
+      const displayName = tikkieRow ? "Tikkie" : cp;
       const bucket = groups.get(key) ?? {
         key,
-        displayName: cp,
+        displayName,
         txns: [],
         paidCents: 0,
         receivedCents: 0,
