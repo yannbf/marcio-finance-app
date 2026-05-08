@@ -46,32 +46,43 @@ export const todayRouter = router({
           unmatchedCount(scopes, RECENTLY_ADDED_HOURS),
         ]);
 
-      const plannedOutflowCents = Math.abs(totalOutflow(agg.planned));
+      const personalRole =
+        scopes.length === 1 && scopes[0] !== "joint" ? scopes[0] : null;
+      const personalChecklist = personalRole
+        ? await getPersonalChecklist(personalRole, agg.monthId)
+        : null;
+
+      // The headline answers a different question depending on the
+      // view:
+      //
+      // - Joint view ("how is the household budget doing?"): the
+      //   denominator is total planned outflow on the joint account.
+      //   "Spent X of €Y planned" reads as a budget-vs-spend ratio.
+      //
+      // - Me view ("how much of my personal cash is left?"): the
+      //   denominator is take-home pay (salary minus the joint
+      //   contribution share, already applied via contribution_ratio
+      //   inside getMonthlyAggregates). The transfer to joint is
+      //   *not* spending — it's how the household pays for joint
+      //   stuff — so it doesn't belong in the "planned outflow"
+      //   number for the Me view.
+      //
+      //   `incomeCents` is already the post-contribution take-home
+      //   because the SQL applies (1 - contribution_ratio). So we
+      //   can swap the headline denominator to it directly.
+      const grossPlannedOutflowCents = Math.abs(totalOutflow(agg.planned));
       const spentOutflowCents = Math.abs(totalOutflow(agg.actual));
       const incomeCents = totalIncome(agg.planned);
       const marginCents = incomeCents + totalOutflow(agg.planned);
+      const plannedOutflowCents = personalRole
+        ? incomeCents
+        : grossPlannedOutflowCents;
       const progress =
         plannedOutflowCents > 0 ? spentOutflowCents / plannedOutflowCents : 0;
       const remainingCents = Math.max(
         0,
         plannedOutflowCents - spentOutflowCents,
       );
-
-      // Personal-scope confirmation indicators: did the salary land?
-      // did the joint contribution transfer? Two booleans plus the
-      // raw amounts so the UI can show "received €5,000" or
-      // "expected €5,000" depending on whether the matching txn
-      // arrived.
-      //
-      // Only meaningful when the user is viewing their own scope
-      // (yann or camila), where the salary lives in the personal
-      // ENTRADAS row and the contribution lives in joint
-      // ENTRADAS:contrib-{role}.
-      const personalRole =
-        scopes.length === 1 && scopes[0] !== "joint" ? scopes[0] : null;
-      const personalChecklist = personalRole
-        ? await getPersonalChecklist(personalRole, agg.monthId)
-        : null;
 
       return {
         paydayDay: settings.paydayDay,

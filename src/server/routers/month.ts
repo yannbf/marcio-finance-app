@@ -128,18 +128,35 @@ export const monthRouter = router({
         matchCounts.map((r) => [r.itemId, Number.parseInt(r.count, 10)]),
       );
 
-      const items = rawItems.map((it) => ({
-        id: it.id,
-        name: it.name,
-        section: it.section as Section,
-        plannedCents: monthlyContributionCents(
+      // ENTRADAS rows can carry a `contribution_ratio` in personal
+      // scopes — the fraction of that income that's transferred to
+      // the joint account. The Today router already nets these out
+      // in its SQL aggregate; we mirror it here so Month's per-item
+      // and per-section totals show take-home pay instead of gross.
+      // Transferring money isn't spending, so the gross figure was
+      // misleading on the personal Month view.
+      const items = rawItems.map((it) => {
+        const baseCents = monthlyContributionCents(
           it.plannedCents,
           it.section as Section,
-        ),
-        dueDay: it.dueDay,
-        sazonalKind: it.sazonalKind as "O" | "L" | null,
-        matchCount: matchByItem.get(it.id) ?? 0,
-      }));
+        );
+        const ratio = it.contributionRatio
+          ? Number.parseFloat(it.contributionRatio)
+          : 0;
+        const plannedCents =
+          it.section === "ENTRADAS" && ratio > 0
+            ? Math.round(baseCents * (1 - ratio))
+            : baseCents;
+        return {
+          id: it.id,
+          name: it.name,
+          section: it.section as Section,
+          plannedCents,
+          dueDay: it.dueDay,
+          sazonalKind: it.sazonalKind as "O" | "L" | null,
+          matchCount: matchByItem.get(it.id) ?? 0,
+        };
+      });
 
       let income = 0;
       let outflow = 0;

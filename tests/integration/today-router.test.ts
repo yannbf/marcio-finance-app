@@ -77,6 +77,32 @@ describe("today.get", () => {
     expect(camila.inboxCount).toBeGreaterThanOrEqual(1);
   });
 
+  it("personal-scope headline uses take-home pay as the planned denominator", async () => {
+    const caller = makeAuthedCaller("yann");
+    const r = await caller.today.get({
+      anchor: { year: 2026, month: 5 },
+      scope: "yann",
+    });
+    // Yann's salary is 500_000 cents at ratio 0.5 → take-home is
+    // 250_000. The "of €Y planned" the user sees on the Today
+    // headline must be the take-home (250_000), NOT gross outflow
+    // (which the user expects to also exclude the joint contribution
+    // line, since transfers aren't spending).
+    expect(r.plannedOutflowCents).toBe(250000);
+    expect(r.incomeCents).toBe(250000);
+  });
+
+  it("joint-scope headline keeps the gross planned-outflow denominator", async () => {
+    const caller = makeAuthedCaller("yann");
+    const r = await caller.today.get({
+      anchor: { year: 2026, month: 5 },
+      scope: "joint",
+    });
+    // Joint view answers "how is the household budget doing?" — the
+    // denominator there IS planned outflow on the joint account.
+    expect(r.plannedOutflowCents).toBe(302759);
+  });
+
   it("personalChecklist surfaces salary + contribution amounts in personal scope", async () => {
     const caller = makeAuthedCaller("yann");
     const r = await caller.today.get({
