@@ -16,8 +16,10 @@ import { Link } from "@/i18n/navigation.ts";
 import { ActivityRow } from "./activity-row.tsx";
 import { AnimatedNumber } from "./animated-number.tsx";
 import { parseSearch } from "./month-scope-bar.tsx";
+import { SpendProgress, progressTone } from "./spend-progress.tsx";
 import { trpc } from "@/lib/trpc/client.ts";
 import { useMounted } from "@/lib/use-mounted.ts";
+import { formatEUR } from "@/lib/format.ts";
 import { isInternalTransferTx } from "@/lib/matching/seed-rules.ts";
 import { SECTION_ORDER, SECTION_TR_KEY } from "@/lib/import/sections.ts";
 import type { Section } from "@/lib/import/types.ts";
@@ -52,6 +54,7 @@ export function LookBackScreen({
   defaultMeRole?: "yann" | "camila" | null;
 }) {
   const t = useTranslations("LookBack");
+  const tToday = useTranslations("Today");
   const tSections = useTranslations("Sections");
   const tActivity = useTranslations("Activity");
   const sp = useSearchParams();
@@ -150,9 +153,10 @@ export function LookBackScreen({
         else break;
       }
       if (!chosen) {
-        // No row has reached the footer yet — show the running for
-        // the OLDEST txn (= just its own contribution) so the footer
-        // doesn't sit at zero in a weird limbo state.
+        // The user has scrolled past every transaction (into the
+        // "today" spacer at the very top of the doc). With newest-
+        // first DOM order, rows[0] is the newest txn, whose running
+        // == data.monthSpend — i.e. "spent through today, all of it".
         const first = rows[0];
         if (first) {
           setRunning({
@@ -177,6 +181,17 @@ export function LookBackScreen({
       if (raf != null) cancelAnimationFrame(raf);
     };
   }, [data]);
+
+  // Footer tone tracks the running cumulative against the planned
+  // outflow goal. As the user scrolls upward the cumulative grows; if
+  // it climbs past planned the bar/text turns destructive and the
+  // over-by amount surfaces inline.
+  const plannedCents = data?.plannedOutflowCents ?? 0;
+  const footerTone = progressTone(running.cents, plannedCents);
+  const overByCents =
+    plannedCents > 0 && running.cents > plannedCents
+      ? running.cents - plannedCents
+      : 0;
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -271,26 +286,57 @@ export function LookBackScreen({
       )}
 
       {/* Sticky footer — the running indicator that ticks as each
-          transaction crosses its top edge. */}
+          transaction crosses its top edge. The progress bar fills as
+          the cumulative grows past the planned outflow goal, sharing
+          the same tone treatment Today and the Activity headline use. */}
       <div
         ref={footerRef}
-        className="sticky bottom-0 z-20 border-t border-border/40 bg-background/90 px-5 py-4 backdrop-blur supports-backdrop-filter:bg-background/75"
+        className={`sticky bottom-0 z-20 border-t bg-background/90 px-5 py-4 backdrop-blur supports-backdrop-filter:bg-background/75 ${
+          footerTone === "over"
+            ? "border-destructive/40"
+            : footerTone === "warn"
+              ? "border-amber-400/40"
+              : "border-border/40"
+        }`}
       >
-        <div className="mx-auto flex max-w-md items-center justify-between gap-3">
-          <div className="min-w-0">
+        <div className="mx-auto flex max-w-md flex-col gap-2">
+          <div className="flex items-center justify-between gap-3">
             <p className="text-[11px] uppercase tracking-[0.14em] text-primary">
               {running.dateLabel
                 ? t("spentThrough", { date: running.dateLabel })
                 : t("spentSoFar")}
             </p>
+            <AnimatedNumber
+              value={running.cents / 100}
+              locale={locale}
+              currency="EUR"
+              duration={0.25}
+              className={`text-lg font-semibold tracking-tight ${
+                footerTone === "over"
+                  ? "text-destructive"
+                  : footerTone === "warn"
+                    ? "text-amber-500"
+                    : ""
+              }`}
+            />
           </div>
-          <AnimatedNumber
-            value={running.cents / 100}
-            locale={locale}
-            currency="EUR"
-            duration={0.25}
-            className="text-lg font-semibold tracking-tight"
+          <SpendProgress
+            actualCents={running.cents}
+            plannedCents={plannedCents}
+            size="sm"
           />
+          <div className="num flex items-center justify-between text-[11px] text-muted-foreground">
+            <span>
+              {tToday("ofPlanned", {
+                planned: formatEUR(plannedCents / 100, locale),
+              })}
+            </span>
+            {overByCents > 0 ? (
+              <span className="font-medium uppercase tracking-[0.08em] text-destructive">
+                +{formatEUR(overByCents / 100, locale)}
+              </span>
+            ) : null}
+          </div>
         </div>
       </div>
     </div>

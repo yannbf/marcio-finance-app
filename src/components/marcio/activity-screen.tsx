@@ -167,12 +167,12 @@ export function ActivityScreen({
         <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
           {t("monthSpend")}
         </p>
-        {isLoading ? (
+        {isLoading || !data ? (
           <Skeleton className="mt-1 h-7 w-32" />
         ) : (
-          <div className="num mt-1 flex items-baseline gap-2">
+          <>
             <p
-              className={`text-2xl font-semibold tracking-tight ${
+              className={`num mt-1 text-2xl font-semibold tracking-tight ${
                 tone === "over"
                   ? "text-destructive"
                   : tone === "warn"
@@ -182,22 +182,20 @@ export function ActivityScreen({
             >
               {formatEUR(spentCents / 100, locale)}
             </p>
-            {plannedCents > 0 ? (
-              <span className="text-xs text-muted-foreground">
-                / {formatEUR(plannedCents / 100, locale)}
-              </span>
-            ) : null}
-          </div>
+            <p className="num mt-1 text-xs text-muted-foreground">
+              {tToday("ofPlanned", {
+                planned: formatEUR(plannedCents / 100, locale),
+              })}
+            </p>
+          </>
         )}
-        {plannedCents > 0 ? (
-          <SpendProgress
-            actualCents={spentCents}
-            plannedCents={plannedCents}
-            size="sm"
-            className="mt-2"
-          />
-        ) : null}
-        <div className="mt-1 flex items-center justify-between gap-2">
+        <SpendProgress
+          actualCents={spentCents}
+          plannedCents={plannedCents}
+          size="sm"
+          className="mt-3"
+        />
+        <div className="mt-2 flex items-center justify-between gap-2">
           <p className="num text-xs text-muted-foreground">
             {t("txCount", { n: data?.txns.length ?? 0 })}
           </p>

@@ -131,12 +131,10 @@ export const activityRouter = router({
       // "spent of planned" reflects personal expenses only.
       const personalRole =
         allowed.length === 1 && allowed[0] !== "joint" ? allowed[0] : null;
-      const [agg, checklist] = await Promise.all([
-        getMonthlyAggregates(allowed, input?.anchor),
-        personalRole
-          ? getPersonalChecklist(personalRole, monthRow?.id ?? null)
-          : Promise.resolve(null),
-      ]);
+      const agg = await getMonthlyAggregates(allowed, input?.anchor);
+      const checklist = personalRole
+        ? await getPersonalChecklist(personalRole, agg.monthId)
+        : null;
       const grossPlannedOutflowCents = Math.abs(totalOutflow(agg.planned));
       let plannedOutflowCents = grossPlannedOutflowCents;
       if (personalRole) {
