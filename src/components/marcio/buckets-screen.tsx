@@ -17,10 +17,12 @@ export function BucketsScreen({
   locale,
   defaultAnchor,
   defaultScope = "joint",
+  defaultMeRole = null,
 }: {
   locale: string;
   defaultAnchor: { year: number; month: number };
   defaultScope?: "joint" | "yann" | "camila";
+  defaultMeRole?: "yann" | "camila" | null;
 }) {
   const t = useTranslations("Buckets");
   const sp = useSearchParams();
@@ -72,7 +74,7 @@ export function BucketsScreen({
         <h1 className="text-2xl font-semibold tracking-tight">
           {t("heading")}
         </h1>
-        <MonthScopeBar defaultAnchor={defaultAnchor} defaultScope={defaultScope} />
+        <MonthScopeBar defaultAnchor={defaultAnchor} defaultScope={defaultScope} defaultMeRole={defaultMeRole} />
       </header>
 
       {isLoading ? (

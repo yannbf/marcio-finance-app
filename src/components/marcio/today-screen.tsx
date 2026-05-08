@@ -19,11 +19,13 @@ export function TodayScreen({
   locale,
   defaultAnchor,
   defaultScope = "joint",
+  defaultMeRole = null,
   defaultDaysUntilPayday,
 }: {
   locale: string;
   defaultAnchor: { year: number; month: number };
   defaultScope?: "joint" | "yann" | "camila";
+  defaultMeRole?: "yann" | "camila" | null;
   /** Server-computed days-until-payday so the badge renders identically
    *  on SSR and first client paint regardless of whether the persister
    *  has restored cached data yet. */
@@ -67,7 +69,7 @@ export function TodayScreen({
             {t("Today.untilPayday", { days: daysUntilPayday })}
           </Badge>
         </div>
-        <MonthScopeBar defaultAnchor={defaultAnchor} defaultScope={defaultScope} />
+        <MonthScopeBar defaultAnchor={defaultAnchor} defaultScope={defaultScope} defaultMeRole={defaultMeRole} />
       </header>
 
       <Card className="relative overflow-hidden border-border/40 bg-card/60 p-6">

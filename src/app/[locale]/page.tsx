@@ -1,9 +1,8 @@
 import { Suspense } from "react";
 import { setRequestLocale } from "next-intl/server";
 import { TodayScreen } from "@/components/marcio/today-screen.tsx";
-import { getHouseholdSettings } from "@/lib/settings.ts";
-import { daysUntilNextPayday, paydayMonthFor } from "@/lib/payday.ts";
-import { readScopeCookie } from "@/lib/scope-cookie.ts";
+import { daysUntilNextPayday } from "@/lib/payday.ts";
+import { getPageDefaults } from "@/lib/page-defaults.ts";
 import type { Locale } from "@/i18n/routing.ts";
 
 export default async function HomePage({
@@ -13,22 +12,21 @@ export default async function HomePage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const settings = await getHouseholdSettings();
-  const now = new Date();
-  const range = paydayMonthFor(now, settings.paydayDay);
-  const defaultScope = await readScopeCookie();
+  const { defaultAnchor, defaultScope, defaultMeRole, paydayDay } =
+    await getPageDefaults();
   // Pre-compute days-until-payday on the server so the badge renders
   // identically on SSR and first client paint — eliminates the
   // hydration mismatch the async persister was causing when it restored
   // `data` between server render and client mount (server saw Skeleton,
   // client saw Badge).
-  const defaultDaysUntilPayday = daysUntilNextPayday(now, settings.paydayDay);
+  const defaultDaysUntilPayday = daysUntilNextPayday(new Date(), paydayDay);
   return (
     <Suspense>
       <TodayScreen
         locale={locale}
-        defaultAnchor={{ year: range.anchorYear, month: range.anchorMonth }}
+        defaultAnchor={defaultAnchor}
         defaultScope={defaultScope}
+        defaultMeRole={defaultMeRole}
         defaultDaysUntilPayday={defaultDaysUntilPayday}
       />
     </Suspense>

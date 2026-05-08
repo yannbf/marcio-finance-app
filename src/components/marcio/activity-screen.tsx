@@ -18,10 +18,12 @@ export function ActivityScreen({
   locale,
   defaultAnchor,
   defaultScope = "joint",
+  defaultMeRole = null,
 }: {
   locale: string;
   defaultAnchor: { year: number; month: number };
   defaultScope?: "joint" | "yann" | "camila";
+  defaultMeRole?: "yann" | "camila" | null;
 }) {
   const t = useTranslations("Activity");
   const tSections = useTranslations("Sections");
@@ -68,7 +70,7 @@ export function ActivityScreen({
         <h1 className="text-2xl font-semibold tracking-tight">
           {t("heading")}
         </h1>
-        <MonthScopeBar defaultAnchor={defaultAnchor} defaultScope={defaultScope} />
+        <MonthScopeBar defaultAnchor={defaultAnchor} defaultScope={defaultScope} defaultMeRole={defaultMeRole} />
       </header>
 
       <Card className="border-border/40 bg-card/60 p-5">

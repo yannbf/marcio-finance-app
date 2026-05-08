@@ -19,10 +19,12 @@ export function TransactionsScreen({
   locale,
   defaultAnchor,
   defaultScope = "joint",
+  defaultMeRole = null,
 }: {
   locale: string;
   defaultAnchor: { year: number; month: number };
   defaultScope?: "joint" | "yann" | "camila";
+  defaultMeRole?: "yann" | "camila" | null;
 }) {
   const t = useTranslations("Transactions");
   const tSections = useTranslations("Sections");
@@ -157,7 +159,7 @@ export function TransactionsScreen({
         <h1 className="text-2xl font-semibold tracking-tight">
           {t("heading")}
         </h1>
-        <MonthScopeBar defaultAnchor={defaultAnchor} defaultScope={defaultScope} />
+        <MonthScopeBar defaultAnchor={defaultAnchor} defaultScope={defaultScope} defaultMeRole={defaultMeRole} />
       </header>
 
       <div className="flex flex-col gap-3">

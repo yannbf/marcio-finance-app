@@ -1,9 +1,7 @@
 import { Suspense } from "react";
 import { setRequestLocale } from "next-intl/server";
 import { ActivityScreen } from "@/components/marcio/activity-screen.tsx";
-import { getHouseholdSettings } from "@/lib/settings.ts";
-import { paydayMonthFor } from "@/lib/payday.ts";
-import { readScopeCookie } from "@/lib/scope-cookie.ts";
+import { getPageDefaults } from "@/lib/page-defaults.ts";
 import type { Locale } from "@/i18n/routing.ts";
 
 export default async function ActivityPage({
@@ -13,15 +11,14 @@ export default async function ActivityPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const settings = await getHouseholdSettings();
-  const range = paydayMonthFor(new Date(), settings.paydayDay);
-  const defaultScope = await readScopeCookie();
+  const { defaultAnchor, defaultScope, defaultMeRole } = await getPageDefaults();
   return (
     <Suspense>
       <ActivityScreen
         locale={locale}
-        defaultAnchor={{ year: range.anchorYear, month: range.anchorMonth }}
+        defaultAnchor={defaultAnchor}
         defaultScope={defaultScope}
+        defaultMeRole={defaultMeRole}
       />
     </Suspense>
   );

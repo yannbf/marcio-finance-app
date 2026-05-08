@@ -16,10 +16,12 @@ export function TikkieScreen({
   locale,
   defaultAnchor,
   defaultScope = "joint",
+  defaultMeRole = null,
 }: {
   locale: string;
   defaultAnchor: { year: number; month: number };
   defaultScope?: "joint" | "yann" | "camila";
+  defaultMeRole?: "yann" | "camila" | null;
 }) {
   const t = useTranslations("Tikkie");
   const sp = useSearchParams();
@@ -51,7 +53,7 @@ export function TikkieScreen({
           {t("heading")}
         </h1>
         <p className="text-xs text-muted-foreground">{t("hint")}</p>
-        <MonthScopeBar defaultAnchor={defaultAnchor} defaultScope={defaultScope} />
+        <MonthScopeBar defaultAnchor={defaultAnchor} defaultScope={defaultScope} defaultMeRole={defaultMeRole} />
         <div className="-mt-2 flex gap-1 self-start rounded-full border border-border/60 bg-card/50 p-1 text-[11px]">
           <WindowPill href={makeWindowHref(sp, "month")} active={windowMode === "month"}>
             {t("windowMonth")}

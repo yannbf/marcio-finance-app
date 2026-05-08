@@ -32,10 +32,12 @@ export function MonthScreen({
   locale,
   defaultAnchor,
   defaultScope = "joint",
+  defaultMeRole = null,
 }: {
   locale: string;
   defaultAnchor: { year: number; month: number };
   defaultScope?: "joint" | "yann" | "camila";
+  defaultMeRole?: "yann" | "camila" | null;
 }) {
   const t = useTranslations();
   const sp = useSearchParams();
@@ -63,7 +65,7 @@ export function MonthScreen({
         <h1 className="text-2xl font-semibold tracking-tight">
           {t("Nav.month")}
         </h1>
-        <MonthScopeBar defaultAnchor={defaultAnchor} defaultScope={defaultScope} />
+        <MonthScopeBar defaultAnchor={defaultAnchor} defaultScope={defaultScope} defaultMeRole={defaultMeRole} />
       </header>
 
       <div className="grid grid-cols-3 gap-3">

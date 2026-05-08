@@ -29,10 +29,19 @@ type Scope = "joint" | "yann" | "camila";
 export function MonthScopeBar({
   defaultAnchor,
   defaultScope = "joint",
+  defaultMeRole = null,
   showScope = true,
 }: {
   defaultAnchor: { year: number; month: number };
   defaultScope?: Scope;
+  /**
+   * Server-known role of the current user, passed through pages so the
+   * "Me" pill can render on the very first paint. Without this the pill
+   * waits for `session.me` to resolve client-side, which flashes the
+   * pill out of existence on every route change (looks like the scope
+   * toggle reverted to "Joint").
+   */
+  defaultMeRole?: "yann" | "camila" | null;
   showScope?: boolean;
 }) {
   const t = useTranslations();
@@ -73,13 +82,14 @@ export function MonthScopeBar({
     router.replace(`${pathname}?${qs.toString()}` as never);
   }
 
-  // Gate session-derived UI behind a mount flag so SSR + first client paint
-  // match. The TanStack Query sessionStorage persister restores `me.data`
-  // before first paint, which would otherwise render the "Me" pill on the
-  // client but not on the server.
+  // Pages now hand us the server-known role via `defaultMeRole` so SSR
+  // and first client paint render the same Me pill — no flash on route
+  // change. We still listen to `me.data` after mount in case the role
+  // changes mid-session (sign-in flow, multi-account future).
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
-  const meScope: Scope | undefined = mounted ? me.data?.role : undefined;
+  const meScope: Scope | undefined =
+    (mounted && me.data?.role) || defaultMeRole || undefined;
   // A unique layoutId per MonthScopeBar instance so multiple bars on the
   // same page (shouldn't happen, but cheap insurance) don't fight over
   // the shared "active pill" thumb animation.
