@@ -24,12 +24,20 @@ describe("categorizeTx", () => {
   });
 
   it("flags eating-out venues as restaurants", () => {
-    expect(tag("CCV*UMMAH daoudi super", "Lunch")).toBe("restaurants");
     expect(tag("Thuisbezorgd.nl")).toBe("restaurants");
     expect(tag("Domino's Pizza")).toBe("restaurants");
     expect(tag("Starbucks Schiphol")).toBe("restaurants");
     expect(tag("La Trattoria")).toBe("restaurants");
     expect(tag("New York Pizza")).toBe("restaurants");
+  });
+
+  it("does NOT classify CCV* / SumUp payment-terminal prefixes as restaurants", () => {
+    // CCV* and SumUp are generic NL payment terminals — they show up
+    // in front of restaurants AND market stalls, hairdressers, taxis,
+    // freelancers. They should fall through to 'other' until the
+    // user creates a per-merchant override.
+    expect(tag("CCV*UMMAH daoudi super")).toBe("other");
+    expect(tag("SumUp *Hair Salon")).toBe("other");
   });
 
   it("classifies transport providers", () => {
@@ -50,13 +58,19 @@ describe("categorizeTx", () => {
     expect(tag("IKEA AMSTERDAM")).toBe("shopping");
   });
 
-  it("classifies entertainment, travel and gym as leisure", () => {
-    expect(tag("Netflix.com")).toBe("leisure");
-    expect(tag("BasicFit Amsterdam")).toBe("leisure");
-    expect(tag("Pathe Cinema")).toBe("leisure");
-    expect(tag("Booking.com")).toBe("leisure");
-    expect(tag("KLM Royal Dutch Airlines")).toBe("leisure");
-    expect(tag("Airbnb Payments")).toBe("leisure");
+  it("separates entertainment (streaming / cinema / gym) from travel", () => {
+    expect(tag("Netflix.com")).toBe("entertainment");
+    expect(tag("BasicFit Amsterdam")).toBe("entertainment");
+    expect(tag("Pathe Cinema")).toBe("entertainment");
+    expect(tag("Spotify AB")).toBe("entertainment");
+  });
+
+  it("groups hotels / flights / booking platforms under travel", () => {
+    expect(tag("Booking.com")).toBe("travel");
+    expect(tag("KLM Royal Dutch Airlines")).toBe("travel");
+    expect(tag("Airbnb Payments")).toBe("travel");
+    expect(tag("Hotel Pulitzer")).toBe("travel");
+    expect(tag("Transavia")).toBe("travel");
   });
 
   it("classifies energy / telecom / water as utilities", () => {

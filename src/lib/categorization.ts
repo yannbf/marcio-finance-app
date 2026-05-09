@@ -21,7 +21,8 @@ export const CATEGORY_KEYS = [
   "restaurants",
   "transport",
   "shopping",
-  "leisure",
+  "entertainment",
+  "travel",
   "utilities",
   "healthcare",
   "subscriptions",
@@ -44,9 +45,15 @@ const RULES: CategoryRule[] = [
   },
 
   // ─── Restaurants / cafes / takeaway ────────────────────────────────
+  // NOTE: deliberately does NOT match the "CCV*" or "SumUp *" payment-
+  // terminal prefixes. ING shows them in front of a wide range of
+  // small NL businesses — restaurants, market stalls, hairdressers,
+  // taxis, freelancers — so categorising them as restaurants would
+  // be wrong far too often. They fall through to "other" until the
+  // user assigns the underlying merchant via a category override.
   {
     pattern:
-      /restaurant|\bcafe\b|\bbar\b|\bbistro\b|brasserie|trattoria|pizz(?:a|eria)|burger|kebab|sushi|ramen|noodle|\bfalafel\b|shoarma|takeaway|thuisbezorgd|deliveroo|uber\s*eats|just\s*eat|mcdonald|burger\s*king|\bkfc\b|subway|\bdomino\b|new\s*york\s*pizza|starbucks|coffee\s*comp|coffee\s*lab|\bespresso\b|\blatte\b|patisserie|gelateria|gelato|ijssalon|bakkerij|bakery|\bsnackbar\b|cafetaria|lunchroom|\bfebo\b|\bvapiano\b|\bnando|\bwagamama|sumup\s*\*|ccv\*\s*ummah|ccv\*/i,
+      /restaurant|\bcafe\b|\bbar\b|\bbistro\b|brasserie|trattoria|pizz(?:a|eria)|burger|kebab|sushi|ramen|noodle|\bfalafel\b|shoarma|takeaway|thuisbezorgd|deliveroo|uber\s*eats|just\s*eat|mcdonald|burger\s*king|\bkfc\b|subway|\bdomino\b|new\s*york\s*pizza|starbucks|coffee\s*comp|coffee\s*lab|\bespresso\b|\blatte\b|patisserie|gelateria|gelato|ijssalon|bakkerij|bakery|\bsnackbar\b|cafetaria|lunchroom|\bfebo\b|\bvapiano\b|\bnando|\bwagamama/i,
     category: "restaurants",
   },
 
@@ -64,11 +71,20 @@ const RULES: CategoryRule[] = [
     category: "shopping",
   },
 
-  // ─── Leisure / entertainment / travel / sports ─────────────────────
+  // ─── Travel (lodging + flights + booking platforms) ────────────────
+  // Listed BEFORE entertainment so a "Booking.com" hit doesn't slip
+  // into entertainment via a "ticket" keyword later.
   {
     pattern:
-      /netflix|spotify|disney\+?|disneyplus|youtube\s*premium|prime\s*video|\bhbo\b|paramount|videoland|\bcinema\b|\bpathe\b|kinepolis|\btheater\b|\bbioscoop\b|festival|\bconcert\b|ticketmaster|\bticketswap\b|\bvideoland\b|fitness|basicfit|david\s*lloyd|sportcity|\byoga\b|crossfit|\bgym\b|\bsport(?:school|park)|\bzwembad\b|squash|tennis|padel|\bski\b|\bgolf\b|escape\s*room|museum|expo|airbnb|booking\.com|booking\.nl|hotel\b|hostel\b|\bflight\b|\bklm\b|transavia|ryanair|easyjet|\btui\b|expedia|trip\.com|kiwi\.com/i,
-    category: "leisure",
+      /airbnb|booking\.com|booking\.nl|\bhotel\b|hostel\b|\bflight\b|\bklm\b|transavia|ryanair|easyjet|\btui\b|expedia|trip\.com|kiwi\.com|\bsnowtrex|\bski\s*holiday|\bvolendam\b|\bschiphol\s*hotel|airline|\biata\b|\bryan(?:air)?\b/i,
+    category: "travel",
+  },
+
+  // ─── Entertainment (streaming, cinema, sport, events, hobbies) ─────
+  {
+    pattern:
+      /netflix|spotify|disney\+?|disneyplus|youtube\s*premium|prime\s*video|\bhbo\b|paramount|videoland|\bcinema\b|\bpathe\b|kinepolis|\btheater\b|\bbioscoop\b|festival|\bconcert\b|ticketmaster|\bticketswap\b|fitness|basicfit|david\s*lloyd|sportcity|\byoga\b|crossfit|\bgym\b|\bsport(?:school|park)|\bzwembad\b|squash|tennis|padel|\bski\b|\bgolf\b|escape\s*room|museum|expo|\bsteam\s*games|\bplaystation\b|\bnintendo\b|\bxbox\b|\barcade\b/i,
+    category: "entertainment",
   },
 
   // ─── Utilities (energy, water, telecom, internet) ──────────────────
@@ -134,7 +150,8 @@ export const CATEGORY_DISPLAY_ORDER: Category[] = [
   "groceries",
   "restaurants",
   "transport",
-  "leisure",
+  "entertainment",
+  "travel",
   "shopping",
   "utilities",
   "healthcare",
