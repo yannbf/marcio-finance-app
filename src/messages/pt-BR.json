@@ -228,7 +228,8 @@
         "title": "Sincronizar planilha",
         "hint": "Buscar todas as abas mensais do Google Sheet agora",
         "noTabs": "Nenhuma aba mensal encontrada na planilha.",
-        "counts": "{inserted} novas · {updated} atualizadas · {unchanged} sem mudança"
+        "counts": "{inserted} novas · {updated} atualizadas · {unchanged} sem mudança",
+        "matched": "{n, plural, =0 {Nenhuma transação categorizada} one {# transação categorizada agora} other {# transações categorizadas agora}}"
       },
       "banks": {
         "title": "Bancos e contas",

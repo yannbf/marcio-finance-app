@@ -71,27 +71,32 @@ export function SyncSheetRow() {
           {result.results.length === 0 ? (
             <p className="text-muted-foreground">{t("noTabs")}</p>
           ) : (
-            <ul className="flex flex-col gap-1">
-              {result.results.map((r) => (
-                <li key={r.anchor} className="flex flex-col">
-                  <span className="num font-medium">{r.anchor}</span>
-                  <span className="num text-muted-foreground">
-                    {t("counts", {
-                      inserted: r.inserted,
-                      updated: r.updated,
-                      unchanged: r.unchanged,
-                    })}
-                  </span>
-                  {r.warnings.length > 0 ? (
-                    <ul className="mt-1 list-inside list-disc text-[11px] text-muted-foreground/80">
-                      {r.warnings.map((w, i) => (
-                        <li key={i}>{w}</li>
-                      ))}
-                    </ul>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
+            <>
+              <ul className="flex flex-col gap-1">
+                {result.results.map((r) => (
+                  <li key={r.anchor} className="flex flex-col">
+                    <span className="num font-medium">{r.anchor}</span>
+                    <span className="num text-muted-foreground">
+                      {t("counts", {
+                        inserted: r.inserted,
+                        updated: r.updated,
+                        unchanged: r.unchanged,
+                      })}
+                    </span>
+                    {r.warnings.length > 0 ? (
+                      <ul className="mt-1 list-inside list-disc text-[11px] text-muted-foreground/80">
+                        {r.warnings.map((w, i) => (
+                          <li key={i}>{w}</li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+              <p className="num mt-2 border-t border-border/40 pt-2 text-[11px] text-muted-foreground">
+                {t("matched", { n: result.matched })}
+              </p>
+            </>
           )}
         </div>
       ) : null}

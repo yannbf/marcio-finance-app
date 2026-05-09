@@ -228,7 +228,8 @@
         "title": "Sync from sheet",
         "hint": "Pull every monthly tab from the Google Sheet now",
         "noTabs": "No monthly tabs found in the workbook.",
-        "counts": "{inserted} new · {updated} updated · {unchanged} unchanged"
+        "counts": "{inserted} new · {updated} updated · {unchanged} unchanged",
+        "matched": "{n, plural, =0 {No new auto-matches} one {# transaction newly matched} other {# transactions newly matched}}"
       },
       "banks": {
         "title": "Banks & accounts",

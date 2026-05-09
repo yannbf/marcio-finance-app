@@ -5,11 +5,16 @@ import { readLocalXlsx } from "@/lib/import/source-xlsx.ts";
 import { readGoogleSheet } from "@/lib/import/source-google.ts";
 import { upsertParsedMonth } from "@/lib/import/upsert.ts";
 import { getCurrentUser } from "@/lib/auth/current-user.ts";
+import { runMatchingAllAccounts } from "@/lib/matching/engine.ts";
 import type { ImportResult } from "@/lib/import/upsert.ts";
 import type { ParsedSheet } from "@/lib/import/types.ts";
 
 export type ImportActionResult =
-  | { ok: true; results: (ImportResult & { anchor: string })[] }
+  | {
+      ok: true;
+      results: (ImportResult & { anchor: string })[];
+      matched: number;
+    }
   | { ok: false; error: string };
 
 /**
@@ -74,6 +79,14 @@ export async function runImport(): Promise<ImportActionResult> {
     });
   }
 
+  // Re-run the matching engine across every bank account so any
+  // previously unmatched transactions resolve against the freshly
+  // imported budget items. Without this, transactions that landed
+  // BEFORE the sheet was imported sit in the inbox forever even
+  // though a perfectly good budget_item now exists for them. Mirrors
+  // what the daily cron does in /api/cron/import-sheet/route.ts.
+  const matchOutcome = await runMatchingAllAccounts();
+
   revalidatePath("/", "layout");
-  return { ok: true, results };
+  return { ok: true, results, matched: matchOutcome.matched };
 }
