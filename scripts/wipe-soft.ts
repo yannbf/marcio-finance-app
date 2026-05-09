@@ -100,8 +100,45 @@ async function main() {
   const { db } = await import("../src/db/index.ts");
   const { sql } = await import("drizzle-orm");
 
-  const stmt = `TRUNCATE TABLE ${TABLES_TO_WIPE.join(",\n  ")}\nRESTART IDENTITY CASCADE;`;
-  console.log("\nRunning:");
+  // Filter to tables that actually exist in the target DB. Schema can
+  // legitimately drift ahead of the DB (e.g. a brand-new table added in
+  // schema.ts but not yet pushed) — TRUNCATE-ing a missing table aborts
+  // the whole statement, so skip those silently with a note.
+  const existingRows = await db.execute<{ table_name: string }>(
+    sql`SELECT table_name FROM information_schema.tables
+        WHERE table_schema = 'public'`,
+  );
+  const existing = new Set(
+    (existingRows as unknown as Array<{ table_name: string }>).map(
+      (r) => r.table_name,
+    ),
+  );
+
+  const present: string[] = [];
+  const missing: string[] = [];
+  for (const ident of TABLES_TO_WIPE) {
+    // Strip the optional double-quote wrap to compare against the bare
+    // identifier in information_schema.
+    const bare = ident.replace(/^"|"$/g, "");
+    if (existing.has(bare)) present.push(ident);
+    else missing.push(bare);
+  }
+
+  if (missing.length > 0) {
+    console.log(
+      "Skipping (not in this DB yet — run `pnpm db:push --force` after):",
+    );
+    for (const m of missing) console.log(`  - ${m}`);
+    console.log("");
+  }
+
+  if (present.length === 0) {
+    console.log("Nothing to truncate. Aborting.");
+    process.exit(0);
+  }
+
+  const stmt = `TRUNCATE TABLE ${present.join(",\n  ")}\nRESTART IDENTITY CASCADE;`;
+  console.log("Running:");
   console.log(stmt);
   console.log("");
 
