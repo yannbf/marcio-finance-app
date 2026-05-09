@@ -224,6 +224,12 @@
     "lastSync": "Última sincronização · {at}",
     "builtAt": "Deploy · {at}",
     "sections": {
+      "sync": {
+        "title": "Sincronizar planilha",
+        "hint": "Buscar todas as abas mensais do Google Sheet agora",
+        "noTabs": "Nenhuma aba mensal encontrada na planilha.",
+        "counts": "{inserted} novas · {updated} atualizadas · {unchanged} sem mudança"
+      },
       "banks": {
         "title": "Bancos e contas",
         "hint": "Subir CSV, ver contas conectadas",

@@ -224,6 +224,12 @@
     "lastSync": "Last sync · {at}",
     "builtAt": "Deployed · {at}",
     "sections": {
+      "sync": {
+        "title": "Sync from sheet",
+        "hint": "Pull every monthly tab from the Google Sheet now",
+        "noTabs": "No monthly tabs found in the workbook.",
+        "counts": "{inserted} new · {updated} updated · {unchanged} unchanged"
+      },
       "banks": {
         "title": "Banks & accounts",
         "hint": "Upload CSV, see connected accounts",

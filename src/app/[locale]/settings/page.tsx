@@ -11,6 +11,7 @@ import { PaydayInline } from "@/components/marcio/payday-inline.tsx";
 import { LanguageSwitch } from "@/components/marcio/language-switch.tsx";
 import { ThemeToggle } from "@/components/marcio/theme-toggle.tsx";
 import { SignOutButton } from "@/components/marcio/sign-out-button.tsx";
+import { SyncSheetRow } from "@/components/marcio/sync-sheet-row.tsx";
 import { AFRONDING_PG_PATTERN } from "@/lib/matching/seed-rules.ts";
 import type { Locale } from "@/i18n/routing.ts";
 
@@ -93,6 +94,7 @@ export default async function SettingsPage({
       {/* Heavy-weight sections that warrant their own pages. */}
       <Card className="border-border/40 bg-card/60 p-1">
         <ul className="divide-y divide-border/40">
+          <SyncSheetRow />
           <li>
             <Link
               href="/settings/banks"
