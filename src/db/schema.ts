@@ -338,6 +338,38 @@ export const matchRule = pgTable(
   (t) => [index("match_rule_scope_idx").on(t.scope)],
 );
 
+/* -------------------------------------------------------------------------- */
+/* Category overrides — per-merchant user reclassifications.                  */
+/*                                                                            */
+/* The auto-categorizer in src/lib/categorization.ts ships with a fixed set  */
+/* of regex rules (Albert Heijn → groceries, KLM → travel, …). When the      */
+/* user disagrees they can pin a category to a counterparty fingerprint —     */
+/* one row here applies retroactively to every prior tx with that fingerprint */
+/* AND to every future one. Same shape as `match_rule` but for the curated   */
+/* category taxonomy instead of budget items.                                 */
+/* -------------------------------------------------------------------------- */
+
+export const categoryOverride = pgTable(
+  "category_override",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** fingerprintCounterparty(counterparty) — collapses "AH AMSTERDAM" /
+     * "AH UTRECHT" into one rule. Stored lower-cased + escaped already. */
+    fingerprint: text("fingerprint").notNull(),
+    /** One of CATEGORY_KEYS. Stored as plain text so adding a new
+     * category later doesn't require a schema change. */
+    category: text("category").notNull(),
+    /** Free-form label the user saw when they made the choice — used in
+     * the override-management UI and to seed the next match. */
+    sampleCounterparty: text("sample_counterparty"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("category_override_fingerprint_uniq").on(t.fingerprint),
+  ],
+);
+
 export const txMatch = pgTable(
   "transaction_match",
   {

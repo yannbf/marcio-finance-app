@@ -30,9 +30,10 @@ import {
 } from "@/lib/matching/seed-rules.ts";
 import {
   CATEGORY_DISPLAY_ORDER,
-  categorizeTx,
+  categorizeTxWithOverrides,
   type Category,
 } from "@/lib/categorization.ts";
+import { categoryOverride } from "@/db/schema.ts";
 
 export const insightsRouter = router({
   get: publicProcedure
@@ -145,12 +146,25 @@ export const insightsRouter = router({
             sql`NOT (COALESCE(${transaction.counterparty}, '') || ' ' || COALESCE(${transaction.description}, '') ~* ${SAVINGS_TRANSFER_PG_PATTERN})`,
           ),
         );
+      // Pull every per-merchant override the user has pinned so the
+      // categorizer respects them. Empty map means "fall back to the
+      // regex rules".
+      const overrideRows = await db
+        .select({
+          fingerprint: categoryOverride.fingerprint,
+          category: categoryOverride.category,
+        })
+        .from(categoryOverride);
+      const overrides = new Map<string, Category>(
+        overrideRows.map((o) => [o.fingerprint, o.category as Category]),
+      );
+
       const categoryBuckets = new Map<
         Category,
         { sumCents: number; count: number }
       >();
       for (const r of categoryRows) {
-        const cat = categorizeTx(r);
+        const cat = categorizeTxWithOverrides(r, overrides);
         const cur = categoryBuckets.get(cat) ?? { sumCents: 0, count: 0 };
         cur.sumCents += Math.abs(r.amountCents);
         cur.count += 1;

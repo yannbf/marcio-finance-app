@@ -19,6 +19,11 @@ import { paydayMonthFor, paydayMonthForAnchor } from "@/lib/payday.ts";
 import { getUpcomingCharges } from "@/lib/forecast.ts";
 import { detectAmountAnomalies } from "@/lib/anomaly.ts";
 import {
+  categorizeTxWithOverrides,
+  type Category,
+} from "@/lib/categorization.ts";
+import { categoryOverride } from "@/db/schema.ts";
+import {
   getMonthlyAggregates,
   totalOutflow,
 } from "@/lib/budget-aggregates.ts";
@@ -168,6 +173,20 @@ export const activityRouter = router({
         { startsOn: range.startsOn, endsOn: range.endsOn },
       );
 
+      // Per-merchant category overrides so each row's `category` field
+      // reflects the user's pinned choice when one exists. A single
+      // SELECT covers every override; the categorizer keys them by
+      // counterparty fingerprint.
+      const overrideRows = await db
+        .select({
+          fingerprint: categoryOverride.fingerprint,
+          category: categoryOverride.category,
+        })
+        .from(categoryOverride);
+      const overrides = new Map<string, Category>(
+        overrideRows.map((o) => [o.fingerprint, o.category as Category]),
+      );
+
       return {
         anchor: { year: range.anchorYear, month: range.anchorMonth },
         // Inclusive payday-month range (April 25 → May 24 for "May 2026"
@@ -188,6 +207,10 @@ export const activityRouter = router({
             matchedName: r.matchedName ?? null,
             owner: r.owner as "joint" | "yann" | "camila",
             anomaly: a ? { meanCents: a.meanCents, samples: a.samples } : null,
+            category: categorizeTxWithOverrides(
+              { counterparty: r.counterparty, description: r.description },
+              overrides,
+            ),
           };
         }),
         forecast,

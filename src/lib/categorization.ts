@@ -2,11 +2,9 @@
  * Automatic transaction subcategorization.
  *
  * Sits ALONGSIDE the user's budget-item taxonomy — it's a curated
- * NL-flavoured taxonomy ("groceries", "restaurants", "leisure", …)
- * that classifies a transaction purely from its counterparty +
- * description, no schema or learned rules involved. Useful when the
- * user wants to know "where my money went" in everyday language
- * rather than in their own (sometimes idiosyncratic) sheet rows.
+ * NL-flavoured taxonomy ("groceries", "restaurants", "entertainment",
+ * "travel", …) that classifies a transaction purely from its
+ * counterparty + description, no schema or learned rules involved.
  *
  * Independent from `match_rule` / `seed-rules.ts`:
  *   - Those route a tx to a budget_item the user owns.
@@ -14,7 +12,12 @@
  *
  * Pattern order matters — first match wins. Keep specific regexes
  * (named brands) ABOVE broad keyword fallbacks.
+ *
+ * The user can override any classification by counterparty
+ * fingerprint via `category_override`; see categorizeTxWithOverrides.
  */
+
+import { fingerprintCounterparty } from "./matching/fingerprint.ts";
 
 export const CATEGORY_KEYS = [
   "groceries",
@@ -143,6 +146,29 @@ export function categorizeTx(row: {
     if (r.pattern.test(haystack)) return r.category;
   }
   return "other";
+}
+
+/**
+ * Override-aware classifier. The map is keyed by counterparty
+ * fingerprint (lower-cased, city tail / terminal id stripped — same
+ * shape as `match_rule`) so a single override row applies to every
+ * variant of a merchant, past and future.
+ *
+ * Pass an empty map to fall back to the regex rules.
+ */
+export function categorizeTxWithOverrides(
+  row: {
+    counterparty: string | null;
+    description: string | null;
+  },
+  overrides: Map<string, Category>,
+): Category {
+  if (overrides.size > 0 && row.counterparty) {
+    const fp = fingerprintCounterparty(row.counterparty);
+    const hit = overrides.get(fp);
+    if (hit) return hit;
+  }
+  return categorizeTx(row);
 }
 
 /** Stable order for rendering. Most-common first feels right. */
