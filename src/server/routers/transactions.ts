@@ -4,6 +4,7 @@ import { db } from "@/db/index.ts";
 import {
   bankAccount,
   budgetItem,
+  categoryOverride,
   month,
   transaction,
   txMatch,
@@ -16,6 +17,10 @@ import {
 import { ScopeViewInput } from "../inputs.ts";
 import { getHouseholdSettings } from "@/lib/settings.ts";
 import { paydayMonthFor } from "@/lib/payday.ts";
+import {
+  categorizeTxWithOverrides,
+  type Category,
+} from "@/lib/categorization.ts";
 import type { Section } from "@/lib/import/types.ts";
 
 const PAGE_SIZE = 100;
@@ -154,6 +159,19 @@ export const transactionsRouter = router({
           }));
       }
 
+      // Per-merchant category overrides — applied to the rows below so
+      // every screen that lists transactions reflects the user's
+      // pinned classifications.
+      const overrideRows = await db
+        .select({
+          fingerprint: categoryOverride.fingerprint,
+          category: categoryOverride.category,
+        })
+        .from(categoryOverride);
+      const overrides = new Map<string, Category>(
+        overrideRows.map((o) => [o.fingerprint, o.category as Category]),
+      );
+
       const hasMore = rows.length === PAGE_SIZE;
       return {
         rows: rows.map((r) => ({
@@ -165,6 +183,10 @@ export const transactionsRouter = router({
           matchedItemId: r.matchedItemId ?? null,
           matchedName: r.matchedName ?? null,
           owner: r.owner as "joint" | "yann" | "camila",
+          category: categorizeTxWithOverrides(
+            { counterparty: r.counterparty, description: r.description },
+            overrides,
+          ),
         })),
         pageSize: PAGE_SIZE,
         optionsAll,

@@ -198,6 +198,11 @@
     "roundupTitle": "Arredondamento p/ poupança",
     "roundupHint": "{n, plural, one {# transferência} other {# transferências}} para Oranje spaarrekening"
   },
+  "CategoryPicker": {
+    "title": "Categoria deste estabelecimento",
+    "hint": "Sua escolha vale para todas as transações passadas e futuras deste estabelecimento.",
+    "reset": "Redefinir"
+  },
   "Categories": {
     "groceries": "Mercado",
     "restaurants": "Restaurantes & cafés",

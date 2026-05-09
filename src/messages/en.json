@@ -198,6 +198,11 @@
     "roundupTitle": "Round-up to savings",
     "roundupHint": "{n, plural, one {# sweep} other {# sweeps}} to Oranje spaarrekening"
   },
+  "CategoryPicker": {
+    "title": "Tag this merchant",
+    "hint": "Your choice applies to every past and future transaction with this merchant.",
+    "reset": "Reset"
+  },
   "Categories": {
     "groceries": "Groceries",
     "restaurants": "Restaurants & cafes",
