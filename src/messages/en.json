@@ -196,7 +196,16 @@
     "hits": "{n, plural, one {# transaction} other {# transactions}}",
     "vsLastMonth": "vs last month",
     "roundupTitle": "Round-up to savings",
-    "roundupHint": "{n, plural, one {# sweep} other {# sweeps}} to Oranje spaarrekening"
+    "roundupHint": "{n, plural, one {# sweep} other {# sweeps}} to Oranje spaarrekening",
+    "routing": {
+      "title": "Category routing",
+      "hint": "Auto-route every transaction tagged with a category to a budget item — applies retroactively the first time you set it.",
+      "notSet": "Not set",
+      "pickerTitle": "Route to which budget item?",
+      "pickerHint": "Picking a target re-runs matching for every prior transaction in this category.",
+      "noOptions": "No outflow budget items in this scope yet — import the sheet first.",
+      "reset": "Clear"
+    }
   },
   "CategoryPicker": {
     "title": "Tag this merchant",

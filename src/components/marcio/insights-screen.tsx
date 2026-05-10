@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { Link } from "@/i18n/navigation.ts";
+import { CategoryRoutingCard } from "./category-routing-card.tsx";
 import { CounterpartyAvatar } from "./counterparty-avatar.tsx";
 import { MonthScopeBar, parseSearch } from "./month-scope-bar.tsx";
 import { trpc } from "@/lib/trpc/client.ts";
@@ -162,6 +163,8 @@ export function InsightsScreen({
           </ul>
         )}
       </Card>
+
+      <CategoryRoutingCard scope={scope} />
 
       <Card className="border-border/40 bg-card/60 p-5">
         <h2 className="text-sm font-medium">{t("topCategoriesTitle")}</h2>

@@ -196,7 +196,16 @@
     "hits": "{n, plural, one {# transação} other {# transações}}",
     "vsLastMonth": "vs mês passado",
     "roundupTitle": "Arredondamento p/ poupança",
-    "roundupHint": "{n, plural, one {# transferência} other {# transferências}} para Oranje spaarrekening"
+    "roundupHint": "{n, plural, one {# transferência} other {# transferências}} para Oranje spaarrekening",
+    "routing": {
+      "title": "Roteamento por categoria",
+      "hint": "Toda transação que cair numa categoria vai automaticamente para o item escolhido — aplica retroativamente quando você define.",
+      "notSet": "Não definido",
+      "pickerTitle": "Rotear para qual item?",
+      "pickerHint": "Ao escolher um destino, re-rodamos o matching para todas as transações antigas dessa categoria.",
+      "noOptions": "Nenhum item de saída neste escopo ainda — importe a planilha primeiro.",
+      "reset": "Limpar"
+    }
   },
   "CategoryPicker": {
     "title": "Categoria deste estabelecimento",

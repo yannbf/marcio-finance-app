@@ -370,6 +370,38 @@ export const categoryOverride = pgTable(
   ],
 );
 
+/* -------------------------------------------------------------------------- */
+/* Category → budget-item defaults.                                           */
+/*                                                                            */
+/* Lets the user say "every transaction tagged 'shopping' should land on the  */
+/* 'Compras geral' budget item". The matching engine consults these defaults  */
+/* AFTER seed rules + learned rules + savings refs have all failed, so they   */
+/* never override a more specific rule. Scope-keyed so joint and personal can */
+/* route to different budget items for the same category.                     */
+/* -------------------------------------------------------------------------- */
+
+export const categoryBudgetDefault = pgTable(
+  "category_budget_default",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** One of CATEGORY_KEYS. Plain text for forward-compat. */
+    category: text("category").notNull(),
+    /** Which scope this default applies to. */
+    scope: accountOwner("scope").notNull(),
+    /** Target budget item — referenced by natural key + section so the
+     * default survives renames + new monthly imports. */
+    naturalKey: text("natural_key").notNull(),
+    section: budgetSection("section").notNull(),
+    /** Last-seen friendly name of the budget item, for UI display. */
+    sampleName: text("sample_name"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("category_budget_default_uniq").on(t.category, t.scope),
+  ],
+);
+
 export const txMatch = pgTable(
   "transaction_match",
   {

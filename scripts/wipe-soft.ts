@@ -36,6 +36,7 @@ const TABLES_TO_WIPE = [
   "bank_account",
   "match_rule",
   "category_override",
+  "category_budget_default",
   "savings_account",
   "savings_bucket",
   "budget_item",
