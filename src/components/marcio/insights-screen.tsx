@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { Link } from "@/i18n/navigation.ts";
+import { AIInsightsCard } from "./ai-insights-card.tsx";
 import { CategoryRoutingCard } from "./category-routing-card.tsx";
 import { CounterpartyAvatar } from "./counterparty-avatar.tsx";
 import { MonthScopeBar, parseSearch } from "./month-scope-bar.tsx";
@@ -47,6 +48,8 @@ export function InsightsScreen({
         </h1>
         <MonthScopeBar defaultAnchor={defaultAnchor} defaultScope={defaultScope} defaultMeRole={defaultMeRole} />
       </header>
+
+      <AIInsightsCard />
 
       <Card className="border-border/40 bg-card/60 p-5">
         <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">

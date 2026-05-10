@@ -186,6 +186,10 @@
   "Insights": {
     "title": "Insights",
     "heading": "Where the money went",
+    "ai": {
+      "title": "Marcio's takes",
+      "hint": "Hand-written observations from a periodic look at your data."
+    },
     "totalSpent": "Total spent this month",
     "bySectionTitle": "By section",
     "bySectionHint": "% of total spend.",

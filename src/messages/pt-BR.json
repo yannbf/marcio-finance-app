@@ -186,6 +186,10 @@
   "Insights": {
     "title": "Análises",
     "heading": "Para onde vai o dinheiro",
+    "ai": {
+      "title": "Observações do Marcio",
+      "hint": "Análises escritas à mão a partir das suas transações."
+    },
     "totalSpent": "Total gasto neste mês",
     "bySectionTitle": "Por seção",
     "bySectionHint": "% do total gasto.",
