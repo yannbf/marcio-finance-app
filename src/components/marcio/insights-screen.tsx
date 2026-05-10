@@ -164,7 +164,7 @@ export function InsightsScreen({
         )}
       </Card>
 
-      <CategoryRoutingCard scope={scope} />
+      <CategoryRoutingCard scope={scope} anchor={anchor} />
 
       <Card className="border-border/40 bg-card/60 p-5">
         <h2 className="text-sm font-medium">{t("topCategoriesTitle")}</h2>

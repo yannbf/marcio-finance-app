@@ -12,12 +12,14 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet.tsx";
 import { trpc } from "@/lib/trpc/client.ts";
+import { formatEUR } from "@/lib/format.ts";
 import {
   CATEGORY_DISPLAY_ORDER,
   type Category,
 } from "@/lib/categorization.ts";
 
 type Scope = "joint" | "yann" | "camila";
+type Anchor = { year: number; month: number } | undefined;
 
 /**
  * "Sempre que uma transação cair em [Compras], categorize como [Compras
@@ -31,7 +33,13 @@ type Scope = "joint" | "yann" | "camila";
  * triggers a full re-match so prior unmatched transactions in that
  * category retroactively land on the chosen item.
  */
-export function CategoryRoutingCard({ scope }: { scope: Scope }) {
+export function CategoryRoutingCard({
+  scope,
+  anchor,
+}: {
+  scope: Scope;
+  anchor: Anchor;
+}) {
   const t = useTranslations("Insights.routing");
   const tCategories = useTranslations("Categories");
   const utils = trpc.useUtils();
@@ -88,6 +96,7 @@ export function CategoryRoutingCard({ scope }: { scope: Scope }) {
               <CategoryRoutingPicker
                 category={c}
                 scope={scope}
+                anchor={anchor}
                 currentNaturalKey={current?.naturalKey ?? null}
                 currentLabel={current?.sampleName ?? null}
                 options={options.data ?? []}
@@ -118,7 +127,8 @@ export function CategoryRoutingCard({ scope }: { scope: Scope }) {
 
 function CategoryRoutingPicker({
   category,
-  scope: _scope,
+  scope,
+  anchor,
   currentNaturalKey,
   currentLabel,
   options,
@@ -128,6 +138,7 @@ function CategoryRoutingPicker({
 }: {
   category: Category;
   scope: Scope;
+  anchor: Anchor;
   currentNaturalKey: string | null;
   currentLabel: string | null;
   options: Array<{
@@ -146,7 +157,12 @@ function CategoryRoutingPicker({
   const t = useTranslations("Insights.routing");
   const [open, setOpen] = useState(false);
   const [pendingPick, startTransition] = useTransition();
-  void category;
+  // Fetch sample transactions ONLY when the sheet opens — avoids hammering
+  // the API on initial card render when the user might never tap.
+  const preview = trpc.categories.transactionsForCategory.useQuery(
+    { category, scope, anchor, limit: 12 },
+    { enabled: open },
+  );
 
   function pick(opt: {
     name: string;
@@ -193,6 +209,72 @@ function CategoryRoutingPicker({
           </p>
         </SheetHeader>
         <div data-sheet-scroll className="max-h-[60dvh] overflow-y-auto">
+          {/* Preview: which transactions sit in this category right
+              now? Tapping a budget item would route every one of these
+              there, so the user gets to see the slate before
+              committing. */}
+          <section className="border-b border-border/40 px-4 py-3">
+            <div className="flex items-baseline justify-between gap-2">
+              <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                {t("previewTitle")}
+              </p>
+              {preview.data ? (
+                <p className="num text-[10px] text-muted-foreground">
+                  {t("previewCounts", {
+                    n: preview.data.totalCount,
+                    amount: formatEUR(
+                      preview.data.totalAbsCents / 100,
+                      "pt-BR",
+                    ),
+                  })}
+                </p>
+              ) : null}
+            </div>
+            {preview.isLoading ? (
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                {t("previewLoading")}
+              </p>
+            ) : !preview.data || preview.data.sample.length === 0 ? (
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                {t("previewEmpty")}
+              </p>
+            ) : (
+              <ul className="mt-2 flex flex-col divide-y divide-border/40">
+                {preview.data.sample.map((s) => (
+                  <li
+                    key={s.id}
+                    className="flex items-baseline gap-2 py-1.5 text-[11px]"
+                  >
+                    <span className="num shrink-0 text-muted-foreground">
+                      {new Date(s.bookingDate).toLocaleDateString("pt-BR", {
+                        day: "2-digit",
+                        month: "short",
+                      })}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate">
+                      {s.counterparty || s.description || "—"}
+                    </span>
+                    <span className="num shrink-0 font-medium">
+                      −{formatEUR(Math.abs(s.amountCents) / 100, "pt-BR")}
+                    </span>
+                  </li>
+                ))}
+                {preview.data.totalCount > preview.data.sample.length ? (
+                  <li className="num py-1.5 text-[10px] text-muted-foreground/80">
+                    {t("previewMore", {
+                      n:
+                        preview.data.totalCount -
+                        preview.data.sample.length,
+                    })}
+                  </li>
+                ) : null}
+              </ul>
+            )}
+          </section>
+
+          <p className="mt-1 px-4 pt-3 text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+            {t("optionsTitle")}
+          </p>
           {options.length === 0 ? (
             <p className="px-4 py-6 text-center text-sm text-muted-foreground">
               {t("noOptions")}

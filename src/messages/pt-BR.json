@@ -204,6 +204,12 @@
       "notSet": "Não definido",
       "pickerTitle": "Rotear para qual item?",
       "pickerHint": "Ao escolher um destino, re-rodamos o matching para todas as transações antigas dessa categoria.",
+      "previewTitle": "Transações nesta categoria",
+      "previewCounts": "{n, plural, =0 {0 transações} one {# transação · {amount}} other {# transações · {amount}}}",
+      "previewLoading": "Carregando transações…",
+      "previewEmpty": "Nada ainda — nenhuma transação marcada com essa categoria neste mês.",
+      "previewMore": "+ {n} não mostradas",
+      "optionsTitle": "Rotear para",
       "noOptions": "Nenhum item de saída neste escopo ainda — importe a planilha primeiro.",
       "reset": "Limpar"
     }

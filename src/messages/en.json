@@ -204,6 +204,12 @@
       "notSet": "Not set",
       "pickerTitle": "Route to which budget item?",
       "pickerHint": "Picking a target re-runs matching for every prior transaction in this category.",
+      "previewTitle": "Transactions in this category",
+      "previewCounts": "{n, plural, =0 {0 transactions} one {# transaction · {amount}} other {# transactions · {amount}}}",
+      "previewLoading": "Loading transactions…",
+      "previewEmpty": "Nothing yet — no transactions tagged with this category in the active month.",
+      "previewMore": "+ {n} more not shown",
+      "optionsTitle": "Route to",
       "noOptions": "No outflow budget items in this scope yet — import the sheet first.",
       "reset": "Clear"
     }
