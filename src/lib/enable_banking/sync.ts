@@ -18,6 +18,7 @@ import {
   getSession,
   type EbTransaction,
 } from "./client.ts";
+import { inferAccountOwner } from "./owner-inference.ts";
 
 /* -------------------------------------------------------------------------- */
 /* Transaction normalization                                                   */
@@ -377,10 +378,22 @@ async function syncAccount(args: {
       product.includes("spaar") ||
       product.includes("savings");
 
+    // If the holder line names multiple people ("Y Bezerra,C Ferrer")
+    // or the product literally says joint/gezamenlijk, default to the
+    // joint scope — the personal scope would silently drop every
+    // joint-scoped seed rule (Albert Heijn, Mortgage, Vattenfall, …).
+    // The user can still flip via the bank-account titularidade pill.
+    const inferredOwner = inferAccountOwner({
+      fallback: args.owner,
+      name: d.name ?? null,
+      product: d.product ?? null,
+      accountType: d.cash_account_type ?? d.account_type ?? null,
+    });
+
     const [created] = await db
       .insert(bankAccount)
       .values({
-        owner: args.owner, // safe default; user can flip to "joint" in UI
+        owner: inferredOwner,
         kind: isSavings ? "savings" : "checking",
         nickname,
         bank: "ING",
