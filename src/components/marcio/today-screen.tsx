@@ -347,13 +347,13 @@ export function TodayScreen({
 
       {inboxCount > 0 ? (
         <Link href="/inbox" className="block" prefetch>
-          <Card className="flex items-center gap-3 border-border/40 bg-card/60 p-5 transition-colors hover:bg-card/80">
-            <div className="grid size-9 place-items-center rounded-full bg-primary/15 text-primary">
-              <Inbox className="size-4" />
+          <Card className="!flex-row !gap-4 items-center border-border/40 bg-card/60 px-4 py-4 transition-colors hover:bg-card/80">
+            <div className="grid size-10 shrink-0 place-items-center rounded-full bg-primary/15 text-primary">
+              <Inbox className="size-[18px]" />
             </div>
-            <div className="flex-1">
-              <div className="flex items-baseline gap-1.5">
-                <p className="text-sm font-medium">{t("Today.inboxTitle")}</p>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5">
+                <p className="truncate text-sm font-medium">{t("Today.inboxTitle")}</p>
                 {recentlyAddedCount > 0 ? (
                   <span className="num inline-flex items-center rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium text-primary">
                     {t("Inbox.newSinceLastSync", {
@@ -366,15 +366,15 @@ export function TodayScreen({
                 {t("Today.inboxCount", { n: inboxCount })}
               </p>
             </div>
-            <ChevronRight className="size-4 text-muted-foreground" />
+            <ChevronRight className="size-4 shrink-0 text-muted-foreground/70" />
           </Card>
         </Link>
       ) : (
-        <Card className="flex items-center gap-3 border-border/40 bg-card/60 p-5">
-          <div className="grid size-9 place-items-center rounded-full bg-primary/15 text-primary">
-            <Sparkles className="size-4" />
+        <Card className="!flex-row !gap-4 items-center border-border/40 bg-card/60 px-4 py-4">
+          <div className="grid size-10 shrink-0 place-items-center rounded-full bg-primary/15 text-primary">
+            <Sparkles className="size-[18px]" />
           </div>
-          <div className="flex-1">
+          <div className="min-w-0 flex-1">
             <p className="text-sm font-medium">{t("Today.allCaughtUp")}</p>
             <p className="text-xs text-muted-foreground">
               {t("Today.allCaughtUpHint")}
@@ -384,17 +384,17 @@ export function TodayScreen({
       )}
 
       <Link href="/insights" className="block" prefetch>
-        <Card className="flex items-center gap-3 border-border/40 bg-card/60 p-5 transition-colors hover:bg-card/80">
-          <div className="grid size-9 place-items-center rounded-full bg-secondary text-foreground/80">
-            <PieChart className="size-4" />
+        <Card className="!flex-row !gap-4 items-center border-border/40 bg-card/60 px-4 py-4 transition-colors hover:bg-card/80">
+          <div className="grid size-10 shrink-0 place-items-center rounded-full bg-secondary text-foreground/80">
+            <PieChart className="size-[18px]" />
           </div>
-          <div className="flex-1">
-            <p className="text-sm font-medium">{t("Today.insightsTitle")}</p>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium">{t("Today.insightsTitle")}</p>
             <p className="text-xs text-muted-foreground">
               {t("Today.insightsHint")}
             </p>
           </div>
-          <ChevronRight className="size-4 text-muted-foreground" />
+          <ChevronRight className="size-4 shrink-0 text-muted-foreground/70" />
         </Card>
       </Link>
 

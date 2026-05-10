@@ -3,8 +3,6 @@ import { db } from "@/db/index.ts";
 import {
   bankAccount,
   budgetItem,
-  categoryBudgetDefault,
-  categoryOverride,
   matchRule,
   month,
   savingsAccount,
@@ -15,10 +13,6 @@ import { paydayMonthFor } from "../payday.ts";
 import { getHouseholdSettings } from "../settings.ts";
 import { SEED_RULES, type SeedRule } from "./seed-rules.ts";
 import { CONFIDENCE_FLOOR } from "./rule-confidence.ts";
-import {
-  categorizeTxWithOverrides,
-  type Category,
-} from "../categorization.ts";
 import type { Scope, Section } from "../import/types.ts";
 
 export type MatchOutcome = {
@@ -81,57 +75,6 @@ export async function runMatchingForAccount(
     .select()
     .from(savingsAccount)
     .where(inArray(savingsAccount.owner, ["joint", owner]));
-
-  // Pre-load category overrides + per-category routing defaults. These
-  // are the second-chance path for rows that no seed/learned rule
-  // matches: if the auto-categorizer tags the txn as 'shopping' AND
-  // the user has set 'shopping' → 'Compras geral' for this scope, we
-  // route there. Joint defaults are eligible for personal accounts too
-  // (transfers TO joint can land on a joint default).
-  const overrideRows = await db
-    .select({
-      fingerprint: categoryOverride.fingerprint,
-      category: categoryOverride.category,
-    })
-    .from(categoryOverride);
-  const categoryOverrides = new Map<string, Category>(
-    overrideRows.map((o) => [o.fingerprint, o.category as Category]),
-  );
-
-  const defaultRows = await db
-    .select({
-      category: categoryBudgetDefault.category,
-      scope: categoryBudgetDefault.scope,
-      naturalKey: categoryBudgetDefault.naturalKey,
-      section: categoryBudgetDefault.section,
-    })
-    .from(categoryBudgetDefault)
-    .where(
-      inArray(categoryBudgetDefault.scope, ["joint", owner]),
-    );
-  /** category → list of (scope, section, naturalKey). Owner scope
-   *  preferred; joint is the fallback. */
-  const categoryDefaults = new Map<
-    Category,
-    Array<{ scope: Scope; section: Section; naturalKey: string }>
-  >();
-  for (const d of defaultRows) {
-    const arr = categoryDefaults.get(d.category as Category) ?? [];
-    arr.push({
-      scope: d.scope as Scope,
-      section: d.section as Section,
-      naturalKey: d.naturalKey,
-    });
-    categoryDefaults.set(d.category as Category, arr);
-  }
-  // Sort each so the txn-owner scope wins over joint when both exist.
-  for (const arr of categoryDefaults.values()) {
-    arr.sort((a, b) => {
-      if (a.scope === owner && b.scope !== owner) return -1;
-      if (b.scope === owner && a.scope !== owner) return 1;
-      return 0;
-    });
-  }
 
   // Cache: anchor "YYYY-MM" → monthId, so we don't re-query for every txn.
   const monthIdCache = new Map<string, string>();
@@ -197,28 +140,6 @@ export async function runMatchingForAccount(
         text,
         absCents,
       });
-    }
-
-    // Final fallback: if no specific rule fired, route via the user's
-    // category-default mapping. Outflows only — credits aren't part of
-    // the spend taxonomy. Skipped when amount is exactly 0 as well.
-    if (!ruleHit && t.amountCents < 0 && categoryDefaults.size > 0) {
-      const cat = categorizeTxWithOverrides(
-        { counterparty: t.counterparty, description: t.description },
-        categoryOverrides,
-      );
-      const candidates = categoryDefaults.get(cat);
-      if (candidates && candidates.length > 0) {
-        const top = candidates[0];
-        ruleHit = {
-          pattern: /./,
-          scopes: [top.scope],
-          section: top.section,
-          naturalKey: top.naturalKey,
-          confidence: 0.5,
-          label: `category-default:${cat}`,
-        };
-      }
     }
 
     if (!ruleHit) continue;

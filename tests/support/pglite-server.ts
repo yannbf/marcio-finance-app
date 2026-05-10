@@ -107,8 +107,6 @@ export async function truncateAllTables(pglite: PGlite): Promise<void> {
       bank_connection,
       bank_account,
       match_rule,
-      category_override,
-      category_budget_default,
       savings_account,
       savings_bucket,
       budget_item,

@@ -252,6 +252,32 @@ const JOINT: SeedRule[] = [
     confidence: 0.92,
     label: "Reembolso Juros",
   },
+  // Broad: any grocery / butcher / pharmacy / drugstore the brand-specific
+  // rules above didn't catch. Sits below the named-brand rules (lower
+  // confidence) so AH still beats this for "mercado", but a Jumbo /
+  // pharmacy / slagerij visit lands on Compras geral instead of Inbox.
+  {
+    pattern:
+      /\bjumbo\b|\blidl\b|\baldi\b|\bdirk\b\s*(?:vd|van)|hoogvliet|deen\s*supermarkt|\bplus\s*supermarkt|\bspar\b|\bekoplaza\b|marqt|slager(?:ij)?|butcher|apotheek|pharmacy|trekpleister|\bdrogist\b/i,
+    scopes: ["joint"],
+    section: "VARIAVEIS",
+    naturalKey: "compras-geral",
+    confidence: 0.6,
+    label: "Groceries / butcher / pharmacy (broad)",
+  },
+  // Broad: restaurants / cafes / bars / entertainment / cinemas. Lower
+  // confidence than any brand-specific rule so a future explicit rule
+  // (e.g. forró classes for Yann) still wins on personal accounts when
+  // run with scope "joint" matches both.
+  {
+    pattern:
+      /restaurant|\bcafe\b|\bcaf[eé]\b|\bbar\b|\bbistro\b|brasserie|trattoria|pizz(?:a|eria)|burger|kebab|sushi|ramen|noodle|\bfalafel\b|shoarma|mcdonald|burger\s*king|\bkfc\b|subway|\bdomino\b|new\s*york\s*pizza|starbucks|patisserie|gelateria|gelato|ijssalon|bakkerij|bakery|\bsnackbar\b|cafetaria|lunchroom|\bfebo\b|\bvapiano\b|\bnando|wagamama|\bcinema\b|\bpathe\b|kinepolis|\btheater\b|\bbioscoop\b|festival|\bconcert\b|ticketmaster|\bticketswap\b|museum/i,
+    scopes: ["joint"],
+    section: "VARIAVEIS",
+    naturalKey: "saidas-casal",
+    confidence: 0.6,
+    label: "Restaurants / bars / entertainment (broad)",
+  },
 ];
 
 /* -------------------------------------------------------------------------- */
@@ -379,6 +405,16 @@ const YANN: SeedRule[] = [
     confidence: 0.7,
     label: "Saídas",
   },
+  // Broad: restaurants / cafes / bars / entertainment on Yann's card.
+  {
+    pattern:
+      /restaurant|\bcafe\b|\bcaf[eé]\b|\bbar\b|\bbistro\b|brasserie|trattoria|pizz(?:a|eria)|burger|kebab|sushi|ramen|noodle|\bfalafel\b|shoarma|mcdonald|burger\s*king|\bkfc\b|subway|\bdomino\b|new\s*york\s*pizza|starbucks|patisserie|gelateria|gelato|ijssalon|bakkerij|bakery|\bsnackbar\b|cafetaria|lunchroom|\bfebo\b|\bvapiano\b|\bnando|wagamama|\bcinema\b|\bpathe\b|kinepolis|\btheater\b|\bbioscoop\b|festival|\bconcert\b|ticketmaster|\bticketswap\b|museum/i,
+    scopes: ["yann"],
+    section: "VARIAVEIS",
+    naturalKey: "saidas",
+    confidence: 0.6,
+    label: "Saídas (broad)",
+  },
 ];
 
 /* -------------------------------------------------------------------------- */
@@ -435,6 +471,16 @@ const CAMILA: SeedRule[] = [
     naturalKey: "depilacao-laser",
     confidence: 0.85,
     label: "Depilação Laser",
+  },
+  // Broad: restaurants / cafes / bars / entertainment on Camila's card.
+  {
+    pattern:
+      /restaurant|\bcafe\b|\bcaf[eé]\b|\bbar\b|\bbistro\b|brasserie|trattoria|pizz(?:a|eria)|burger|kebab|sushi|ramen|noodle|\bfalafel\b|shoarma|mcdonald|burger\s*king|\bkfc\b|subway|\bdomino\b|new\s*york\s*pizza|starbucks|patisserie|gelateria|gelato|ijssalon|bakkerij|bakery|\bsnackbar\b|cafetaria|lunchroom|\bfebo\b|\bvapiano\b|\bnando|wagamama|\bcinema\b|\bpathe\b|kinepolis|\btheater\b|\bbioscoop\b|festival|\bconcert\b|ticketmaster|\bticketswap\b|museum/i,
+    scopes: ["camila"],
+    section: "VARIAVEIS",
+    naturalKey: "saidas-compras",
+    confidence: 0.6,
+    label: "Saídas / compras (broad)",
   },
 ];
 

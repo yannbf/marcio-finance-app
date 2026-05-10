@@ -193,50 +193,13 @@
     "totalSpent": "Total gasto neste mês",
     "bySectionTitle": "Por seção",
     "bySectionHint": "% do total gasto.",
-    "byCategoryTitle": "Por categoria",
-    "byCategoryHint": "Detectada automaticamente — supermercado, restaurantes, transporte, lazer, …",
     "topCategoriesTitle": "Top categorias",
     "topMerchantsTitle": "Top estabelecimentos",
     "emptyHint": "Sem dados ainda — categorize transações na Caixa.",
     "hits": "{n, plural, one {# transação} other {# transações}}",
     "vsLastMonth": "vs mês passado",
     "roundupTitle": "Arredondamento p/ poupança",
-    "roundupHint": "{n, plural, one {# transferência} other {# transferências}} para Oranje spaarrekening",
-    "routing": {
-      "title": "Roteamento por categoria",
-      "hint": "Toda transação que cair numa categoria vai automaticamente para o item escolhido — aplica retroativamente quando você define.",
-      "notSet": "Não definido",
-      "pickerTitle": "Rotear para qual item?",
-      "pickerHint": "Ao escolher um destino, re-rodamos o matching para todas as transações antigas dessa categoria.",
-      "previewTitle": "Transações nesta categoria",
-      "previewCounts": "{n, plural, =0 {0 transações} one {# transação · {amount}} other {# transações · {amount}}}",
-      "previewLoading": "Carregando transações…",
-      "previewEmpty": "Nada ainda — nenhuma transação marcada com essa categoria neste mês.",
-      "previewMore": "+ {n} não mostradas",
-      "optionsTitle": "Rotear para",
-      "noOptions": "Nenhum item de saída neste escopo ainda — importe a planilha primeiro.",
-      "reset": "Limpar"
-    }
-  },
-  "CategoryPicker": {
-    "title": "Categoria deste estabelecimento",
-    "hint": "Sua escolha vale para todas as transações passadas e futuras deste estabelecimento.",
-    "reset": "Redefinir"
-  },
-  "Categories": {
-    "groceries": "Mercado",
-    "restaurants": "Restaurantes & cafés",
-    "transport": "Transporte",
-    "entertainment": "Lazer & esportes",
-    "travel": "Viagens",
-    "shopping": "Compras",
-    "utilities": "Contas (luz, internet)",
-    "healthcare": "Saúde",
-    "subscriptions": "Assinaturas",
-    "housing": "Moradia",
-    "taxes": "Impostos & governo",
-    "finance": "Tarifas bancárias",
-    "other": "Outros"
+    "roundupHint": "{n, plural, one {# transferência} other {# transferências}} para Oranje spaarrekening"
   },
   "Settings": {
     "title": "Ajustes",

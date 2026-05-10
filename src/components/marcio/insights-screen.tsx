@@ -6,7 +6,6 @@ import { Card } from "@/components/ui/card.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { Link } from "@/i18n/navigation.ts";
 import { AIInsightsCard } from "./ai-insights-card.tsx";
-import { CategoryRoutingCard } from "./category-routing-card.tsx";
 import { CounterpartyAvatar } from "./counterparty-avatar.tsx";
 import { MonthScopeBar, parseSearch } from "./month-scope-bar.tsx";
 import { trpc } from "@/lib/trpc/client.ts";
@@ -28,7 +27,6 @@ export function InsightsScreen({
 }) {
   const t = useTranslations("Insights");
   const tSections = useTranslations("Sections");
-  const tCategories = useTranslations("Categories");
   const tTikkie = useTranslations("Tikkie");
   const sp = useSearchParams();
   const { anchor, scope } = parseSearch(sp, defaultAnchor, defaultScope);
@@ -128,48 +126,6 @@ export function InsightsScreen({
       </Card>
 
       <Card className="border-border/40 bg-card/60 p-5">
-        <h2 className="text-sm font-medium">{t("byCategoryTitle")}</h2>
-        <p className="mt-0.5 text-xs text-muted-foreground">
-          {t("byCategoryHint")}
-        </p>
-        {(data?.byCategory.length ?? 0) === 0 ? (
-          <p className="mt-3 text-xs text-muted-foreground">
-            {t("emptyHint")}
-          </p>
-        ) : (
-          <ul className="mt-4 flex flex-col gap-3">
-            {data!.byCategory.map((row) => {
-              const total = data!.totalOutCents;
-              const pct = total > 0 ? (row.sumCents / total) * 100 : 0;
-              return (
-                <li key={row.category} className="flex flex-col gap-1.5">
-                  <div className="flex items-baseline justify-between gap-2 text-sm">
-                    <span className="capitalize">
-                      {tCategories(row.category as never)}
-                    </span>
-                    <span className="num text-muted-foreground">
-                      {formatEUR(row.sumCents / 100, locale)} · {pct.toFixed(0)}%
-                    </span>
-                  </div>
-                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                    <div
-                      className="h-full rounded-full bg-primary"
-                      style={{ width: `${pct.toFixed(2)}%` }}
-                    />
-                  </div>
-                  <p className="num text-[10px] text-muted-foreground/70">
-                    {t("hits", { n: row.count })}
-                  </p>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </Card>
-
-      <CategoryRoutingCard scope={scope} anchor={anchor} />
-
-      <Card className="border-border/40 bg-card/60 p-5">
         <h2 className="text-sm font-medium">{t("topCategoriesTitle")}</h2>
         {(data?.topCategories.length ?? 0) === 0 ? (
           <p className="mt-3 text-xs text-muted-foreground">
@@ -188,27 +144,33 @@ export function InsightsScreen({
                 ? Math.abs(Number.parseInt(prevSum, 10))
                 : 0;
               return (
-                <li key={row.itemId} className="flex items-center gap-3 py-1">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-baseline gap-1.5">
-                      <p className="truncate text-sm">{row.name}</p>
-                      <DeltaChip
-                        current={cents}
-                        previous={prevCents}
-                        t={t}
-                        compact
-                      />
+                <li key={row.itemId}>
+                  <Link
+                    href={`/month/${row.itemId}` as `/month/${string}`}
+                    className="-mx-2 flex items-center gap-3 rounded-md px-2 py-1 transition-colors hover:bg-muted/40"
+                    prefetch
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-baseline gap-1.5">
+                        <p className="truncate text-sm">{row.name}</p>
+                        <DeltaChip
+                          current={cents}
+                          previous={prevCents}
+                          t={t}
+                          compact
+                        />
+                      </div>
+                      <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-muted">
+                        <div
+                          className="h-full rounded-full bg-primary"
+                          style={{ width: `${pct.toFixed(2)}%` }}
+                        />
+                      </div>
                     </div>
-                    <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-muted">
-                      <div
-                        className="h-full rounded-full bg-primary"
-                        style={{ width: `${pct.toFixed(2)}%` }}
-                      />
-                    </div>
-                  </div>
-                  <span className="num shrink-0 text-sm font-medium">
-                    {formatEUR(cents / 100, locale)}
-                  </span>
+                    <span className="num shrink-0 text-sm font-medium">
+                      {formatEUR(cents / 100, locale)}
+                    </span>
+                  </Link>
                 </li>
               );
             })}

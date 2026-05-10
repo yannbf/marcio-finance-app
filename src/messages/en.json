@@ -193,50 +193,13 @@
     "totalSpent": "Total spent this month",
     "bySectionTitle": "By section",
     "bySectionHint": "% of total spend.",
-    "byCategoryTitle": "By category",
-    "byCategoryHint": "Auto-tagged from the merchant — supermarket, restaurants, transport, leisure, …",
     "topCategoriesTitle": "Top categories",
     "topMerchantsTitle": "Top merchants",
     "emptyHint": "Nothing yet — categorize a few transactions in Caixa.",
     "hits": "{n, plural, one {# transaction} other {# transactions}}",
     "vsLastMonth": "vs last month",
     "roundupTitle": "Round-up to savings",
-    "roundupHint": "{n, plural, one {# sweep} other {# sweeps}} to Oranje spaarrekening",
-    "routing": {
-      "title": "Category routing",
-      "hint": "Auto-route every transaction tagged with a category to a budget item — applies retroactively the first time you set it.",
-      "notSet": "Not set",
-      "pickerTitle": "Route to which budget item?",
-      "pickerHint": "Picking a target re-runs matching for every prior transaction in this category.",
-      "previewTitle": "Transactions in this category",
-      "previewCounts": "{n, plural, =0 {0 transactions} one {# transaction · {amount}} other {# transactions · {amount}}}",
-      "previewLoading": "Loading transactions…",
-      "previewEmpty": "Nothing yet — no transactions tagged with this category in the active month.",
-      "previewMore": "+ {n} more not shown",
-      "optionsTitle": "Route to",
-      "noOptions": "No outflow budget items in this scope yet — import the sheet first.",
-      "reset": "Clear"
-    }
-  },
-  "CategoryPicker": {
-    "title": "Tag this merchant",
-    "hint": "Your choice applies to every past and future transaction with this merchant.",
-    "reset": "Reset"
-  },
-  "Categories": {
-    "groceries": "Groceries",
-    "restaurants": "Restaurants & cafes",
-    "transport": "Transport",
-    "entertainment": "Entertainment & sports",
-    "travel": "Travel",
-    "shopping": "Shopping",
-    "utilities": "Utilities",
-    "healthcare": "Healthcare",
-    "subscriptions": "Subscriptions",
-    "housing": "Housing",
-    "taxes": "Taxes & gov.",
-    "finance": "Bank fees",
-    "other": "Other"
+    "roundupHint": "{n, plural, one {# sweep} other {# sweeps}} to Oranje spaarrekening"
   },
   "Settings": {
     "title": "Settings",
