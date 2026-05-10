@@ -63,7 +63,8 @@
     "paidThisMonth": "Pagos neste mês",
     "expectedThisMonth": "Esperados",
     "sectionEmpty": "Nada planejado nesta seção.",
-    "dayPrefix": "dia"
+    "dayPrefix": "dia",
+    "roundup": "Arredondamentos p/ poupança · {amount}"
   },
   "Sections": {
     "entradas": "Entradas",

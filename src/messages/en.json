@@ -63,7 +63,8 @@
     "paidThisMonth": "Paid this month",
     "expectedThisMonth": "Expected",
     "sectionEmpty": "Nothing planned in this section.",
-    "dayPrefix": "day"
+    "dayPrefix": "day",
+    "roundup": "Round-ups to savings · {amount}"
   },
   "Sections": {
     "entradas": "Income",

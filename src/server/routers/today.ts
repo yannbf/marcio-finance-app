@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { and, eq, inArray, notExists, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, lte, notExists, sql } from "drizzle-orm";
 import { db } from "@/db/index.ts";
 import {
   bankAccount,
@@ -13,7 +13,11 @@ import {
 } from "../trpc.ts";
 import { AnchorInput, ScopeViewInput } from "../inputs.ts";
 import { getHouseholdSettings } from "@/lib/settings.ts";
-import { daysUntilNextPayday } from "@/lib/payday.ts";
+import {
+  daysUntilNextPayday,
+  paydayMonthFor,
+  paydayMonthForAnchor,
+} from "@/lib/payday.ts";
 import {
   getMonthlyAggregates,
   totalIncome,
@@ -51,6 +55,34 @@ export const todayRouter = router({
       const personalChecklist = personalRole
         ? await getPersonalChecklist(personalRole, agg.monthId)
         : null;
+
+      // ING round-up sweeps: small "Afronding" transfers from the joint
+      // account to Oranje Spaarrekening on every card transaction.
+      // Filtered out of every other surface so they don't count as
+      // spending; surfaced here as a positive "you're passively saving"
+      // chip on the Today screen so the user actually sees the cumulative
+      // benefit. Same query the Insights screen uses, scoped to the
+      // active payday-month.
+      const range = anchor
+        ? paydayMonthForAnchor(anchor.year, anchor.month, settings.paydayDay)
+        : paydayMonthFor(new Date(), settings.paydayDay);
+      const [roundupRow] = await db
+        .select({
+          sum: sql<string>`COALESCE(SUM(${transaction.amountCents}), 0)`,
+          count: sql<string>`COUNT(*)`,
+        })
+        .from(transaction)
+        .innerJoin(bankAccount, eq(bankAccount.id, transaction.bankAccountId))
+        .where(
+          and(
+            inArray(bankAccount.owner, scopes),
+            gte(transaction.bookingDate, range.startsOn),
+            lte(transaction.bookingDate, range.endsOn),
+            sql`(COALESCE(${transaction.counterparty}, '') || ' ' || COALESCE(${transaction.description}, '')) ~* ${AFRONDING_PG_PATTERN}`,
+          ),
+        );
+      const roundupCents = Math.abs(Number.parseInt(roundupRow.sum, 10));
+      const roundupCount = Number.parseInt(roundupRow.count, 10);
 
       // The headline answers different questions per view:
       //
@@ -120,6 +152,7 @@ export const todayRouter = router({
         inboxCount,
         recentlyAddedCount,
         personalChecklist,
+        roundup: { totalCents: roundupCents, count: roundupCount },
       };
     }),
 });

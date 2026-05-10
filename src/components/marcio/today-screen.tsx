@@ -6,7 +6,15 @@ import { useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
-import { Calendar, Check, Inbox, Sparkles, ChevronRight, PieChart } from "lucide-react";
+import {
+  Calendar,
+  Check,
+  ChevronRight,
+  Inbox,
+  PieChart,
+  PiggyBank,
+  Sparkles,
+} from "lucide-react";
 import { AnimatedNumber } from "./animated-number.tsx";
 import { MonthScopeBar, parseSearch } from "./month-scope-bar.tsx";
 import { formatEUR, formatEURPrecise, formatPercent } from "@/lib/format.ts";
@@ -145,6 +153,7 @@ export function TodayScreen({
   const inboxCount = data?.inboxCount ?? 0;
   const recentlyAddedCount = data?.recentlyAddedCount ?? 0;
   const personalChecklist = data?.personalChecklist ?? null;
+  const roundup = data?.roundup ?? { totalCents: 0, count: 0 };
   const sectionByKey = new Map(sectionData.map((s) => [s.section, s]));
 
   return (
@@ -240,6 +249,17 @@ export function TodayScreen({
           )}
         </div>
       </Card>
+
+      {roundup.count > 0 ? (
+        <Link
+          href="/insights"
+          prefetch
+          className="-mt-3 inline-flex items-center gap-2 self-start rounded-full border border-border/60 bg-card/40 px-3 py-1.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-card/60 hover:text-foreground"
+        >
+          <PiggyBank className="size-3.5 text-primary" />
+          <span>{t("Today.roundup", { amount: formatEURPrecise(roundup.totalCents / 100, locale) })}</span>
+        </Link>
+      ) : null}
 
       <div className="grid grid-cols-2 gap-3">
         {(["FIXAS", "VARIAVEIS", "SAZONAIS"] as const).map((s) => {

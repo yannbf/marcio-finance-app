@@ -52,8 +52,11 @@ const LOGO_MAP: Logo[] = [
   { pattern: /\bgvb\b/i, src: "/logos/gvb.png", alt: "GVB" },
   // Food delivery
   { pattern: /\btakeaway\b|thuisbezorgd/i, src: "/logos/takeaway.svg", alt: "Takeaway" },
-  // Banking & gov
-  { pattern: /ing\s*hypotheken|^ing\b|ing\s*basic|ing\s*kosten/i, src: "/logos/ing.svg", alt: "ING" },
+  // Banking & gov — also covers Oranje Spaarrekening (ING's savings
+  // product) and the generic "spaarrekening …" lines so transfers to
+  // a Dutch savings account read as ING transactions instead of
+  // landing on the deterministic letter avatar.
+  { pattern: /ing\s*hypotheken|^ing\b|ing\s*basic|ing\s*kosten|oranje\s*spaarrekening|^spaarrekening\b/i, src: "/logos/ing.svg", alt: "ING" },
   { pattern: /belastingdienst/i, src: "/logos/belastingdienst.svg", alt: "Belastingdienst" },
   { pattern: /gemeente\s*amsterdam|belastingen/i, src: "/logos/amsterdam.svg", alt: "Gemeente Amsterdam" },
   { pattern: /\bideal\b|i?wero/i, src: "/logos/ideal.svg", alt: "iDEAL" },
