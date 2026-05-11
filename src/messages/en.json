@@ -188,7 +188,19 @@
     "heading": "Where the money went",
     "ai": {
       "title": "Marcio's takes",
-      "hint": "Hand-written observations from a periodic look at your data."
+      "hint": "Hand-written observations from a periodic look at your data.",
+      "hintCollapsed": "Tap to expand findings"
+    },
+    "charts": {
+      "title": "This month at a glance",
+      "hint": "Spend trend and where the money went.",
+      "daily": "Daily spend",
+      "dailyHint": "Hover for a day",
+      "bySection": "By section",
+      "totalLabel": "Total",
+      "tabDaily": "Trend",
+      "tabDonut": "Share",
+      "tabBars": "Detail"
     },
     "totalSpent": "Total spent this month",
     "bySectionTitle": "By section",

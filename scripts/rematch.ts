@@ -19,7 +19,7 @@ async function main() {
 
   const r = await runMatchingAllAccounts();
   console.log(
-    `examined ${r.examined} · matched ${r.matched} · skipped (no budget) ${r.skippedNoBudget}`,
+    `examined ${r.examined} · matched ${r.matched} (projected ${r.projected}) · skipped (no budget) ${r.skippedNoBudget}`,
   );
   process.exit(0);
 }

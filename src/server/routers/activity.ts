@@ -24,7 +24,6 @@ import {
 } from "@/lib/budget-aggregates.ts";
 import { getPersonalChecklist } from "@/lib/personal-checklist.ts";
 import {
-  AFRONDING_PG_PATTERN,
   isInternalTransferTx,
   isSavingsTransferTx,
 } from "@/lib/matching/seed-rules.ts";
@@ -74,7 +73,6 @@ export const activityRouter = router({
               inArray(bankAccount.owner, allowed),
               gte(transaction.bookingDate, range.startsOn),
               lte(transaction.bookingDate, range.endsOn),
-              sql`NOT (${transaction.counterparty} ~* ${AFRONDING_PG_PATTERN})`,
             ),
           )
           .orderBy(desc(transaction.bookingDate))

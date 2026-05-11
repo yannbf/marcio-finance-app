@@ -221,6 +221,30 @@ export const insightsRouter = router({
         prevCategoryMap[c.naturalKey] = c.sum;
       }
 
+      // Daily spend in the active payday-month — used by the chart
+      // strip on /insights. One row per calendar day with at least one
+      // outflow; the client zero-fills missing days for a clean axis.
+      const dailySpend = await db
+        .select({
+          day: sql<string>`TO_CHAR(${transaction.bookingDate}, 'YYYY-MM-DD')`,
+          sum: sql<string>`COALESCE(SUM(${transaction.amountCents}), 0)`,
+        })
+        .from(transaction)
+        .innerJoin(bankAccount, eq(bankAccount.id, transaction.bankAccountId))
+        .where(
+          and(
+            inArray(bankAccount.owner, scopes),
+            gte(transaction.bookingDate, range.startsOn),
+            lte(transaction.bookingDate, range.endsOn),
+            sql`${transaction.amountCents} < 0`,
+            sql`NOT (${transaction.counterparty} ~* ${AFRONDING_PG_PATTERN})`,
+            sql`NOT (COALESCE(${transaction.counterparty}, '') || ' ' || COALESCE(${transaction.description}, '') ~* ${INTERNAL_TRANSFER_PG_PATTERN})`,
+            sql`NOT (COALESCE(${transaction.counterparty}, '') || ' ' || COALESCE(${transaction.description}, '') ~* ${SAVINGS_TRANSFER_PG_PATTERN})`,
+          ),
+        )
+        .groupBy(sql`TO_CHAR(${transaction.bookingDate}, 'YYYY-MM-DD')`)
+        .orderBy(asc(sql`TO_CHAR(${transaction.bookingDate}, 'YYYY-MM-DD')`));
+
       return {
         anchor: { year: agg.anchorYear, month: agg.anchorMonth },
         totalOutCents,
@@ -247,6 +271,14 @@ export const insightsRouter = router({
           sum: c.sum,
           naturalKey: naturalKeyByItemId.get(c.itemId) ?? null,
         })),
+        dailySpend: dailySpend.map((d) => ({
+          day: d.day,
+          absCents: Math.abs(Number.parseInt(d.sum, 10)),
+        })),
+        range: {
+          startsOn: range.startsOn.toISOString(),
+          endsOn: range.endsOn.toISOString(),
+        },
       };
     }),
 });

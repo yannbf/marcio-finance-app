@@ -20,6 +20,10 @@ import { useMounted } from "@/lib/use-mounted.ts";
 import { formatEUR, formatEURPrecise } from "@/lib/format.ts";
 import { fingerprintCounterparty } from "@/lib/matching/fingerprint.ts";
 import { isTikkie } from "@/lib/tikkie.ts";
+import {
+  isRoundUpTx,
+  resolveDisplayCounterparty,
+} from "@/lib/display-counterparty.ts";
 import { SECTION_ORDER, SECTION_TR_KEY } from "@/lib/import/sections.ts";
 import type { Section } from "@/lib/import/types.ts";
 import type { inferRouterOutputs } from "@trpc/server";
@@ -74,7 +78,12 @@ export function ActivityScreen({
   const dateGroups = useMemo(() => {
     if (!data || view !== "date") return [];
     const out: { date: string; rows: Txn[] }[] = [];
+    // Hide round-ups in the chronological timeline — €0.30 sweeps would
+    // dominate the list and bury real transactions. They're still
+    // tallied separately in the by-amount view's "CC investments round
+    // up and save" bucket and on Today's headline round-up chip.
     for (const r of data.txns) {
+      if (isRoundUpTx(r)) continue;
       const key = formatGroupDate(new Date(r.bookingDate), locale);
       const last = out[out.length - 1];
       if (last && last.date === key) last.rows.push(r);
@@ -93,6 +102,7 @@ export function ActivityScreen({
     type Bucket = {
       key: string;
       displayName: string;
+      avatarHint: "ing" | "piggy" | null;
       txns: Txn[];
       paidCents: number;
       receivedCents: number;
@@ -100,23 +110,36 @@ export function ActivityScreen({
     const groups = new Map<string, Bucket>();
     for (const tx of data.txns) {
       const cp = (tx.counterparty ?? "").trim() || "—";
-      // Tikkies surface in two ING shapes: "AAB INZ TIKKIE" (topic +
-      // sender baked into description) and "<Name> via Tikkie" (counter-
-      // party already names the sender). Plain counterparty fingerprinting
-      // would split those — collapse them into one canonical Tikkie
-      // bucket so the "by amount" view doesn't fragment. The dedicated
-      // /tikkie screen already breaks them out per person.
-      const tikkieRow = isTikkie({
+      // 1. Synthetic groups (round-ups, bank fees, named savings refs)
+      //    take precedence so e.g. round-ups never collapse into the
+      //    real "CC investments" bucket and bank fees stay separate.
+      const display = resolveDisplayCounterparty({
         counterparty: tx.counterparty,
         description: tx.description,
       });
-      const key = tikkieRow
-        ? "tikkie"
-        : fingerprintCounterparty(cp) || cp.toLowerCase();
-      const displayName = tikkieRow ? "Tikkie" : cp;
+      // 2. Tikkies surface in two ING shapes: "AAB INZ TIKKIE" (topic +
+      //    sender baked into description) and "<Name> via Tikkie".
+      //    Collapse them into one canonical Tikkie bucket.
+      const tikkieRow =
+        !display.groupKey &&
+        isTikkie({
+          counterparty: tx.counterparty,
+          description: tx.description,
+        });
+      const key =
+        display.groupKey ??
+        (tikkieRow
+          ? "tikkie"
+          : fingerprintCounterparty(cp) || cp.toLowerCase());
+      const displayName = display.groupKey
+        ? display.name
+        : tikkieRow
+          ? "Tikkie"
+          : cp;
       const bucket = groups.get(key) ?? {
         key,
         displayName,
+        avatarHint: display.avatar,
         txns: [],
         paidCents: 0,
         receivedCents: 0,
@@ -349,6 +372,7 @@ function MerchantGroups({
   groups: Array<{
     key: string;
     displayName: string;
+    avatarHint: "ing" | "piggy" | null;
     txns: Txn[];
     paidCents: number;
     receivedCents: number;
@@ -410,7 +434,10 @@ function MerchantGroups({
                   aria-expanded={isOpen}
                   className="-mx-2 flex w-[calc(100%+1rem)] items-center gap-3 rounded px-2 py-3 text-left transition-colors hover:bg-card/40"
                 >
-                  <CounterpartyAvatar name={g.displayName} />
+                  <CounterpartyAvatar
+                    name={g.displayName}
+                    hint={g.avatarHint}
+                  />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">
                       {g.displayName}

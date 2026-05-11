@@ -6,13 +6,13 @@ import { Card } from "@/components/ui/card.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { Link } from "@/i18n/navigation.ts";
 import { AIInsightsCard } from "./ai-insights-card.tsx";
+import { InsightsCharts } from "./insights-charts.tsx";
 import { CounterpartyAvatar } from "./counterparty-avatar.tsx";
 import { MonthScopeBar, parseSearch } from "./month-scope-bar.tsx";
 import { trpc } from "@/lib/trpc/client.ts";
 import { useMounted } from "@/lib/use-mounted.ts";
 import { formatEUR, formatEURPrecise } from "@/lib/format.ts";
 import { PiggyBank } from "lucide-react";
-import { OUTFLOW_SECTIONS, SECTION_TR_KEY } from "@/lib/import/sections.ts";
 
 export function InsightsScreen({
   locale,
@@ -26,7 +26,6 @@ export function InsightsScreen({
   defaultMeRole?: "yann" | "camila" | null;
 }) {
   const t = useTranslations("Insights");
-  const tSections = useTranslations("Sections");
   const tTikkie = useTranslations("Tikkie");
   const sp = useSearchParams();
   const { anchor, scope } = parseSearch(sp, defaultAnchor, defaultScope);
@@ -86,44 +85,17 @@ export function InsightsScreen({
         </Card>
       ) : null}
 
-      <Card className="border-border/40 bg-card/60 p-5">
-        <h2 className="text-sm font-medium">{t("bySectionTitle")}</h2>
-        <p className="mt-0.5 text-xs text-muted-foreground">
-          {t("bySectionHint")}
-        </p>
-        <ul className="mt-4 flex flex-col gap-3">
-          {OUTFLOW_SECTIONS.map((s) => {
-            const cents = Math.abs(data?.actual?.[s] ?? 0);
-            const prevCents = Math.abs(data?.previous?.actual?.[s] ?? 0);
-            const total = data?.totalOutCents ?? 0;
-            const pct = total > 0 ? (cents / total) * 100 : 0;
-            return (
-              <li key={s} className="flex flex-col gap-1.5">
-                <div className="flex items-baseline justify-between gap-2 text-sm">
-                  <span className="flex items-baseline gap-1.5">
-                    {tSections(SECTION_TR_KEY[s] as never)}
-                    <DeltaChip
-                      current={cents}
-                      previous={prevCents}
-                      t={t}
-                      compact
-                    />
-                  </span>
-                  <span className="num text-muted-foreground">
-                    {formatEUR(cents / 100, locale)} · {pct.toFixed(0)}%
-                  </span>
-                </div>
-                <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                  <div
-                    className="h-full rounded-full bg-primary"
-                    style={{ width: `${pct.toFixed(2)}%` }}
-                  />
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      </Card>
+      {data ? (
+        <InsightsCharts
+          locale={locale}
+          totalOutCents={data.totalOutCents}
+          dailySpend={data.dailySpend}
+          actualBySection={data.actual}
+          previousActualBySection={data.previous?.actual}
+          rangeStartsOn={data.range.startsOn}
+          rangeEndsOn={data.range.endsOn}
+        />
+      ) : null}
 
       <Card className="border-border/40 bg-card/60 p-5">
         <h2 className="text-sm font-medium">{t("topCategoriesTitle")}</h2>

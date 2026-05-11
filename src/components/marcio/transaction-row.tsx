@@ -1,5 +1,6 @@
 import { CounterpartyAvatar } from "./counterparty-avatar.tsx";
 import { formatEURPrecise } from "@/lib/format.ts";
+import { resolveDisplayCounterparty } from "@/lib/display-counterparty.ts";
 import {
   isTikkie,
   parseTikkiePerson,
@@ -40,25 +41,43 @@ export function TransactionRow({
   const isCredit = amountCents > 0;
   const amount = formatEURPrecise(amountCents / 100, locale);
 
+  // Round-ups, bank fees, and named savings-account refs get rewritten
+  // to friendly household labels + a forced avatar glyph (piggy / ING).
+  const display = resolveDisplayCounterparty({
+    counterparty,
+    description: description ?? null,
+  });
+  const isOverridden = display.avatar !== null;
+
   // For "AAB INZ TIKKIE" rows the real counterparty + what the Tikkie was
   // for live in the description. Lift them up so the row reads as the
   // actual person/topic instead of the bank's generic intermediary label.
-  const tikkie = isTikkie({ counterparty, description: description ?? null });
+  // Skip Tikkie handling entirely when the row is already overridden
+  // (e.g. a round-up that happens to mention Tikkie in the description).
+  const tikkie =
+    !isOverridden &&
+    isTikkie({ counterparty, description: description ?? null });
   const tikkiePerson =
     tikkie ? parseTikkiePerson(counterparty, description ?? null) : null;
   const tikkieTopic = tikkie ? parseTikkieTopic(description ?? null) : null;
   const showTikkieOverride =
     tikkie && tikkiePerson && tikkiePerson !== "—";
-  const titleText = showTikkieOverride
-    ? tikkiePerson
-    : counterparty || description || "—";
+  const titleText = isOverridden
+    ? display.name
+    : showTikkieOverride
+      ? tikkiePerson
+      : counterparty || description || "—";
   // Always show the Tikkie brand on Tikkie rows — even when we lifted the
   // person's name into the title, the row's brand identity is still Tikkie.
-  const avatarName = tikkie ? "Tikkie" : counterparty;
+  const avatarName = isOverridden
+    ? display.name
+    : tikkie
+      ? "Tikkie"
+      : counterparty;
 
   return (
     <div className="flex items-center gap-3 py-3">
-      <CounterpartyAvatar name={avatarName} />
+      <CounterpartyAvatar name={avatarName} hint={display.avatar} />
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium">{titleText}</p>
         <p className="num text-xs text-muted-foreground">

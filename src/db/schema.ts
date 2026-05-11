@@ -354,6 +354,15 @@ export const txMatch = pgTable(
     ruleId: uuid("rule_id").references(() => matchRule.id, {
       onDelete: "set null",
     }),
+    /** When the txn's own payday-month has no sheet imported, the engine
+     * falls back to the closest month that does have the target budget
+     * item, and records the txn's original payday-month here. NULL means
+     * the match landed in its own month — the normal case. UI surfaces
+     * "Projected from {month}" hints when this is set. */
+    projectedFromMonthId: uuid("projected_from_month_id").references(
+      () => month.id,
+      { onDelete: "set null" },
+    ),
     confirmedByUserId: text("confirmed_by_user_id").references(() => user.id),
     confirmedAt: timestamp("confirmed_at"),
     createdAt: timestamp("created_at").notNull().defaultNow(),

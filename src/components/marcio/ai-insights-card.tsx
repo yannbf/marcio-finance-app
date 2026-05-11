@@ -1,6 +1,11 @@
+"use client";
+
+import { useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { useTranslations } from "next-intl";
 import {
   AlertTriangle,
+  ChevronDown,
   Lightbulb,
   PartyPopper,
   Sparkles,
@@ -50,32 +55,65 @@ const TONE_CLASSES: Record<
 };
 
 /**
- * Renders the hardcoded `AI_INSIGHTS` array as a stack of small rows
- * inside one card. Newest first — order in source is preserved.
- * Hidden entirely when the array is empty so we don't leave a "no
- * insights yet" placeholder rotting on the screen.
+ * Renders `AI_INSIGHTS` as a collapsible card. Header behaves like a
+ * button — tap it to expand/collapse the report. Showing the count of
+ * findings as a small badge so the value is visible even when collapsed.
+ * Hidden entirely when the array is empty.
  */
 export function AIInsightsCard() {
   const t = useTranslations("Insights.ai");
   const insights = AI_INSIGHTS;
+  const [open, setOpen] = useState(false);
   if (insights.length === 0) return null;
 
   return (
-    <Card className="border-border/40 bg-card/60 p-5">
-      <header className="flex items-center gap-2">
-        <span className="inline-flex size-7 items-center justify-center rounded-full bg-primary/15 text-primary">
-          <Sparkles className="size-3.5" strokeWidth={2.4} />
+    <Card className="!gap-0 border-border/40 bg-card/60 p-0">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-muted/30"
+      >
+        <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
+          <Sparkles className="size-4" strokeWidth={2.2} />
         </span>
         <div className="min-w-0 flex-1">
-          <h2 className="text-sm font-medium">{t("title")}</h2>
-          <p className="text-[11px] text-muted-foreground">{t("hint")}</p>
+          <div className="flex items-center gap-1.5">
+            <h2 className="truncate text-sm font-medium">{t("title")}</h2>
+            <span className="num inline-flex items-center rounded-full bg-primary/15 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+              {insights.length}
+            </span>
+          </div>
+          <p className="truncate text-[11px] text-muted-foreground">
+            {open ? t("hint") : t("hintCollapsed")}
+          </p>
         </div>
-      </header>
-      <ul className="mt-3 flex flex-col gap-3">
-        {insights.map((i) => (
-          <InsightRow key={i.id} insight={i} />
-        ))}
-      </ul>
+        <motion.span
+          animate={{ rotate: open ? 180 : 0 }}
+          transition={{ duration: 0.2 }}
+          className="shrink-0 text-muted-foreground/70"
+        >
+          <ChevronDown className="size-4" />
+        </motion.span>
+      </button>
+      <AnimatePresence initial={false}>
+        {open ? (
+          <motion.div
+            key="content"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+            className="overflow-hidden"
+          >
+            <ul className="flex flex-col gap-3 border-t border-border/40 p-4">
+              {insights.map((i) => (
+                <InsightRow key={i.id} insight={i} />
+              ))}
+            </ul>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </Card>
   );
 }

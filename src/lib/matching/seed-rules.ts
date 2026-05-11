@@ -39,14 +39,14 @@ export type SeedRule = {
 /* -------------------------------------------------------------------------- */
 
 const JOINT: SeedRule[] = [
-  // Groceries / supermarket
+  // Groceries / supermarket / grocery delivery services
   {
-    pattern: /albert\s*heijn|\bah\s+(to\s+go|amsterdam)|slagerij|bomies\s*fd|simit\s*paleis|paindemie/i,
+    pattern: /albert\s*heijn|\bah\s+(to\s+go|amsterdam)|slagerij|bomies\s*fd|simit\s*paleis|paindemie|\bcrisp\b|\bpicnic\b|hellofresh|marley\s*spoon|\bflink\b|\bgorillas\b|\bgetir\b/i,
     scopes: ["joint"],
     section: "VARIAVEIS",
     naturalKey: "mercado",
     confidence: 0.9,
-    label: "Mercado / supermarket",
+    label: "Mercado / supermarket / delivery",
   },
   // General shopping & drugstore
   {
@@ -271,12 +271,100 @@ const JOINT: SeedRule[] = [
   // run with scope "joint" matches both.
   {
     pattern:
-      /restaurant|\bcafe\b|\bcaf[eé]\b|\bbar\b|\bbistro\b|brasserie|trattoria|pizz(?:a|eria)|burger|kebab|sushi|ramen|noodle|\bfalafel\b|shoarma|mcdonald|burger\s*king|\bkfc\b|subway|\bdomino\b|new\s*york\s*pizza|starbucks|patisserie|gelateria|gelato|ijssalon|bakkerij|bakery|\bsnackbar\b|cafetaria|lunchroom|\bfebo\b|\bvapiano\b|\bnando|wagamama|\bcinema\b|\bpathe\b|kinepolis|\btheater\b|\bbioscoop\b|festival|\bconcert\b|ticketmaster|\bticketswap\b|museum/i,
+      /restaurant|\bcafe\b|\bcaf[eé]\b|\bbar\b|\bbistro\b|brasserie|trattoria|pizz(?:a|eria)|burger|kebab|sushi|ramen|noodle|\bfalafel\b|shoarma|mcdonald|burger\s*king|\bkfc\b|subway|\bdomino\b|new\s*york\s*pizza|starbucks|patisserie|gelateria|gelato|ijssalon|bakkerij|bakery|\bsnackbar\b|cafetaria|lunchroom|\bfebo\b|\bvapiano\b|\bnando|wagamama|\bcinema\b|\bpathe\b|kinepolis|\btheater\b|\bbioscoop\b|festival|\bconcert\b|ticketmaster|\bticketswap\b|museum|\bhotel\b/i,
     scopes: ["joint"],
     section: "VARIAVEIS",
     naturalKey: "saidas-casal",
     confidence: 0.6,
     label: "Restaurants / bars / entertainment (broad)",
+  },
+  // Greedy: payment-terminal prefixes (CCV*, BCK*, C&M*, SumUp, MIUZ,
+  // etc.) cover a wide range of small NL merchants — bars, restaurants,
+  // market stalls, hairdressers, taxis. User opted in (option A): route
+  // these to Saídas casal as the most likely category. False positives
+  // will be re-routed via the Inbox; learned rules will pin them.
+  {
+    pattern: /^ccv\*|^bck\*|^c&m\*|\bsumup\b|\bmiuz\b/i,
+    scopes: ["joint"],
+    section: "VARIAVEIS",
+    naturalKey: "saidas-casal",
+    confidence: 0.55,
+    label: "Card-terminal merchants (greedy → Saídas casal)",
+  },
+  // Gemeente Amsterdam Belastingen — annual property taxes (OZB +
+  // Rioolheffing + Afvalstoffenheffing). The naturalKey reflects the
+  // bundled label the user uses on the sheet.
+  {
+    pattern: /gemeente\s*amsterdam.*belasting|gemeente\s*amsterdam\b/i,
+    scopes: ["joint"],
+    section: "SAZONAIS",
+    naturalKey: "impostos-ozb-rioolheffing-afvalstoffenheffing",
+    confidence: 0.9,
+    label: "Gemeente Amsterdam (taxes)",
+  },
+  // Accountant doing the household's income tax filing.
+  {
+    pattern: /maarten\s*de\s*ruijter|administratieve\s*dienstverlening/i,
+    scopes: ["joint"],
+    section: "SAZONAIS",
+    naturalKey: "income-tax-casal",
+    confidence: 0.85,
+    label: "Accounting / Income Tax",
+  },
+  // DAZURE B.V. — life insurance ("overlijdensrisicoverzekering").
+  {
+    pattern: /\bdazure\b|overlijdensrisicoverzeker/i,
+    scopes: ["joint"],
+    section: "FIXAS",
+    naturalKey: "seguro-de-vida",
+    confidence: 0.9,
+    label: "DAZURE life insurance",
+  },
+  // Schiphol short-term parking (P1, P II, etc.). Joint scope — long-
+  // stay airport parking shows up with the same description prefix.
+  {
+    pattern: /\bschiphol\s*p\b|ams\s*schiphol|\bp\s*ii?\s*r\s+amsterdam/i,
+    scopes: ["joint"],
+    section: "VARIAVEIS",
+    naturalKey: "other",
+    confidence: 0.8,
+    label: "Schiphol Parking → Other",
+  },
+  // Sixt car rental — fines + occasional rentals.
+  {
+    pattern: /\bsixt\b/i,
+    scopes: ["joint"],
+    section: "VARIAVEIS",
+    naturalKey: "other",
+    confidence: 0.8,
+    label: "Sixt → Other",
+  },
+  // Jas Rijschool — Camila's driving lessons, but billed to joint.
+  {
+    pattern: /\bjas\s*rijschool\b|\brijschool\b/i,
+    scopes: ["joint"],
+    section: "VARIAVEIS",
+    naturalKey: "other",
+    confidence: 0.8,
+    label: "Driving school → Other",
+  },
+  // IKEA — furniture / home goods.
+  {
+    pattern: /\bikea\b/i,
+    scopes: ["joint"],
+    section: "VARIAVEIS",
+    naturalKey: "other",
+    confidence: 0.85,
+    label: "IKEA → Other",
+  },
+  // X2O Badkamers — bathroom retailer.
+  {
+    pattern: /\bx2o\b|badkamers/i,
+    scopes: ["joint"],
+    section: "VARIAVEIS",
+    naturalKey: "other",
+    confidence: 0.85,
+    label: "X2O / Badkamers → Other",
   },
 ];
 
@@ -351,9 +439,11 @@ const YANN: SeedRule[] = [
     confidence: 0.7,
     label: "Ajuda família (via Wise)",
   },
-  // Credit card transfer
+  // Credit card transfer — Yann's ING Visa monthly incasso shows up
+  // either as "Transfer to credit card", a bare "creditcard" line, or
+  // as "Incasso ING creditcard Accountnr ..." with NULL counterparty.
   {
-    pattern: /transfer\s*to\s*credit\s*card|^creditcard$/i,
+    pattern: /transfer\s*to\s*credit\s*card|^creditcard$|incasso\s*ing\s*creditcard/i,
     scopes: ["yann"],
     section: "VARIAVEIS",
     naturalKey: "cartao",
@@ -414,6 +504,49 @@ const YANN: SeedRule[] = [
     naturalKey: "saidas",
     confidence: 0.6,
     label: "Saídas (broad)",
+  },
+  // NS Groep / NS Reizigers — direct NS train invoices (separate from
+  // OVPay card swipes).
+  {
+    pattern: /\bns\s*groep\b|\bns\s*reizigers\b/i,
+    scopes: ["yann"],
+    section: "FIXAS",
+    naturalKey: "transporte-yann-trem-bus",
+    confidence: 0.9,
+    label: "NS train invoice",
+  },
+  // NN Schadeverzekering — Yann's liability insurance (ING-branded).
+  // Per user: FIXAS-feeling but route to "Other" until a dedicated
+  // line exists. Section is VARIAVEIS so the rule resolves against a
+  // single Other bucket per scope.
+  {
+    pattern: /\bnn\s*schadeverzekering\b|aansprakelijkheidsverzekering/i,
+    scopes: ["yann"],
+    section: "VARIAVEIS",
+    naturalKey: "other",
+    confidence: 0.85,
+    label: "NN liability insurance → Other",
+  },
+  // PayPal Europe — broad catch-all for PayPal-rounted purchases on
+  // Yann's account. Lots of these every month; user wants them grouped
+  // under "Other" so the spike is visible and individual items can be
+  // re-routed manually.
+  {
+    pattern: /paypal\s*europe|\bpaypal\b/i,
+    scopes: ["yann"],
+    section: "VARIAVEIS",
+    naturalKey: "other",
+    confidence: 0.75,
+    label: "PayPal → Other",
+  },
+  // TAP Air Portugal — flights to/from PT.
+  {
+    pattern: /\btap\s*air\s*portugal\b|\btap\s*portugal\b/i,
+    scopes: ["yann"],
+    section: "VARIAVEIS",
+    naturalKey: "other",
+    confidence: 0.85,
+    label: "TAP Portugal → Other",
   },
 ];
 

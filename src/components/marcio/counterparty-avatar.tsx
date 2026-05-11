@@ -11,11 +11,18 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import { PiggyBank } from "lucide-react";
+import type { AvatarHint } from "@/lib/display-counterparty.ts";
 
 type Props = {
   name: string | null;
   size?: number;
   className?: string;
+  /** Force a specific avatar glyph regardless of `name`. Used by the
+   * display-counterparty resolver so synthetic rows ("CC investments
+   * round up and save", bank fees) render with the right icon even
+   * when their counterparty text wouldn't match any LOGO_MAP entry. */
+  hint?: AvatarHint;
 };
 
 type Logo = {
@@ -76,9 +83,41 @@ const PALETTE = [
   "oklch(0.55 0.10 280)",
 ];
 
-export function CounterpartyAvatar({ name, size = 36, className }: Props) {
+export function CounterpartyAvatar({ name, size = 36, className, hint }: Props) {
   const [errored, setErrored] = useState(false);
   const trimmed = (name ?? "").trim();
+
+  // Hints win over both LOGO_MAP and the letter fallback so synthetic
+  // rows ("CC investments round up and save") render with the right
+  // glyph regardless of what their pass-through name would match.
+  if (hint === "piggy") {
+    return (
+      <span
+        className={`inline-flex shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary ring-1 ring-primary/30 ${className ?? ""}`}
+        style={{ width: size, height: size }}
+      >
+        <PiggyBank style={{ width: size * 0.55, height: size * 0.55 }} />
+      </span>
+    );
+  }
+  if (hint === "ing" && !errored) {
+    return (
+      <span
+        className={`relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-white ring-1 ring-border/40 ${className ?? ""}`}
+        style={{ width: size, height: size }}
+      >
+        <Image
+          src="/logos/ing.svg"
+          alt="ING"
+          width={size}
+          height={size}
+          className="object-contain p-1.5"
+          onError={() => setErrored(true)}
+          unoptimized
+        />
+      </span>
+    );
+  }
 
   if (!trimmed) {
     return <Fallback initials="?" size={size} className={className} />;

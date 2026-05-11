@@ -41,8 +41,10 @@ describe("upsertParsedMonth", () => {
     expect(r.updated).toBe(0);
     expect(r.unchanged).toBe(0);
 
+    // +3 = the app-managed "Other" buckets auto-created per scope
+    // (joint / yann / camila) at the end of every import.
     const all = await db.select().from(schema.budgetItem);
-    expect(all.length).toBe(TEST_BUDGET_SHEET.items.length);
+    expect(all.length).toBe(TEST_BUDGET_SHEET.items.length + 3);
   });
 
   it("creates exactly one month row regardless of import count", async () => {

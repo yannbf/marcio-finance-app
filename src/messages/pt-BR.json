@@ -188,7 +188,19 @@
     "heading": "Para onde vai o dinheiro",
     "ai": {
       "title": "Observações do Marcio",
-      "hint": "Análises escritas à mão a partir das suas transações."
+      "hint": "Análises escritas à mão a partir das suas transações.",
+      "hintCollapsed": "Toque para ver as análises"
+    },
+    "charts": {
+      "title": "Visão do mês",
+      "hint": "Gasto por dia e divisão por seção.",
+      "daily": "Por dia",
+      "dailyHint": "Passe o mouse num dia",
+      "bySection": "Por seção",
+      "totalLabel": "Total",
+      "tabDaily": "Tendência",
+      "tabDonut": "Divisão",
+      "tabBars": "Detalhe"
     },
     "totalSpent": "Total gasto neste mês",
     "bySectionTitle": "Por seção",

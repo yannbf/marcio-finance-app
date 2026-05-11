@@ -122,6 +122,13 @@ export async function upsertParsedMonth(
       : []),
   ];
 
+  // App-managed "Other" buckets. These don't come from the sheet — the
+  // matching engine routes transactions here when a seed rule fires but
+  // the user hasn't created a sheet line for that category yet. Seeing
+  // a non-zero "Other" on the Month screen is the user's cue to add a
+  // proper line to next month's sheet.
+  await ensureOtherBuckets(monthRow.id, byKey);
+
   return {
     monthId: monthRow.id,
     inserted,
@@ -129,6 +136,38 @@ export async function upsertParsedMonth(
     unchanged,
     warnings,
   };
+}
+
+/**
+ * Ensure the per-scope "Other" budget items exist for a month. They're
+ * synthetic — `plannedCents = 0`, not from the sheet, idempotent.
+ * Surfaced on the Month screen alongside real items so the user can
+ * decide whether each unrouted bucket deserves a real sheet line.
+ *
+ * Exported so the backfill script can call it for months imported
+ * before this helper existed.
+ */
+export async function ensureOtherBuckets(
+  monthId: string,
+  existingByKey?: Map<string, unknown>,
+): Promise<void> {
+  const scopes: Scope[] = ["joint", "yann", "camila"];
+  for (const scope of scopes) {
+    const key = keyOf(scope, "VARIAVEIS", "other");
+    if (existingByKey?.has(key)) continue;
+    await db
+      .insert(budgetItem)
+      .values({
+        monthId,
+        scope,
+        section: "VARIAVEIS",
+        naturalKey: "other",
+        name: "Other",
+        plannedCents: 0,
+        cadence: "monthly",
+      })
+      .onConflictDoNothing();
+  }
 }
 
 async function ensureMonth(args: {
