@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card.tsx";
@@ -172,6 +172,8 @@ function DailySpendChart({
 }) {
   const t = useTranslations("Insights.charts");
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+  const svgRef = useRef<SVGSVGElement | null>(null);
+  const draggingRef = useRef(false);
   const W = 320;
   const H = 140;
   const padX = 4;
@@ -179,6 +181,19 @@ function DailySpendChart({
   const padBottom = 18;
   const innerW = W - padX * 2;
   const innerH = H - padTop - padBottom;
+
+  // Map a pointer's clientX → nearest data index by projecting through
+  // the SVG's bounding rect onto our viewBox-space x range.
+  function indexFromPointer(clientX: number): number | null {
+    const svg = svgRef.current;
+    if (!svg || days.length === 0) return null;
+    const rect = svg.getBoundingClientRect();
+    if (rect.width === 0) return null;
+    const localX = ((clientX - rect.left) / rect.width) * W;
+    const relative = (localX - padX) / Math.max(1, innerW);
+    const idx = Math.round(relative * (days.length - 1));
+    return Math.max(0, Math.min(days.length - 1, idx));
+  }
 
   const max = Math.max(1, ...days.map((d) => d.absCents));
   const stepX = days.length > 1 ? innerW / (days.length - 1) : innerW;
@@ -200,6 +215,12 @@ function DailySpendChart({
   const active = hoverIdx != null ? days[hoverIdx] : null;
   const activePt = hoverIdx != null ? points[hoverIdx] : null;
 
+  // Today marker — vertical line at the index whose day matches now.
+  // Off-range (future month / past month) means no marker.
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const todayIdx = days.findIndex((d) => d.day === todayIso);
+  const todayX = todayIdx >= 0 ? points[todayIdx]?.[0] : null;
+
   return (
     <div>
       <div className="flex items-baseline justify-between">
@@ -218,11 +239,42 @@ function DailySpendChart({
         )}
       </div>
       <svg
+        ref={svgRef}
         viewBox={`0 0 ${W} ${H}`}
-        className="mt-3 h-[180px] w-full overflow-visible"
+        className="mt-3 h-[180px] w-full overflow-visible touch-pan-y select-none"
         role="img"
         aria-label="Daily spend"
-        onMouseLeave={() => setHoverIdx(null)}
+        onMouseLeave={() => {
+          if (!draggingRef.current) setHoverIdx(null);
+        }}
+        onPointerDown={(e) => {
+          // Capture so pointermove/pointerup keep firing on the SVG even
+          // if the finger drifts outside its bounding box.
+          (e.target as Element).setPointerCapture?.(e.pointerId);
+          draggingRef.current = true;
+          const idx = indexFromPointer(e.clientX);
+          if (idx != null) setHoverIdx(idx);
+        }}
+        onPointerMove={(e) => {
+          // Mouse: react to hover. Touch/pen: only while a drag is active.
+          if (e.pointerType !== "mouse" && !draggingRef.current) return;
+          // Prevent the browser from interpreting horizontal drags as a
+          // page-level pan-x gesture; `touch-pan-y` allows vertical
+          // scrolling to pass through.
+          if (draggingRef.current && e.pointerType !== "mouse") {
+            e.preventDefault();
+          }
+          const idx = indexFromPointer(e.clientX);
+          if (idx != null) setHoverIdx(idx);
+        }}
+        onPointerUp={() => {
+          draggingRef.current = false;
+          // Keep the last value visible after a tap on touch — letting it
+          // disappear feels like the read-out vanished too quickly.
+        }}
+        onPointerCancel={() => {
+          draggingRef.current = false;
+        }}
       >
         <defs>
           <linearGradient id="dailyArea" x1="0" x2="0" y1="0" y2="1">
@@ -243,6 +295,40 @@ function DailySpendChart({
             strokeWidth={0.6}
           />
         ))}
+
+        {/* Today marker — vertical dashed rule + label, only when today
+            falls inside the current payday-month range. */}
+        {todayX != null ? (
+          <g>
+            <line
+              x1={todayX}
+              x2={todayX}
+              y1={padTop}
+              y2={padTop + innerH}
+              className="stroke-foreground/35"
+              strokeDasharray="3 3"
+              strokeWidth={0.8}
+            />
+            <rect
+              x={todayX - 14}
+              y={padTop - 3}
+              width={28}
+              height={10}
+              rx={3}
+              className="fill-foreground/80"
+            />
+            <text
+              x={todayX}
+              y={padTop + 4.5}
+              textAnchor="middle"
+              fontSize={7}
+              className="fill-background"
+              style={{ letterSpacing: "0.06em" }}
+            >
+              TODAY
+            </text>
+          </g>
+        ) : null}
 
         <motion.path
           d={areaPath}
