@@ -216,6 +216,27 @@ const JOINT: SeedRule[] = [
     confidence: 0.7,
     label: "Faxina",
   },
+  // Cleaning — Fonseca Cavalcanti is the household's housekeeper.
+  // Paid via Tikkie, so confidence sits above the generic Tikkie rule
+  // (0.72) to win on these specific rows.
+  {
+    pattern: /fonseca\s*cavalcanti/i,
+    scopes: ["joint"],
+    section: "FIXAS",
+    naturalKey: "faxina",
+    confidence: 0.88,
+    label: "Faxina (Fonseca Cavalcanti)",
+  },
+  // Garage rent — Mw BA Postma (joint tenant on Wijngaarde) pays the
+  // household for the garage spot. Inflow to ENTRADAS.
+  {
+    pattern: /\bba\s*postma\b|wijngaarde/i,
+    scopes: ["joint"],
+    section: "ENTRADAS",
+    naturalKey: "aluguel-garagem",
+    confidence: 0.92,
+    label: "Aluguel Garagem (Postma)",
+  },
   // ING admin fee
   {
     pattern: /ing\s*basic\s*current|ing\s*kosten|account\s*fee/i,
@@ -365,6 +386,18 @@ const JOINT: SeedRule[] = [
     naturalKey: "other",
     confidence: 0.85,
     label: "X2O / Badkamers → Other",
+  },
+  // ING bank costs surfacing on the joint account (Kosten OranjePakket,
+  // Kosten tweede rekeninghouder, Kosten geldopname). Counterparty is
+  // NULL on these rows so the regex only sees the description.
+  {
+    pattern:
+      /kosten\s*tweede\s*rekeninghouder|kosten\s*oranjepakket|kosten\s*geldopname/i,
+    scopes: ["joint"],
+    section: "VARIAVEIS",
+    naturalKey: "other",
+    confidence: 0.85,
+    label: "ING bank costs → Other",
   },
 ];
 

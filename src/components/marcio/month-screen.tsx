@@ -77,7 +77,7 @@ export function MonthScreen({
         />
         <SummaryCard
           label={t("Month.outflow")}
-          cents={data?.totals.outflow ?? 0}
+          cents={Math.abs(data?.totals.outflow ?? 0)}
           locale={locale}
           loading={isLoading}
         />

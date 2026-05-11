@@ -162,7 +162,7 @@ export async function ensureOtherBuckets(
         scope,
         section: "VARIAVEIS",
         naturalKey: "other",
-        name: "Other",
+        name: "Outros",
         plannedCents: 0,
         cadence: "monthly",
       })

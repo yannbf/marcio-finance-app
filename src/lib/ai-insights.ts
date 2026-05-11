@@ -46,8 +46,8 @@ export const AI_INSIGHTS: AIInsight[] = [
   {
     id: "other-bucket-loud-2026-05",
     tone: "warn",
-    title: "€3,481 caíram em 'Other' nos últimos 3 meses",
-    body: "Yann pessoal: €1,670 (35 transações). Conjunta: €1,810 (7 transações). Tudo que cai em Other é gasto sem uma linha equivalente na planilha — bom sinal para criar linhas novas no próximo mês.",
+    title: "€3,495 caíram em 'Outros' nos últimos 4 meses",
+    body: "Yann pessoal: €1,670 (35 transações, mais frequente: NN Schadeverzekering + PayPal). Conjunta: €1,825 (14 transações, mais frequente: IKEA, Jas Rijschool, X2O Badkamers). Tudo que cai em Outros é gasto sem uma linha equivalente na planilha — bom sinal para criar linhas novas no próximo mês.",
     link: { href: "/transactions?show=matched", label: "Ver transações" },
     authoredAt: "2026-05-11",
   },
