@@ -58,6 +58,8 @@
     "inboxCount": "{n, plural, one {# transação} other {# transações}}",
     "upcomingTitle": "A pagar ainda",
     "upcomingCount": "{n, plural, one {# item} other {# itens}}",
+    "paidRecurringTitle": "Já pago",
+    "cycleDay": "Dia {day} de {total}",
     "forecastDue": "data fixa",
     "forecastPayday": "dia do pagamento",
     "forecastHistory": "histórico",

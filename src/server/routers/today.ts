@@ -28,6 +28,7 @@ import { getSectionsForToday } from "@/lib/today-data.ts";
 import { getPersonalChecklist } from "@/lib/personal-checklist.ts";
 import { AFRONDING_PG_PATTERN } from "@/lib/matching/seed-rules.ts";
 import { getBalanceSummary } from "@/lib/balance.ts";
+import { getMonthlyNetSpend } from "@/lib/spend.ts";
 
 export const todayRouter = router({
   get: publicProcedure
@@ -121,7 +122,11 @@ export const todayRouter = router({
       // right number for the headline without requiring the user to
       // touch their sheet.
       const grossPlannedOutflowCents = Math.abs(totalOutflow(agg.planned));
-      const spentOutflowCents = Math.abs(totalOutflow(agg.actual));
+      // Canonical "spent so far" — net non-transfer cash flow across all
+      // txns (matched + unmatched), shared with Activity and Look Back so
+      // every screen tells the same story. See `getMonthlyNetSpend` for
+      // the full rationale.
+      const spentOutflowCents = await getMonthlyNetSpend(scopes, anchor);
       const incomeCents = totalIncome(agg.planned);
       const marginCents = incomeCents + totalOutflow(agg.planned);
 
@@ -141,9 +146,37 @@ export const todayRouter = router({
         plannedOutflowCents - spentOutflowCents,
       );
 
+      // Cycle cursor — "dia X de Y" through the payday-month. Surfaces
+      // the same time-cursored framing Look Back uses so numbers feel
+      // anchored to where we are in the cycle rather than floating in a
+      // closed bag. Server-computed to dodge client-side timezone drift.
+      const oneDayMs = 24 * 60 * 60 * 1000;
+      // `endsOn` is set to 23:59:59 of the last day, so rounding the
+      // millisecond diff to whole days already gives us the correct
+      // inclusive-day count (Apr 25 → May 24 = 30, not 29 or 31).
+      const cycleLength = Math.max(
+        1,
+        Math.round((range.endsOn.getTime() - range.startsOn.getTime()) / oneDayMs),
+      );
+      const nowMs = Date.now();
+      const cycleDay =
+        nowMs < range.startsOn.getTime()
+          ? 1
+          : nowMs > range.endsOn.getTime()
+            ? cycleLength
+            : Math.min(
+                cycleLength,
+                Math.max(
+                  1,
+                  Math.floor((nowMs - range.startsOn.getTime()) / oneDayMs) + 1,
+                ),
+              );
+
       return {
         paydayDay: settings.paydayDay,
         daysUntilPayday: days,
+        cycleDay,
+        cycleLength,
         anchor: { year: agg.anchorYear, month: agg.anchorMonth },
         planned: agg.planned,
         actual: agg.actual,

@@ -58,6 +58,8 @@
     "inboxCount": "{n, plural, one {# transaction} other {# transactions}}",
     "upcomingTitle": "Still to pay",
     "upcomingCount": "{n, plural, one {# item} other {# items}}",
+    "paidRecurringTitle": "Paid",
+    "cycleDay": "Day {day} of {total}",
     "forecastDue": "fixed date",
     "forecastPayday": "payday",
     "forecastHistory": "from history",

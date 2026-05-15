@@ -23,11 +23,8 @@ import {
   totalOutflow,
 } from "@/lib/budget-aggregates.ts";
 import { getPersonalChecklist } from "@/lib/personal-checklist.ts";
-import {
-  isInternalTransferTx,
-  isSavingsTransferTx,
-} from "@/lib/matching/seed-rules.ts";
 import { getBalanceSummary } from "@/lib/balance.ts";
+import { getMonthlyNetSpend } from "@/lib/spend.ts";
 import type { Section } from "@/lib/import/types.ts";
 
 export const activityRouter = router({
@@ -113,22 +110,12 @@ export const activityRouter = router({
           scope: i.scope as "joint" | "yann" | "camila",
         }));
 
-      // Sum negative transactions for the "Spent this month" headline,
-      // but exclude internal household transfers (yann/camila ↔ joint
-      // account). Moving money between household accounts isn't
-      // spending — without this filter the personal-scope view
-      // counted the joint contribution against personal expenses,
-      // double-charging the user. The same pattern guards
-      // getMonthlyAggregates' actual sums; we apply it here so the
-      // Activity headline matches Today's "Spent so far".
-      const monthSpend = txns
-        .filter(
-          (r) =>
-            r.amountCents < 0 &&
-            !isInternalTransferTx(r) &&
-            !isSavingsTransferTx(r),
-        )
-        .reduce((s, r) => s + Math.abs(r.amountCents), 0);
+      // Canonical "spent so far" — net non-transfer cash flow across
+      // all txns (matched + unmatched, debits minus credits). Same
+      // figure Today and Look Back surface so every screen agrees on
+      // what "spent" means. Computed via a server-side SQL sum (not the
+      // 200-row `txns` slice above) so it stays accurate on dense months.
+      const monthSpend = await getMonthlyNetSpend(allowed, input?.anchor);
 
       // Planned outflow for the active scope — same shape Today uses
       // for its headline progress, computed in one place. The personal

@@ -268,18 +268,46 @@ export function ActivityScreen({
         </div>
       </Card>
 
-      {data?.forecast.charges.length ? (
+      {data &&
+      (data.forecast.charges.length > 0 ||
+        data.forecast.paidRecurring.itemCount > 0) ? (
         <Card className="border-border/40 bg-card/60 p-5">
-          <header className="flex items-baseline justify-between">
-            <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-              {t("upcomingTitle")}
-            </p>
-            <p className="num text-sm font-semibold">
-              {formatEUR(data.forecast.totalRemainingCents / 100, locale)}
-            </p>
-          </header>
-          <ul className="mt-2 divide-y divide-border/40">
-            {data.forecast.charges.slice(0, 6).map((c) => (
+          {/* Symmetric pair: paid recurring + still-to-pay. Same numbers
+              the Today screen surfaces — keeping both views aligned. */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                {tToday("paidRecurringTitle")}
+              </p>
+              <p className="num mt-0.5 text-sm font-semibold tracking-tight">
+                {formatEUR(
+                  data.forecast.paidRecurring.paidCents / 100,
+                  locale,
+                )}
+              </p>
+              <p className="num mt-0.5 text-[11px] text-muted-foreground">
+                {tToday("upcomingCount", {
+                  n: data.forecast.paidRecurring.itemCount,
+                })}
+              </p>
+            </div>
+            <div className="border-l border-border/40 pl-3">
+              <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                {t("upcomingTitle")}
+              </p>
+              <p className="num mt-0.5 text-sm font-semibold tracking-tight">
+                {formatEUR(data.forecast.totalRemainingCents / 100, locale)}
+              </p>
+              <p className="num mt-0.5 text-[11px] text-muted-foreground">
+                {tToday("upcomingCount", {
+                  n: data.forecast.charges.length,
+                })}
+              </p>
+            </div>
+          </div>
+          {data.forecast.charges.length > 0 && (
+            <ul className="mt-3 divide-y divide-border/40 border-t border-border/40 pt-1">
+              {data.forecast.charges.slice(0, 6).map((c) => (
               <li key={c.budgetItemId}>
                 <Link
                   href={`/month/${c.budgetItemId}` as `/month/${string}`}
@@ -302,6 +330,7 @@ export function ActivityScreen({
               </li>
             ))}
           </ul>
+          )}
         </Card>
       ) : null}
 

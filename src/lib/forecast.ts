@@ -86,7 +86,18 @@ function materializeForecastDate(
 export async function getUpcomingCharges(
   scopes: Scope[],
   anchor?: { year: number; month: number },
-): Promise<{ charges: UpcomingCharge[]; totalRemainingCents: number }> {
+): Promise<{
+  charges: UpcomingCharge[];
+  totalRemainingCents: number;
+  paidRecurring: {
+    /** Count of FIXAS+DIVIDAS budget items with at least one match. */
+    itemCount: number;
+    /** Cumulative allocated amount across those matches (absolute cents). */
+    paidCents: number;
+    /** Sum of planned cents for the matched items (absolute). */
+    plannedCents: number;
+  };
+}> {
   const settings = await getHouseholdSettings();
   const range = anchor
     ? paydayMonthForAnchor(anchor.year, anchor.month, settings.paydayDay)
@@ -101,7 +112,48 @@ export async function getUpcomingCharges(
         eq(month.anchorMonth, range.anchorMonth),
       ),
     );
-  if (!monthRow) return { charges: [], totalRemainingCents: 0 };
+  if (!monthRow) {
+    return {
+      charges: [],
+      totalRemainingCents: 0,
+      paidRecurring: { itemCount: 0, paidCents: 0, plannedCents: 0 },
+    };
+  }
+
+  // Symmetric pair to the "still to pay" list — recurring outflow lines
+  // (FIXAS + DIVIDAS) that DO have at least one matched transaction in
+  // the active payday-month, with the cumulative paid amount. Lets the
+  // UI render "já pago N itens · €X" next to "a pagar ainda M itens · €Y"
+  // so the user sees both halves of the recurring picture instead of
+  // only the one that's still outstanding.
+  const paidRows = await db
+    .select({
+      itemId: budgetItem.id,
+      plannedCents: budgetItem.plannedCents,
+      paidCents: sql<string>`COALESCE(SUM(${txMatch.allocatedCents}), 0)`,
+    })
+    .from(budgetItem)
+    .innerJoin(txMatch, eq(txMatch.budgetItemId, budgetItem.id))
+    .where(
+      and(
+        eq(budgetItem.monthId, monthRow.id),
+        inArray(budgetItem.scope, scopes),
+        inArray(budgetItem.section, ["FIXAS", "DIVIDAS"]),
+        sql`${budgetItem.plannedCents} < 0`,
+      ),
+    )
+    .groupBy(budgetItem.id);
+  const paidRecurring = {
+    itemCount: paidRows.length,
+    paidCents: paidRows.reduce(
+      (s, r) => s + Math.abs(Number.parseInt(r.paidCents, 10)),
+      0,
+    ),
+    plannedCents: paidRows.reduce(
+      (s, r) => s + Math.abs(r.plannedCents),
+      0,
+    ),
+  };
 
   // Recurring outflow lines that haven't been matched in this payday-month.
   const items = await db
@@ -136,7 +188,7 @@ export async function getUpcomingCharges(
     );
 
   if (items.length === 0) {
-    return { charges: [], totalRemainingCents: 0 };
+    return { charges: [], totalRemainingCents: 0, paidRecurring };
   }
 
   // Pull historical match dates so we can take a median day-of-month per
@@ -291,7 +343,7 @@ export async function getUpcomingCharges(
     (s, c) => s + Math.abs(c.plannedCents),
     0,
   );
-  return { charges, totalRemainingCents };
+  return { charges, totalRemainingCents, paidRecurring };
 }
 
 /**

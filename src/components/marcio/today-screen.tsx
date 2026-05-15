@@ -153,7 +153,14 @@ export function TodayScreen({
   const marginCents = data?.marginCents ?? 0;
   const progress = data?.progress ?? 0;
   const remainingCents = data?.remainingCents ?? 0;
-  const forecast = data?.forecast ?? { charges: [], totalRemainingCents: 0 };
+  const forecast =
+    data?.forecast ?? {
+      charges: [],
+      totalRemainingCents: 0,
+      paidRecurring: { itemCount: 0, paidCents: 0, plannedCents: 0 },
+    };
+  const cycleDay = data?.cycleDay ?? null;
+  const cycleLength = data?.cycleLength ?? null;
   const sectionData = data?.sectionData ?? [];
   const inboxCount = data?.inboxCount ?? 0;
   const recentlyAddedCount = data?.recentlyAddedCount ?? 0;
@@ -183,6 +190,14 @@ export function TodayScreen({
             <h1 className="mt-1 text-2xl font-semibold tracking-tight">
               {t("Today.spentSoFar")}
             </h1>
+            {cycleDay !== null && cycleLength !== null ? (
+              <p className="num mt-1 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                {t("Today.cycleDay", {
+                  day: cycleDay,
+                  total: cycleLength,
+                })}
+              </p>
+            ) : null}
           </div>
           <Badge variant="secondary" className="gap-1.5 px-2.5 py-1">
             <Calendar className="size-3" />
@@ -344,23 +359,41 @@ export function TodayScreen({
         />
       </div>
 
-      {forecast.charges.length > 0 ? (
+      {forecast.charges.length > 0 ||
+      forecast.paidRecurring.itemCount > 0 ? (
         <Card className="border-border/40 bg-card/60 p-5">
-          <header className="flex items-baseline justify-between">
+          {/* Paid / Upcoming pair — both halves of the recurring picture
+              so the forecast doesn't read as one-sided. Together these
+              tally up to the household's recurring planned for the month. */}
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+              <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                {t("Today.paidRecurringTitle")}
+              </p>
+              <p className="num mt-0.5 text-lg font-semibold tracking-tight">
+                {formatEUR(forecast.paidRecurring.paidCents / 100, locale)}
+              </p>
+              <p className="num mt-0.5 text-[11px] text-muted-foreground">
+                {t("Today.upcomingCount", {
+                  n: forecast.paidRecurring.itemCount,
+                })}
+              </p>
+            </div>
+            <div className="border-l border-border/40 pl-3">
+              <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
                 {t("Today.upcomingTitle")}
               </p>
               <p className="num mt-0.5 text-lg font-semibold tracking-tight">
                 {formatEUR(forecast.totalRemainingCents / 100, locale)}
               </p>
+              <p className="num mt-0.5 text-[11px] text-muted-foreground">
+                {t("Today.upcomingCount", { n: forecast.charges.length })}
+              </p>
             </div>
-            <p className="num text-xs text-muted-foreground">
-              {t("Today.upcomingCount", { n: forecast.charges.length })}
-            </p>
-          </header>
-          <ul className="mt-3 divide-y divide-border/40">
-            {forecast.charges.slice(0, 5).map((c) => (
+          </div>
+          {forecast.charges.length > 0 && (
+            <ul className="mt-4 divide-y divide-border/40 border-t border-border/40 pt-1">
+              {forecast.charges.slice(0, 5).map((c) => (
               <li key={c.budgetItemId}>
                 <Link
                   href={`/month/${c.budgetItemId}` as `/month/${string}`}
@@ -384,6 +417,7 @@ export function TodayScreen({
               </li>
             ))}
           </ul>
+          )}
         </Card>
       ) : null}
 

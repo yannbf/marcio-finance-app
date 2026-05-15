@@ -83,23 +83,14 @@ export function LookBackScreen({
   // returns desc(bookingDate)). Each row carries a chronological
   // NET cumulative — debits add to it, credits (refunds, reversals)
   // subtract — so the newest txn's running equals the month's net
-  // spend and the oldest's equals just its own contribution. The
-  // router's `monthSpend` is gross debits (matches Today's headline);
-  // we compute net locally so a €100 refund actually shows the
-  // cumulative dropping when the user scrolls past it.
-  const netSpendCents = useMemo(() => {
-    if (!data) return 0;
-    let net = 0;
-    for (const r of data.txns) {
-      if (isInternalTransferTx(r) || isSavingsTransferTx(r)) continue;
-      net += -r.amountCents;
-    }
-    return net;
-  }, [data]);
+  // spend (`data.monthSpend`, server-side canonical figure shared by
+  // Today and Activity) and the oldest's equals just its own
+  // contribution. Excludes internal household + savings transfers from
+  // the per-row delta so they don't move the cumulative either way.
   const dateGroups = useMemo(() => {
     if (!data) return [];
     type Row = Txn & { runningCents: number };
-    let running = netSpendCents;
+    let running = data.monthSpend;
     const annotated: Row[] = [];
     for (const r of data.txns) {
       annotated.push({ ...r, runningCents: running });
@@ -129,7 +120,7 @@ export function LookBackScreen({
     // footer's "From X until Y" range can format both ends with the
     // same short month + day style regardless of how recent the row is.
     dateIso: string | null;
-  }>({ cents: netSpendCents, dateIso: null });
+  }>({ cents: data?.monthSpend ?? 0, dateIso: null });
 
   // On first render with txns, jump straight to the bottom of the
   // page so the most recent activity is the first thing the user
