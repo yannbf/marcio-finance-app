@@ -22,8 +22,17 @@ export type UpcomingCharge = {
   plannedCents: number;
   /** Predicted day-of-month for the charge, when known. */
   predictedDay: number | null;
+  /**
+   * Concrete predicted date (ISO) inside the active payday-month window.
+   * Materialized from `predictedDay` + the payday anchor so the consumer
+   * doesn't have to guess whether day "28" means April 28 or May 28 — for
+   * the May 2026 payday-month with paydayDay=25 that's April 28, full stop.
+   */
+  predictedDate: string;
   /** Source of `predictedDay`:
    *  - "due-day": explicit vencimento on the sheet row.
+   *  - "payday": joint-contribution sweep that happens on the household's
+   *    configured payday by convention, not via a sheet vencimento.
    *  - "history-median": median day across prior matched transactions for
    *    this same budget line (joined by naturalKey + scope + section).
    *  - "counterparty-history": median day across raw bank transactions whose
@@ -33,10 +42,36 @@ export type UpcomingCharge = {
    *  - "month-end": last-resort fallback when nothing else is known. */
   source:
     | "due-day"
+    | "payday"
     | "history-median"
     | "counterparty-history"
     | "month-end";
 };
+
+/**
+ * Map a day-of-month (1..31) to a concrete date inside the active
+ * payday-month window. A day < paydayDay belongs in the second half of
+ * the window (the anchor's own calendar month). A day >= paydayDay
+ * belongs in the first half (the previous calendar month). Clamps to
+ * the last real day of the target calendar month (April has no day 31).
+ */
+function materializeForecastDate(
+  predictedDay: number,
+  paydayDay: number,
+  anchorYear: number,
+  anchorMonth: number, // 1..12
+): Date {
+  const useAnchorMonth = predictedDay < paydayDay;
+  const calMonth0 = useAnchorMonth ? anchorMonth - 1 : anchorMonth - 2;
+  // Date.UTC(year, monthIndex+1, 0) returns the last day of monthIndex;
+  // works even when calMonth0 is -1 (December of the prior year). Building
+  // in UTC keeps the day-of-month stable regardless of where the server
+  // (or the client) lives — otherwise a CEST server emits `…T22:00:00Z`
+  // and the browser's `getUTCDate()` ticks one day backward.
+  const lastDay = new Date(Date.UTC(anchorYear, calMonth0 + 1, 0)).getUTCDate();
+  const day = Math.min(predictedDay, lastDay);
+  return new Date(Date.UTC(anchorYear, calMonth0, day));
+}
 
 /**
  * Predict charges that haven't hit yet for the current payday-month.
@@ -152,12 +187,36 @@ export async function getUpcomingCharges(
     range.endsOn,
   );
 
-  const charges: UpcomingCharge[] = items.map((it) => {
+  // Day-of-month for the back edge of the active payday-window. The
+  // "month-end" fallback lands here (paydayDay-1 of the anchor's own
+  // calendar month — e.g. May 24 for paydayDay=25), not the last day of
+  // the anchor calendar month, which would fall in the NEXT payday-window.
+  const windowEndDay = range.endsOn.getUTCDate();
+
+  // The forecast is forward-looking only. Past-dated items in the active
+  // payday-window that haven't matched a transaction by now are
+  // categorization gaps (or actually-paid-but-mismatched), not "still to
+  // pay" — they belong in the Inbox flow, not the forecast. By dropping
+  // them here we mirror the mental model that the month "starts" on
+  // payday: once a day passes, anything that should have hit that day is
+  // either matched or a data problem, not a future obligation.
+  const todayIso = new Date().toISOString().slice(0, 10);
+
+  const charges: UpcomingCharge[] = [];
+  for (const it of items) {
     let predictedDay: number | null = null;
     let source: UpcomingCharge["source"] = "month-end";
     if (it.dueDay) {
       predictedDay = it.dueDay;
       source = "due-day";
+    } else if (it.naturalKey.startsWith("contrib-")) {
+      // Joint-contribution outflows ("Contrib. Conjunta" on a personal
+      // scope) happen on payday by household convention — the partner's
+      // salary lands and is immediately swept to the joint account. The
+      // sheet doesn't track a vencimento for this row, so anchor it to
+      // the household's configured paydayDay.
+      predictedDay = settings.paydayDay;
+      source = "payday";
     } else {
       const hist = histMap.get(`${it.scope}|${it.section}|${it.naturalKey}`);
       if (hist && hist.length > 0) {
@@ -171,40 +230,62 @@ export async function getUpcomingCharges(
           predictedDay = median(cpDays);
           source = "counterparty-history";
         } else {
-          predictedDay = lastDayOfCalendarMonth(
-            range.anchorYear,
-            range.anchorMonth,
-          );
+          predictedDay = windowEndDay;
         }
       }
     }
     // SEPA direct debits scheduled for a Sat/Sun land on the next business
-    // day. We only apply this slip when the predicted day comes from the
-    // sheet's static dueDay — history-median and counterparty-history are
-    // medians of *actual* booking dates, which already encode any slip.
-    if (source === "due-day" && predictedDay !== null) {
+    // day. We apply this slip when the predicted day comes from a fixed
+    // calendar anchor (sheet vencimento or payday) — history-median and
+    // counterparty-history are medians of *actual* booking dates, which
+    // already encode any slip.
+    if (
+      (source === "due-day" || source === "payday") &&
+      predictedDay !== null
+    ) {
       predictedDay = shiftPastWeekend(
         range.anchorYear,
         range.anchorMonth,
         predictedDay,
       );
     }
-    return {
+
+    // Materialize to a real date inside the payday-window. Defensive
+    // bounds check: if anything still falls outside (shouldn't happen
+    // once predictedDay is in 1..31, but guard against bad inputs), drop
+    // it from the forecast — it doesn't belong to THIS payday-month and
+    // counting it would break the user's "spent + still to pay = planned"
+    // mental model.
+    const predictedDate = materializeForecastDate(
+      predictedDay,
+      settings.paydayDay,
+      range.anchorYear,
+      range.anchorMonth,
+    );
+    if (predictedDate < range.startsOn || predictedDate > range.endsOn) {
+      continue;
+    }
+    // Forward-only: anything that should have hit before today is no
+    // longer "still to pay". The total below is recomputed from this
+    // filtered list so the Today + Activity cards stay reconciled.
+    if (predictedDate.toISOString().slice(0, 10) < todayIso) {
+      continue;
+    }
+
+    charges.push({
       budgetItemId: it.id,
       name: it.name,
       section: it.section,
       plannedCents: it.plannedCents,
       predictedDay,
+      predictedDate: predictedDate.toISOString(),
       source,
-    };
-  });
+    });
+  }
 
-  // Order: ascending predicted day, with month-end last.
-  charges.sort((a, b) => {
-    const da = a.predictedDay ?? 99;
-    const db = b.predictedDay ?? 99;
-    return da - db;
-  });
+  // Order chronologically by the materialized date — this is the order
+  // they'll actually hit the account.
+  charges.sort((a, b) => a.predictedDate.localeCompare(b.predictedDate));
 
   const totalRemainingCents = charges.reduce(
     (s, c) => s + Math.abs(c.plannedCents),

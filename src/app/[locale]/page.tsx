@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { setRequestLocale } from "next-intl/server";
 import { TodayScreen } from "@/components/marcio/today-screen.tsx";
+import { PullToRefresh } from "@/components/marcio/pull-to-refresh.tsx";
 import { daysUntilNextPayday } from "@/lib/payday.ts";
 import { getPageDefaults } from "@/lib/page-defaults.ts";
 import type { Locale } from "@/i18n/routing.ts";
@@ -22,13 +23,15 @@ export default async function HomePage({
   const defaultDaysUntilPayday = daysUntilNextPayday(new Date(), paydayDay);
   return (
     <Suspense>
-      <TodayScreen
-        locale={locale}
-        defaultAnchor={defaultAnchor}
-        defaultScope={defaultScope}
-        defaultMeRole={defaultMeRole}
-        defaultDaysUntilPayday={defaultDaysUntilPayday}
-      />
+      <PullToRefresh>
+        <TodayScreen
+          locale={locale}
+          defaultAnchor={defaultAnchor}
+          defaultScope={defaultScope}
+          defaultMeRole={defaultMeRole}
+          defaultDaysUntilPayday={defaultDaysUntilPayday}
+        />
+      </PullToRefresh>
     </Suspense>
   );
 }

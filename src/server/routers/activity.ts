@@ -27,6 +27,7 @@ import {
   isInternalTransferTx,
   isSavingsTransferTx,
 } from "@/lib/matching/seed-rules.ts";
+import { getBalanceSummary } from "@/lib/balance.ts";
 import type { Section } from "@/lib/import/types.ts";
 
 export const activityRouter = router({
@@ -148,6 +149,10 @@ export const activityRouter = router({
         }
       }
 
+      // Bank balance across accounts visible to the active scope —
+      // bank-reported when synced, txn-sum estimate otherwise.
+      const balance = await getBalanceSummary(allowed);
+
       // Anomaly check — only outflows that already auto-matched to a
       // recurring budget item are candidates.
       const anomalyCandidates = txns
@@ -191,6 +196,9 @@ export const activityRouter = router({
         forecast,
         monthSpend,
         plannedOutflowCents,
+        balanceCents: balance.totalCents,
+        balanceSource: balance.source,
+        balanceAsOf: balance.asOf ? balance.asOf.toISOString() : null,
         optionsAll,
       };
     }),

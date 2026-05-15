@@ -136,6 +136,14 @@ export const bankAccount = pgTable(
     connectionId: uuid("connection_id"),
     /** Provider-issued account handle (Enable Banking account uid). */
     externalId: text("external_id"),
+    /**
+     * Authoritative balance reported by the bank at `balanceAsOf`. Null for
+     * CSV-only accounts (and for connected accounts that haven't synced
+     * since the column was introduced) — callers fall back to summing
+     * `transaction.amountCents` per account in that case.
+     */
+    balanceCents: integer("balance_cents"),
+    balanceAsOf: timestamp("balance_as_of"),
   },
   (t) => [
     index("bank_account_owner_idx").on(t.owner),

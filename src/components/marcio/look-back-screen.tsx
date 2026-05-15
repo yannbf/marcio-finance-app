@@ -81,23 +81,29 @@ export function LookBackScreen({
 
   // Render the txns newest-at-top, oldest-at-bottom (router already
   // returns desc(bookingDate)). Each row carries a chronological
-  // cumulative spend INCLUDING itself (same filter as monthSpend) —
-  // so the newest txn's running == data.monthSpend and the oldest
-  // txn's running == just its own contribution. Walk newest-first
-  // and subtract each row's contribution AFTER assigning its running,
-  // which gives "running through this point in time".
+  // NET cumulative — debits add to it, credits (refunds, reversals)
+  // subtract — so the newest txn's running equals the month's net
+  // spend and the oldest's equals just its own contribution. The
+  // router's `monthSpend` is gross debits (matches Today's headline);
+  // we compute net locally so a €100 refund actually shows the
+  // cumulative dropping when the user scrolls past it.
+  const netSpendCents = useMemo(() => {
+    if (!data) return 0;
+    let net = 0;
+    for (const r of data.txns) {
+      if (isInternalTransferTx(r) || isSavingsTransferTx(r)) continue;
+      net += -r.amountCents;
+    }
+    return net;
+  }, [data]);
   const dateGroups = useMemo(() => {
     if (!data) return [];
     type Row = Txn & { runningCents: number };
-    let running = data.monthSpend;
+    let running = netSpendCents;
     const annotated: Row[] = [];
     for (const r of data.txns) {
       annotated.push({ ...r, runningCents: running });
-      if (
-        r.amountCents < 0 &&
-        !isInternalTransferTx(r) &&
-        !isSavingsTransferTx(r)
-      ) {
+      if (!isInternalTransferTx(r) && !isSavingsTransferTx(r)) {
         running -= -r.amountCents;
       }
     }
@@ -123,7 +129,7 @@ export function LookBackScreen({
     // footer's "From X until Y" range can format both ends with the
     // same short month + day style regardless of how recent the row is.
     dateIso: string | null;
-  }>({ cents: data?.monthSpend ?? 0, dateIso: null });
+  }>({ cents: netSpendCents, dateIso: null });
 
   // On first render with txns, jump straight to the bottom of the
   // page so the most recent activity is the first thing the user

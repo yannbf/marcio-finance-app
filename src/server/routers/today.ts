@@ -27,6 +27,7 @@ import { getUpcomingCharges } from "@/lib/forecast.ts";
 import { getSectionsForToday } from "@/lib/today-data.ts";
 import { getPersonalChecklist } from "@/lib/personal-checklist.ts";
 import { AFRONDING_PG_PATTERN } from "@/lib/matching/seed-rules.ts";
+import { getBalanceSummary } from "@/lib/balance.ts";
 
 export const todayRouter = router({
   get: publicProcedure
@@ -83,6 +84,11 @@ export const todayRouter = router({
         );
       const roundupCents = Math.abs(Number.parseInt(roundupRow.sum, 10));
       const roundupCount = Number.parseInt(roundupRow.count, 10);
+
+      // Bank balance across accounts visible to the active scope. Prefers
+      // the bank-reported figure when Enable Banking has populated it,
+      // falls back to a txn-sum estimate per account otherwise.
+      const balance = await getBalanceSummary(scopes);
 
       // The headline answers different questions per view:
       //
@@ -153,6 +159,9 @@ export const todayRouter = router({
         recentlyAddedCount,
         personalChecklist,
         roundup: { totalCents: roundupCents, count: roundupCount },
+        balanceCents: balance.totalCents,
+        balanceSource: balance.source,
+        balanceAsOf: balance.asOf ? balance.asOf.toISOString() : null,
       };
     }),
 });

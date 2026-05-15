@@ -187,6 +187,39 @@ export type EbAccountDetails = {
   usage?: string;
 };
 
+/**
+ * Berlin Group balance types. ING returns a subset per call; the ones we
+ * read in priority order:
+ *   - `interimAvailable` — current available balance (includes pending),
+ *     what the banking app shows as "available".
+ *   - `closingBooked` — end-of-previous-business-day booked balance.
+ *   - `expected` — projected balance after pending settles.
+ * Fall through the list and take the first that's present.
+ */
+export type EbBalanceType =
+  | "closingBooked"
+  | "expected"
+  | "authorised"
+  | "openingBooked"
+  | "interimAvailable"
+  | "interimBooked"
+  | "forwardAvailable"
+  | "nonInvoiced"
+  | "previouslyClosedBooked";
+
+export type EbBalance = {
+  name?: string;
+  balance_amount: { amount: string; currency: string };
+  balance_type: EbBalanceType;
+  /** ISO datetime — when this balance was last computed by the bank. */
+  reference_date?: string;
+  last_change_date_time?: string;
+};
+
+export type EbBalancesResponse = {
+  balances: EbBalance[];
+};
+
 export type EbTransaction = {
   /** Stable, bank-issued id. May be missing for some ASPSPs. */
   entry_reference?: string;
@@ -253,6 +286,12 @@ export async function getAccountDetails(
   accountUid: string,
 ): Promise<EbAccountDetails> {
   return ebFetch(`/accounts/${accountUid}/details`);
+}
+
+export async function getAccountBalances(
+  accountUid: string,
+): Promise<EbBalancesResponse> {
+  return ebFetch(`/accounts/${accountUid}/balances`);
 }
 
 /**

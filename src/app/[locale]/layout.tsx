@@ -9,7 +9,6 @@ import { routing } from "@/i18n/routing.ts";
 import { BottomNav } from "@/components/marcio/bottom-nav.tsx";
 import { IosInstallHint } from "@/components/marcio/ios-install-hint.tsx";
 import { ThemeApplier } from "@/components/marcio/theme-applier.tsx";
-import { PullToRefresh } from "@/components/marcio/pull-to-refresh.tsx";
 import { UpdatePrompt } from "@/components/marcio/update-prompt.tsx";
 import { TrpcProvider } from "@/lib/trpc/provider.tsx";
 import "../globals.css";
@@ -97,7 +96,7 @@ export default async function LocaleLayout({
                 viewTransitionName: "page",
               }}
             >
-              <PullToRefresh>{children}</PullToRefresh>
+              {children}
             </div>
             {/* Solid backdrop behind the iOS status bar so scrolled content
                 doesn't bleed under the time/wifi/battery indicators with the

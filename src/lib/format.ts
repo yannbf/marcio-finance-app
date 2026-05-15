@@ -28,3 +28,14 @@ export function formatPercent(value: number, locale: string): string {
     maximumFractionDigits: 0,
   }).format(value);
 }
+
+/**
+ * Short month + day (e.g. "May 14" / "14 mai."). Used for the "as of"
+ * date next to a synced bank balance.
+ */
+export function formatShortDate(iso: string, locale: string): string {
+  return new Date(iso).toLocaleDateString(locale, {
+    day: "numeric",
+    month: "short",
+  });
+}

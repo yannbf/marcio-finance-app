@@ -13,9 +13,11 @@ import {
   EnableBankingError,
   accountsToUids,
   deleteSession,
+  getAccountBalances,
   getAccountDetails,
   getAccountTransactions,
   getSession,
+  type EbBalance,
   type EbTransaction,
 } from "./client.ts";
 import { inferAccountOwner } from "./owner-inference.ts";
@@ -146,6 +148,44 @@ function hashFallback(...parts: (string | number)[]): string {
 
 function normalizeForHash(s: string): string {
   return s.toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+/**
+ * ING via Enable Banking returns multiple balance entries per account
+ * (typically `closingBooked` + `expected`, sometimes `interimAvailable`).
+ * Prefer the figure a customer sees in the banking app: "available"
+ * first (includes pending), then "interim booked", then "closing booked"
+ * as a safe end-of-previous-day fallback. Returns null when nothing
+ * useful came back.
+ */
+function pickPreferredBalance(balances: EbBalance[]): EbBalance | null {
+  const priority: EbBalance["balance_type"][] = [
+    "interimAvailable",
+    "interimBooked",
+    "expected",
+    "closingBooked",
+  ];
+  for (const type of priority) {
+    const hit = balances.find((b) => b.balance_type === type);
+    if (hit) return hit;
+  }
+  return balances[0] ?? null;
+}
+
+function parseBalanceCents(b: EbBalance): number | null {
+  const n = Number.parseFloat(b.balance_amount.amount);
+  if (!Number.isFinite(n)) return null;
+  return Math.round(n * 100);
+}
+
+function parseBalanceAsOf(b: EbBalance): Date | null {
+  const iso = b.reference_date ?? b.last_change_date_time;
+  if (!iso) return null;
+  // `reference_date` can be a plain YYYY-MM-DD (closingBooked, often) or a
+  // full datetime. Date's constructor handles both.
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return d;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -480,9 +520,30 @@ async function syncAccount(args: {
     }
   }
 
+  // Pull the authoritative balance the bank reports right now. Best-effort
+  // — we don't want a balances endpoint hiccup to abort the whole txn sync,
+  // and a stale balance is much better than missing transactions.
+  let balanceUpdate: { balanceCents: number; balanceAsOf: Date } | null = null;
+  try {
+    const { balances } = await getAccountBalances(args.accountUid);
+    const picked = balances?.length ? pickPreferredBalance(balances) : null;
+    if (picked) {
+      const cents = parseBalanceCents(picked);
+      const asOf = parseBalanceAsOf(picked) ?? new Date();
+      if (cents !== null) {
+        balanceUpdate = { balanceCents: cents, balanceAsOf: asOf };
+      }
+    }
+  } catch {
+    // Swallow — fall back to the inferred sum until the next sync.
+  }
+
   await db
     .update(bankAccount)
-    .set({ lastSyncedAt: new Date() })
+    .set({
+      lastSyncedAt: new Date(),
+      ...(balanceUpdate ?? {}),
+    })
     .where(eq(bankAccount.id, acct.id));
 
   await db

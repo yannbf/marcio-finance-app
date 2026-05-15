@@ -17,7 +17,12 @@ import {
 } from "lucide-react";
 import { AnimatedNumber } from "./animated-number.tsx";
 import { MonthScopeBar, parseSearch } from "./month-scope-bar.tsx";
-import { formatEUR, formatEURPrecise, formatPercent } from "@/lib/format.ts";
+import {
+  formatEUR,
+  formatEURPrecise,
+  formatPercent,
+  formatShortDate,
+} from "@/lib/format.ts";
 import { trpc } from "@/lib/trpc/client.ts";
 import { useMounted } from "@/lib/use-mounted.ts";
 import { SectionDrillSheet } from "./section-drill-sheet.tsx";
@@ -154,6 +159,17 @@ export function TodayScreen({
   const recentlyAddedCount = data?.recentlyAddedCount ?? 0;
   const personalChecklist = data?.personalChecklist ?? null;
   const roundup = data?.roundup ?? { totalCents: 0, count: 0 };
+  const balanceCents = data?.balanceCents ?? 0;
+  const balanceSource = data?.balanceSource ?? "inferred";
+  const balanceAsOf = data?.balanceAsOf ?? null;
+  const balanceHint =
+    balanceSource === "synced" && balanceAsOf
+      ? t("Today.balanceHintSynced", {
+          at: formatShortDate(balanceAsOf, locale),
+        })
+      : balanceSource === "mixed"
+        ? t("Today.balanceHintMixed")
+        : t("Today.balanceHintInferred");
   const sectionByKey = new Map(sectionData.map((s) => [s.section, s]));
 
   return (
@@ -176,6 +192,31 @@ export function TodayScreen({
         <MonthScopeBar defaultAnchor={defaultAnchor} defaultScope={defaultScope} defaultMeRole={defaultMeRole} />
         <PersonalChecklist data={personalChecklist} locale={locale} />
       </header>
+
+      <Link href="/settings/banks" className="block" prefetch>
+        <Card className="!flex-row items-center justify-between gap-3 border-border/40 bg-card/60 px-5 py-4 transition-colors hover:bg-card/80">
+          <div className="min-w-0">
+            <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+              {t("Today.balanceTitle")}
+            </p>
+            {data ? (
+              <p
+                className={`num mt-1 text-2xl font-semibold tracking-tight ${
+                  balanceCents < 0 ? "text-destructive" : ""
+                }`}
+              >
+                {formatEUR(balanceCents / 100, locale)}
+              </p>
+            ) : (
+              <Skeleton className="mt-1 h-7 w-32" />
+            )}
+            <p className="mt-0.5 text-[10px] text-muted-foreground/70">
+              {balanceHint}
+            </p>
+          </div>
+          <ChevronRight className="size-4 shrink-0 text-muted-foreground/70" />
+        </Card>
+      </Link>
 
       <Card className="relative overflow-hidden border-border/40 bg-card/60 p-6">
         <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
@@ -327,11 +368,12 @@ export function TodayScreen({
                   prefetch
                 >
                   <div className="num grid size-8 shrink-0 place-items-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">
-                    {c.predictedDay ?? "—"}
+                    {new Date(c.predictedDate).getUTCDate()}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm">{c.name}</p>
                     <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                      {formatShortDate(c.predictedDate, locale)} ·{" "}
                       {forecastSourceLabel(c.source, t)}
                     </p>
                   </div>
@@ -557,10 +599,16 @@ function formatAmsterdam(iso: string | null | undefined, locale: string): string
 /* -------------------------------------------------------------------------- */
 
 function forecastSourceLabel(
-  src: "due-day" | "history-median" | "counterparty-history" | "month-end",
+  src:
+    | "due-day"
+    | "payday"
+    | "history-median"
+    | "counterparty-history"
+    | "month-end",
   t: (k: string) => string,
 ): string {
   if (src === "due-day") return t("Today.forecastDue");
+  if (src === "payday") return t("Today.forecastPayday");
   if (src === "history-median") return t("Today.forecastHistory");
   if (src === "counterparty-history") return t("Today.forecastBankHistory");
   return t("Today.forecastMonthEnd");

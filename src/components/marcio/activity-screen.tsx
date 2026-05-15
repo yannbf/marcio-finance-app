@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { ChevronDown, Footprints } from "lucide-react";
+import { ChevronDown, ChevronRight, Footprints } from "lucide-react";
 import { Card } from "@/components/ui/card.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { Link } from "@/i18n/navigation.ts";
@@ -17,7 +17,7 @@ import {
 } from "./spend-progress.tsx";
 import { trpc } from "@/lib/trpc/client.ts";
 import { useMounted } from "@/lib/use-mounted.ts";
-import { formatEUR, formatEURPrecise } from "@/lib/format.ts";
+import { formatEUR, formatEURPrecise, formatShortDate } from "@/lib/format.ts";
 import { fingerprintCounterparty } from "@/lib/matching/fingerprint.ts";
 import { isTikkie } from "@/lib/tikkie.ts";
 import {
@@ -160,6 +160,17 @@ export function ActivityScreen({
   // ring + over-budget pill the Today card uses.
   const spentCents = data?.monthSpend ?? 0;
   const plannedCents = data?.plannedOutflowCents ?? 0;
+  const balanceCents = data?.balanceCents ?? 0;
+  const balanceSource = data?.balanceSource ?? "inferred";
+  const balanceAsOf = data?.balanceAsOf ?? null;
+  const balanceHint =
+    balanceSource === "synced" && balanceAsOf
+      ? tToday("balanceHintSynced", {
+          at: formatShortDate(balanceAsOf, locale),
+        })
+      : balanceSource === "mixed"
+        ? tToday("balanceHintMixed")
+        : tToday("balanceHintInferred");
   const tone = progressTone(spentCents, plannedCents);
   const overByCents =
     plannedCents > 0 && spentCents > plannedCents
@@ -177,6 +188,31 @@ export function ActivityScreen({
         </h1>
         <MonthScopeBar defaultAnchor={defaultAnchor} defaultScope={defaultScope} defaultMeRole={defaultMeRole} />
       </header>
+
+      <Link href="/settings/banks" className="block" prefetch>
+        <Card className="!flex-row items-center justify-between gap-3 border-border/40 bg-card/60 px-5 py-4 transition-colors hover:bg-card/80">
+          <div className="min-w-0">
+            <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+              {tToday("balanceTitle")}
+            </p>
+            {isLoading || !data ? (
+              <Skeleton className="mt-1 h-7 w-32" />
+            ) : (
+              <p
+                className={`num mt-1 text-2xl font-semibold tracking-tight ${
+                  balanceCents < 0 ? "text-destructive" : ""
+                }`}
+              >
+                {formatEUR(balanceCents / 100, locale)}
+              </p>
+            )}
+            <p className="mt-0.5 text-[10px] text-muted-foreground/70">
+              {balanceHint}
+            </p>
+          </div>
+          <ChevronRight className="size-4 shrink-0 text-muted-foreground/70" />
+        </Card>
+      </Link>
 
       <Card
         className={`border-border/40 bg-card/60 p-5 ${
@@ -250,11 +286,12 @@ export function ActivityScreen({
                   className="flex items-center gap-3 py-2 transition-colors hover:opacity-80"
                 >
                   <div className="num grid size-7 shrink-0 place-items-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">
-                    {c.predictedDay ?? "—"}
+                    {new Date(c.predictedDate).getUTCDate()}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm">{c.name}</p>
                     <p className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground/70">
+                      {formatShortDate(c.predictedDate, locale)} ·{" "}
                       {forecastSourceLabel(c.source, tToday)}
                     </p>
                   </div>
@@ -562,10 +599,16 @@ function formatGroupDate(d: Date, locale: string): string {
 
 
 function forecastSourceLabel(
-  src: "due-day" | "history-median" | "counterparty-history" | "month-end",
+  src:
+    | "due-day"
+    | "payday"
+    | "history-median"
+    | "counterparty-history"
+    | "month-end",
   t: (k: string) => string,
 ): string {
   if (src === "due-day") return t("forecastDue");
+  if (src === "payday") return t("forecastPayday");
   if (src === "history-median") return t("forecastHistory");
   if (src === "counterparty-history") return t("forecastBankHistory");
   return t("forecastMonthEnd");

@@ -3,25 +3,27 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, useMotionValue, useTransform, animate } from "motion/react";
 import { Loader2 } from "lucide-react";
-import { usePathname } from "@/i18n/navigation.ts";
 import { trpc } from "@/lib/trpc/client.ts";
 
 const ARM_THRESHOLD = 70;
 const MAX_PULL = 110;
 const RESISTANCE = 0.5;
 
+/**
+ * Wrap a page in this to add iOS-style pull-to-refresh. Only mount it
+ * on pages where it makes sense (Today, Activity). Wrapping the whole
+ * app would pin every `position: fixed` descendant to this component's
+ * transformed wrapper — motion.div always applies a `transform`, which
+ * creates a containing block — and they'd scroll out of view alongside
+ * the page.
+ */
 export function PullToRefresh({ children }: { children: React.ReactNode }) {
   const utils = trpc.useUtils();
-  const pathname = usePathname();
   const containerRef = useRef<HTMLDivElement>(null);
   const startY = useRef<number | null>(null);
   const dragging = useRef(false);
   const y = useMotionValue(0);
   const [refreshing, setRefreshing] = useState(false);
-
-  // Sign-in is full-screen and not authenticated; skip pull-to-refresh.
-  const enabled =
-    pathname !== "/sign-in" && !pathname.startsWith("/sign-in/");
 
   const indicatorY = useTransform(y, (v) => v - 28);
   const indicatorOpacity = useTransform(y, [0, ARM_THRESHOLD * 0.6], [0, 1]);
@@ -31,7 +33,6 @@ export function PullToRefresh({ children }: { children: React.ReactNode }) {
   const dragRotate = useTransform(y, [0, MAX_PULL], [0, 270]);
 
   useEffect(() => {
-    if (!enabled) return;
     const el = containerRef.current;
     if (!el) return;
 
@@ -117,9 +118,7 @@ export function PullToRefresh({ children }: { children: React.ReactNode }) {
       el.removeEventListener("touchend", onTouchEnd);
       el.removeEventListener("touchcancel", onTouchEnd);
     };
-  }, [enabled, refreshing, utils, y]);
-
-  if (!enabled) return <>{children}</>;
+  }, [refreshing, utils, y]);
 
   return (
     <div ref={containerRef} className="relative">
